@@ -173,17 +173,17 @@
     },
     {
       "project": "pymupdf",
-      "version": "1.26.6",
-      "filename": "pymupdf-1.26.6-cp310-abi3-manylinux_2_28_x86_64.whl",
-      "download_url": "https://files.pythonhosted.org/packages/4f/bf/6e02e3d84b32c137c71a0a3dcdba8f2f6e9950619a3bc272245c7c06a051/pymupdf-1.26.6-cp310-abi3-manylinux_2_28_x86_64.whl",
-      "expected_size": 24115381,
-      "sha256": "7777d0b7124c2ebc94849536b6a1fb85d158df3b9d873935e63036559391534c",
-      "release_json_url": "https://pypi.org/pypi/pymupdf/1.26.6/json",
+      "version": "1.26.7",
+      "filename": "pymupdf-1.26.7-cp310-abi3-manylinux_2_28_x86_64.whl",
+      "download_url": "https://files.pythonhosted.org/packages/2a/6b/3de1714d734ff949be1e90a22375d0598d3540b22ae73eb85c2d7d1f36a9/pymupdf-1.26.7-cp310-abi3-manylinux_2_28_x86_64.whl",
+      "expected_size": 24115727,
+      "sha256": "69dfc78f206a96e5b3ac22741263ebab945fdf51f0dbe7c5757c3511b23d9d72",
+      "release_json_url": "https://pypi.org/pypi/pymupdf/1.26.7/json",
       "simple_json_url": "https://pypi.org/simple/pymupdf/",
-      "metadata_matched_at": "2026-10-14T21:28:41.103116+00:00",
-      "actual_size": 24115381,
-      "actual_sha256": "7777d0b7124c2ebc94849536b6a1fb85d158df3b9d873935e63036559391534c",
-      "verified_at": "2026-10-14T21:28:49.157683+00:00"
+      "metadata_matched_at": "2026-10-14T21:40:35.022049+00:00",
+      "actual_size": 24115727,
+      "actual_sha256": "69dfc78f206a96e5b3ac22741263ebab945fdf51f0dbe7c5757c3511b23d9d72",
+      "verified_at": "2026-10-14T21:40:41.400274+00:00"
     },
     {
       "project": "pyphen",
