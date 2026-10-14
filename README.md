@@ -6,11 +6,12 @@ internet-hosted service or browser-local WASM build.
 
 ## Draft import status
 
-This imports the tested Python reference source into the repository's existing
-`src/` layout. The required CI and dependency-lock integration are not yet complete.
-See [source and runtime provenance](docs/provenance.md) before installing or running.
-The existing repository requires Python >=3.14; historical engine regression
-coverage used Python 3.12 and does not prove 3.14 compatibility.
+This imports the Python reference source into the repository's `src/` layout.
+The declared dependencies now have a resolved lock. Python 3.14 qualification,
+artifact provenance, check results and remaining limits are recorded in
+[the qualification report](docs/PYTHON314_QUALIFICATION.md) and
+[source and runtime provenance](docs/provenance.md). This remains a draft;
+passing synthetic checks does not establish full product acceptance.
 
 ## Capabilities
 
@@ -26,23 +27,34 @@ coverage used Python 3.12 and does not prove 3.14 compatibility.
 - Local multi-file browser interface, job cancellation and result downloads
 
 Signature-field inspection does not verify or create cryptographic signatures.
-OCR/Docling and WeasyPrint integrations need separately verified engines and are
-not included in real-engine acceptance. Read the limits for
+OCR/Docling remains unavailable without a separately verified model set.
+Optional WeasyPrint conversion has synthetic Linux integration coverage with
+resource loading disabled; it does not promise layout fidelity. Read the limits for
 [forms](docs/FORMS.md), [images](docs/IMAGES.md),
 [archives and exports](docs/ARCHIVES_AND_EXPORTS.md), and
 [local security](docs/SECURITY.md).
 
-## Running after the dependency gate is resolved
+## Running locally
 
 The CLI entry point is `pdf-multitool`; `python -m pdf_multitool` is equivalent
-inside a correctly provisioned environment. Examples:
+inside a correctly provisioned Python >=3.14 environment. Install the locked
+environment, then inspect engine availability:
 
 ```sh
-uv run pdf-multitool doctor
-uv run pdf-multitool gui
-uv run pdf-multitool merge first.pdf second.pdf -o output
-uv run pdf-multitool split document.pdf --pages '1-3;4;5-7'
+uv sync --locked
+uv run --locked pdf-multitool doctor
+uv run --locked pdf-multitool gui
+uv run --locked pdf-multitool merge first.pdf second.pdf -o output
+uv run --locked pdf-multitool split document.pdf --pages '1-3;4;5-7'
 ```
+
+Poppler's `pdftotext` and `pdftoppm` provide text extraction and rendering;
+Ghostscript provides the explicitly acknowledged compression operation. These
+are separate system tools. Image support uses the `images` extra. HTML-to-PDF
+and repagination use `uv sync --locked --extra html` and system Pango libraries.
+CI provisions these dependencies on Ubuntu; other platforms remain unqualified.
+Installing the `ocr` extra alone does not enable model downloads or satisfy the
+Docling model verification gate.
 
 Open the printed loopback URL on the same machine. The server is single-user;
 never expose it through a public tunnel or reverse proxy. Download temporary GUI

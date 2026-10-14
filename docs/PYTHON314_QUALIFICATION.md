@@ -23,8 +23,10 @@ repository verifier compared the exact filename, HTTPS URL, size and SHA-256 in
 PyPI's release JSON and Simple JSON disclosures. Downloaded wheel bytes then
 matched the declared size and SHA-256. All selected transitive wheels received
 the same check. This is agreement from one publisher authority, not independent
-trust roots, a security audit or a verified Docling model set. Raw metadata and
-wheel files are local verification artifacts, excluded from the source commit.
+trust roots, a security audit or a verified Docling model set. A compact [22-wheel verification record](evidence/python314-wheels.json)
+records filenames, public URLs, byte counts and digests; every entry also matches
+`uv.lock`. Raw metadata and wheel files remain local artifacts. Build-toolchain
+provisioning is separate from this runtime/test-wheel verification.
 
 The selected PyMuPDF artifact is
 `pymupdf-1.26.6-cp310-abi3-manylinux_2_28_x86_64.whl`, SHA-256
@@ -51,3 +53,22 @@ by these results.
   This is not a clean audit. Shellcheck is absent locally.
 - Hosted required checks remain pending. Real-browser/Safari QA and real Docling
   conversion remain unverified.
+
+## HTML compatibility correction
+
+The installed-wheel smoke first passed core merge and the HTTP lifecycle, but
+real HTML conversion failed with `AttributeError: 'function' object has no
+attribute '_fail_on_errors'`. Inspection of the pinned WeasyPrint 70 source
+confirmed its `URLFetcher`/`URLFetcherResponse` contract. Both old callbacks are
+replaced with subclasses that never delegate to default file/network handlers.
+User HTML still denies every resource. Repagination only accepts bounded PNG/JPEG
+data URLs; its size check now precedes regex matching and base64 decoding. Four
+real-engine/boundary regressions pass, including generated-image rendering and
+original preservation. This establishes synthetic Linux cases, not universal
+HTML fidelity or OS-level network isolation.
+
+The first hosted Python 3.14.8 run passed locked sync and Ruff, then failed two
+tests because Poppler was not installed (240 passed, six skipped). CI now
+provisions Poppler, Ghostscript, Pandoc and Pango, installs the HTML extra, and
+exercises an isolated installed wheel. Source/verifier, API, shell, repository
+and TypeScript jobs passed at checkpoint `8baceae`; corrected-head CI is pending.

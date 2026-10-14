@@ -463,7 +463,7 @@ class FormOperationTests(unittest.TestCase):
             with self.subTest(flag=flag):
                 doc = self.blank()
                 create_fields(doc, [self.specs()[0]])
-                __owner, widget = self.widget(doc, "full_name")
+                _owner, widget = self.widget(doc, "full_name")
                 doc.xref_set_key(widget.xref, "Ff", str(flag))
                 self.reject_atomic(doc, fill_fields, {"full_name": "Text"}, "not supported")
 
@@ -472,7 +472,7 @@ class FormOperationTests(unittest.TestCase):
             with self.subTest(fieldtype=fieldtype):
                 doc = self.blank()
                 create_fields(doc, [self.specs()[0]])
-                __owner, widget = self.widget(doc, "full_name")
+                _owner, widget = self.widget(doc, "full_name")
                 parent = doc.get_new_xref()
                 doc.update_object(
                     parent,

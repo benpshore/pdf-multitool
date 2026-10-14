@@ -351,18 +351,16 @@ def process(request: dict) -> dict:
             raise JobError("HTML input must be at most 5 MB")
         from weasyprint import HTML
 
-        blocked = set()
+        from .html_resources import DenyAllFetcher
 
-        def deny_fetch(url: str, *args, **kwargs):
-            blocked.add(url.split(":", 1)[0])
-            raise ValueError("External, local and embedded resources are disabled")
+        fetcher = DenyAllFetcher()
 
         source = paths[0].read_text(encoding="utf-8-sig")
         out = workdir / "document.pdf"
-        HTML(string=source, base_url=None, url_fetcher=deny_fetch).write_pdf(out)
+        HTML(string=source, base_url=None, url_fetcher=fetcher).write_pdf(out)
         _validate_pdf(out)
         add(out, f"{stem}.pdf")
-        if blocked:
+        if fetcher.blocked:
             warnings.append(
                 "HTML resource loading was blocked. Use self-contained text and "
                 "inline CSS; images, fonts and imports are not fetched."
@@ -557,25 +555,13 @@ def process(request: dict) -> dict:
                     add(out, f"{suggested_stem}.html")
                     add(report, f"{suggested_stem}-analysis.json")
                 else:
-                    import base64
-                    import re
-
                     from weasyprint import HTML
 
-                    def generated_image_fetch(url, *args, **kwargs):
-                        match = re.fullmatch(
-                            r"data:(image/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)", url
-                        )
-                        if not match or len(match[2]) > 32 * 1024 * 1024:
-                            raise ValueError("Only bounded embedded generated images may be loaded")
-                        return {
-                            "string": base64.b64decode(match[2], validate=True),
-                            "mime_type": match[1],
-                        }
+                    from .html_resources import GeneratedImageFetcher
 
                     pdf_out = workdir / "repaginated.pdf"
                     HTML(
-                        string=out.read_text(encoding="utf-8"), url_fetcher=generated_image_fetch
+                        string=out.read_text(encoding="utf-8"), url_fetcher=GeneratedImageFetcher()
                     ).write_pdf(pdf_out)
                     _validate_pdf(pdf_out)
                     add(pdf_out, f"{suggested_stem}-repaginated.pdf")
