@@ -1,0 +1,27 @@
+name: Source and verifier checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  source-checks:
+    runs-on: ubuntu-latest
+    steps:
+      # Runner/action provisioning is not an upstream engine provenance attestation.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Python syntax and fail-closed verifier tests
+        run: |
+          python3 -m compileall -q src/pdf_multitool tests scripts
+          python3 scripts/verify_pypi_artifact_tests.py
+      - name: JavaScript syntax and mocked DOM checks
+        run: |
+          node --check src/pdf_multitool/static/app.js
+          node scripts/test_ui_dom.cjs
+          node scripts/test_ui_reload.cjs
+          node scripts/test_ui_archives.cjs
+          node scripts/test_ui_recovery.cjs
+          node scripts/test_ui_recovery.cjs --missing-source
+          node scripts/test_ui_recovery.cjs --legacy-bundle
+      - name: State integration gate
+        run: |
+          echo 'Native-engine integration CI requires the verified pinned engine environment.'
+          echo 'This source-only workflow is not full product acceptance.'

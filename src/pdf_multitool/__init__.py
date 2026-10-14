@@ -1,5 +1,8 @@
-"""pdf-multitool."""
+"""PDF Multitool. Engine work is isolated from the UI and job controller."""
 
+from importlib.metadata import PackageNotFoundError, version
 
-def main() -> None:
-    print("Hello from pdf-multitool!")
+try:
+    __version__ = version("pdf-multitool")
+except PackageNotFoundError:
+    __version__ = "0+unknown"

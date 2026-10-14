@@ -1,6 +1,5 @@
-import pdf_multitool
+from pdf_multitool.cli import parser
 
 
-def test_main_runs(capsys):
-    pdf_multitool.main()
-    assert "pdf-multitool" in capsys.readouterr().out
+def test_cli_parser():
+    assert "pdf-multitool" in parser().format_help()
