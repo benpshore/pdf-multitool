@@ -20,6 +20,10 @@ pdf-multitool = "pdf_multitool.cli:main"
 requires = ["hatchling>=1.32,<2", "uv-dynamic-versioning>=0.14,<1"]
 build-backend = "hatchling.build"
 
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
 
@@ -30,7 +34,12 @@ packages = ["src/pdf_multitool"]
 fallback-version = "0.0.0"
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.14"]
+dev = [
+    "pillow==12.3.0",
+    "pytest>=8",
+    "reportlab>=4.4,<5",
+    "ruff>=0.14",
+]
 
 [tool.ruff]
 line-length = 100
