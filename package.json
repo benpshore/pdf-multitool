@@ -9,7 +9,7 @@
     "test:ts": "node --test \"test/**/*.test.ts\""
   },
   "devDependencies": {
-    "typescript": "^5.9",
-    "@types/node": "^24"
+    "typescript": "^7.0",
+    "@types/node": "^26"
   }
 }
