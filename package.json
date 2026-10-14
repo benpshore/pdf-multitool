@@ -1,0 +1,15 @@
+{
+  "name": "pdf-multitool",
+  "version": "0.1.0",
+  "description": "pdf-multitool",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:ts": "node --test \"test/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "typescript": "^5.9",
+    "@types/node": "^24"
+  }
+}
