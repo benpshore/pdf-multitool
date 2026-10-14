@@ -1,14 +1,13 @@
 import http.client
-from http.server import ThreadingHTTPServer
 import json
-from pathlib import Path
 import tempfile
 import threading
 import time
 import unittest
 import urllib.parse
+from pathlib import Path
 
-from pdf_multitool.server import Workbench, make_handler, BoundedHTTPServer
+from pdf_multitool.server import BoundedHTTPServer, Workbench, make_handler
 from tests.fixtures import document
 
 
@@ -44,20 +43,33 @@ class RealHTTPTests(unittest.TestCase):
         return status, response_headers, payload
 
     def upload(self):
-        status, _, body = self.request("POST", "/api/files", self.pdf,
-                                       headers={"X-Filename": urllib.parse.quote('evil <script>".pdf')})
+        status, _, body = self.request(
+            "POST",
+            "/api/files",
+            self.pdf,
+            headers={"X-Filename": urllib.parse.quote('evil <script>".pdf')},
+        )
         self.assertEqual(status, 201, body)
         return json.loads(body)
 
     def test_token_and_origin_boundaries(self):
         self.assertEqual(self.request("GET", "/api/status", auth=False)[0], 401)
-        self.assertEqual(self.request("GET", "/api/status", headers={"Origin": "https://attacker.invalid"})[0], 403)
-        self.assertEqual(self.request("GET", "/api/status", headers={"Host": "attacker.invalid"})[0], 403)
+        self.assertEqual(
+            self.request("GET", "/api/status", headers={"Origin": "https://attacker.invalid"})[0],
+            403,
+        )
+        self.assertEqual(
+            self.request("GET", "/api/status", headers={"Host": "attacker.invalid"})[0], 403
+        )
         self.assertEqual(self.request("GET", "/api/status")[0], 200)
 
     def test_full_upload_process_download_preserves_original(self):
         item = self.upload()
-        _, _, body = self.request("POST", "/api/jobs", {"operation": "rotate", "files": [item["id"]], "options": {"rotation": 90}})
+        _, _, body = self.request(
+            "POST",
+            "/api/jobs",
+            {"operation": "rotate", "files": [item["id"]], "options": {"rotation": 90}},
+        )
         job_id = json.loads(body)["id"]
         deadline = time.monotonic() + 8
         while time.monotonic() < deadline:
@@ -71,22 +83,28 @@ class RealHTTPTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(output.startswith(b"%PDF-"))
         self.assertIn("attachment;", headers["Content-Disposition"])
-        _, _, original = self.request("GET", f'/api/files/{item["id"]}/original')
+        _, _, original = self.request("GET", f"/api/files/{item['id']}/original")
         self.assertEqual(original, self.pdf)
         self.assertNotIn("path", job["results"][0])
 
     def test_delete_and_unknown_routes(self):
         item = self.upload()
-        self.assertEqual(self.request("DELETE", f'/api/files/{item["id"]}')[0], 200)
-        self.assertEqual(self.request("GET", f'/api/files/{item["id"]}/original')[0], 404)
+        self.assertEqual(self.request("DELETE", f"/api/files/{item['id']}")[0], 200)
+        self.assertEqual(self.request("GET", f"/api/files/{item['id']}/original")[0], 404)
         self.assertEqual(self.request("GET", "/../../etc/passwd")[0], 404)
 
     def test_invalid_jobs_and_file_types(self):
-        self.assertEqual(self.request("POST", "/api/files", b"no", headers={"X-Filename": "bad.exe"})[0], 400)
-        self.assertEqual(self.request("POST", "/api/jobs", {"operation": "rotate", "files": []})[0], 400)
+        self.assertEqual(
+            self.request("POST", "/api/files", b"no", headers={"X-Filename": "bad.exe"})[0], 400
+        )
+        self.assertEqual(
+            self.request("POST", "/api/jobs", {"operation": "rotate", "files": []})[0], 400
+        )
         self.assertEqual(self.request("POST", "/api/jobs", b"not JSON")[0], 400)
         self.assertEqual(self.request("POST", "/api/jobs", b"[]")[0], 400)
-        self.assertEqual(self.request("POST", "/api/jobs", {"operation": "rotate", "files": [{}]})[0], 400)
+        self.assertEqual(
+            self.request("POST", "/api/jobs", {"operation": "rotate", "files": [{}]})[0], 400
+        )
 
     def test_upload_is_private_and_reservation_released(self):
         item = self.upload()
@@ -98,8 +116,9 @@ class RealHTTPTests(unittest.TestCase):
         status, _, html = self.request("GET", "/", auth=False)
         self.assertEqual(status, 200)
         import re
+
         for path in re.findall(rb'(?:href|src)="(/static/[^\"]+)"', html):
-            status, headers, content = self.request("GET", path.decode(), auth=False)
+            status, _headers, content = self.request("GET", path.decode(), auth=False)
             self.assertEqual(status, 200, path)
             self.assertGreater(len(content), 100)
 

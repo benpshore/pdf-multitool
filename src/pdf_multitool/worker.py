@@ -1,12 +1,13 @@
 """Disposable document worker. Invoke via the supervisor, not as a public server."""
+
 from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 from .core import JobError, parse_pages, safe_name
 
@@ -15,13 +16,18 @@ def _limits(config: dict, operation: str) -> None:
     if os.name != "posix":
         return  # Parent still provides time/output/cancellation bounds.
     import resource
+
     mb = config["docling_memory_mb"] if operation == "docling" else config["memory_mb"]
-    seconds = config["docling_timeout_seconds"] if operation == "docling" else config["timeout_seconds"]
-    for kind, value in [(resource.RLIMIT_AS, mb * 1024 * 1024),
-                        (resource.RLIMIT_CPU, seconds),
-                        (resource.RLIMIT_FSIZE, config["max_output_bytes"]),
-                        (resource.RLIMIT_NOFILE, 512),
-                        (resource.RLIMIT_CORE, 0)]:
+    seconds = (
+        config["docling_timeout_seconds"] if operation == "docling" else config["timeout_seconds"]
+    )
+    for kind, value in [
+        (resource.RLIMIT_AS, mb * 1024 * 1024),
+        (resource.RLIMIT_CPU, seconds),
+        (resource.RLIMIT_FSIZE, config["max_output_bytes"]),
+        (resource.RLIMIT_NOFILE, 512),
+        (resource.RLIMIT_CORE, 0),
+    ]:
         _, hard = resource.getrlimit(kind)
         cap = value if hard == resource.RLIM_INFINITY else min(value, hard)
         resource.setrlimit(kind, (cap, cap))
@@ -34,6 +40,7 @@ def _deny_network(event: str, args: tuple) -> None:
 
 def _pdf(path: Path, max_pages: int, password: str = ""):
     import pymupdf
+
     doc = pymupdf.open(path)
     if not doc.is_pdf:
         doc.close()
@@ -61,8 +68,9 @@ def _command(args: list[str], timeout: int) -> None:
     executable = shutil.which(args[0])
     if not executable:
         raise JobError(f"Required engine {args[0]} is not installed")
-    proc = subprocess.run([executable, *args[1:]], stdin=subprocess.DEVNULL,
-                          timeout=timeout, check=False)
+    proc = subprocess.run(  # noqa: S603 -- fixed engine/CLI argv; no shell
+        [executable, *args[1:]], stdin=subprocess.DEVNULL, timeout=timeout, check=False
+    )
     if proc.returncode:
         raise JobError(f"{args[0]} exited with code {proc.returncode}; input may be malformed")
 
@@ -74,6 +82,7 @@ def _page_link_matrix(page):
     rotated pages. Its native transform is already rotated; do not rotate twice.
     """
     import pymupdf
+
     matrix = pymupdf.mupdf.FzMatrix()
     box = pymupdf.mupdf.FzRect()
     pymupdf.mupdf.pdf_page_transform(page._pdf_page(), box, matrix)
@@ -83,6 +92,7 @@ def _page_link_matrix(page):
 def _insert_selected_pdf(destination, source, selected: list[int]) -> list[str]:
     """Copy unique selected pages and remap links between retained pages."""
     import pymupdf
+
     offset = len(destination)
     page_map = {page: offset + index for index, page in enumerate(selected)}
     contiguous = selected == list(range(selected[0], selected[-1] + 1))
@@ -106,25 +116,50 @@ def _insert_selected_pdf(destination, source, selected: list[int]) -> list[str]:
             radio_pages.setdefault(group, set()).add(page.number)
     selected_set = set(selected)
     for group_pages in radio_pages.values():
-        if len(group_pages) > 1 and group_pages & selected_set:
-            if not contiguous or not group_pages <= selected_set:
-                raise JobError("A radio-button group spans multiple pages and cannot be safely copied with this page selection. Select one ascending consecutive range containing every page of the group, or explicitly flatten the form in a separate operation first. No output was kept.")
+        if (len(group_pages) > 1 and group_pages & selected_set) and (
+            not contiguous or not group_pages <= selected_set
+        ):
+            raise JobError(
+                "A radio-button group spans multiple pages and cannot be safely "
+                "copied with this page selection. Select one ascending consecutive"
+                " range containing every page of the group, or explicitly flatten "
+                "the form in a separate operation first. No output was kept."
+            )
     if not contiguous and any(len(pages & selected_set) > 1 for pages in named_pages.values()):
-        raise JobError("A form field occurs on multiple selected pages and cannot be safely copied in this order. Select one ascending consecutive range, or explicitly flatten the form in a separate operation first. No output was kept.")
+        raise JobError(
+            "A form field occurs on multiple selected pages and cannot be "
+            "safely copied in this order. Select one ascending consecutive "
+            "range, or explicitly flatten the form in a separate operation "
+            "first. No output was kept."
+        )
     if contiguous:
-        destination.insert_pdf(source, from_page=selected[0], to_page=selected[-1],
-                               links=False, annots=True, widgets=True)
+        destination.insert_pdf(
+            source,
+            from_page=selected[0],
+            to_page=selected[-1],
+            links=False,
+            annots=True,
+            widgets=True,
+        )
     else:
         for index in selected:
-            destination.insert_pdf(source, from_page=index, to_page=index,
-                                   links=False, annots=True, widgets=True)
+            destination.insert_pdf(
+                source, from_page=index, to_page=index, links=False, annots=True, widgets=True
+            )
     renamed = 0
     for index in selected:
         before = list(source[index].widgets() or ())
         after = list(destination[page_map[index]].widgets() or ())
         if len(after) != widget_counts[index]:
-            raise JobError("The PDF engine could not preserve every form widget while copying pages. No output was kept. Explicitly flatten the form in a separate operation before copying if editable fields are not needed.")
-        renamed += sum(old.field_name != new.field_name for old, new in zip(before, after))
+            raise JobError(
+                "The PDF engine could not preserve every form widget while copying"
+                " pages. No output was kept. Explicitly flatten the form in a "
+                "separate operation before copying if editable fields are not "
+                "needed."
+            )
+        renamed += sum(
+            old.field_name != new.field_name for old, new in zip(before, after, strict=True)
+        )
     omitted, unsupported = 0, 0
     # Inspect the actual action as well as MuPDF's lossy get_links view: named
     # actions may appear as GOTO and named GoToR may appear as launch filenames.
@@ -147,9 +182,9 @@ def _insert_selected_pdf(destination, source, selected: list[int]) -> list[str]:
                         if len(numbers) != 4:
                             continue
                         rect = pymupdf.Rect(numbers).normalize() * _page_link_matrix(page)
-                        if all(abs(a - b) < 0.001 for a, b in zip(rect, link["from"])):
+                        if all(abs(a - b) < 0.001 for a, b in zip(rect, link["from"], strict=True)):
                             candidates.append(candidate)
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         continue
                 if len(candidates) != 1:
                     continue
@@ -157,28 +192,47 @@ def _insert_selected_pdf(destination, source, selected: list[int]) -> list[str]:
             if xref not in unhandled:
                 continue
             action = source.xref_get_key(xref, "A/S")[1]
-            if (source.xref_get_key(xref, "AA")[0] != "null"
-                    or source.xref_get_key(xref, "A/Next")[0] != "null"
-                    or action not in {"null", "/GoTo", "/GoToR", "/URI", "/Launch"}):
+            if (
+                source.xref_get_key(xref, "AA")[0] != "null"
+                or source.xref_get_key(xref, "A/Next")[0] != "null"
+                or action not in {"null", "/GoTo", "/GoToR", "/URI", "/Launch"}
+            ):
                 continue
             copied = dict(link)
             copied.pop("xref", None)
             copied.pop("id", None)
-            copied["from"] = link["from"] * ~_page_link_matrix(page) * destination[page_map[index]].transformation_matrix
+            copied["from"] = (
+                link["from"]
+                * ~_page_link_matrix(page)
+                * destination[page_map[index]].transformation_matrix
+            )
             remote_kind, remote_dest = source.xref_get_key(xref, "A/D")
             if action == "/GoToR" and remote_kind in {"string", "name"}:
                 file_kind, filename = source.xref_get_key(xref, "A/F")
                 if file_kind != "string":
                     continue  # Complex file specifications need a separate copier.
                 target_page = destination[page_map[index]]
-                target_page.insert_link({"kind": pymupdf.LINK_URI, "from": copied["from"], "uri": "about:blank"})
+                target_page.insert_link(
+                    {"kind": pymupdf.LINK_URI, "from": copied["from"], "uri": "about:blank"}
+                )
                 new_xref = target_page.annot_xrefs()[-1][0]
                 destination.xref_set_key(new_xref, "A", "<< /S /GoToR >>")
                 destination.xref_set_key(new_xref, "A/F", pymupdf.get_pdf_str(filename))
-                name_token = "/" + "".join(f"#{byte:02X}" for byte in remote_dest[1:].encode("utf-8"))
-                destination.xref_set_key(new_xref, "A/D", pymupdf.get_pdf_str(remote_dest) if remote_kind == "string" else name_token)
+                name_token = "/" + "".join(
+                    f"#{byte:02X}" for byte in remote_dest[1:].encode("utf-8")
+                )
+                destination.xref_set_key(
+                    new_xref,
+                    "A/D",
+                    pymupdf.get_pdf_str(remote_dest) if remote_kind == "string" else name_token,
+                )
             else:
-                if link["kind"] not in {pymupdf.LINK_GOTO, pymupdf.LINK_URI, pymupdf.LINK_GOTOR, pymupdf.LINK_LAUNCH}:
+                if link["kind"] not in {
+                    pymupdf.LINK_GOTO,
+                    pymupdf.LINK_URI,
+                    pymupdf.LINK_GOTOR,
+                    pymupdf.LINK_LAUNCH,
+                }:
                     continue
                 if link["kind"] == pymupdf.LINK_GOTO:
                     target = link.get("page")
@@ -186,18 +240,34 @@ def _insert_selected_pdf(destination, source, selected: list[int]) -> list[str]:
                         unhandled.remove(xref)
                         omitted += 1
                         continue
-                    copied["to"] = link["to"] * ~_page_link_matrix(source[target]) * destination[page_map[target]].transformation_matrix
+                    copied["to"] = (
+                        link["to"]
+                        * ~_page_link_matrix(source[target])
+                        * destination[page_map[target]].transformation_matrix
+                    )
                     copied["page"] = page_map[target]
                 destination[page_map[index]].insert_link(copied)
             unhandled.remove(xref)
         unsupported += len(unhandled)
     warnings = []
     if renamed:
-        warnings.append(f"The PDF engine renamed {renamed} form field widget(s) to avoid duplicate names. Review field names and values before filling or automation.")
+        warnings.append(
+            f"The PDF engine renamed {renamed}"
+            f" form field widget(s) to avoid duplicate names. Review field names and "
+            f"values before filling or automation."
+        )
     if omitted:
-        warnings.append(f"{omitted} internal link(s) were not copied because their target pages were omitted from this output.")
+        warnings.append(
+            f"{omitted} internal link(s) were not copied because their target pages were omitted"
+            f" from this output."
+        )
     if unsupported:
-        warnings.append(f"{unsupported} unsupported or ambiguous link action(s) were not copied. Named actions, chained/additional actions and complex file specifications may require the original PDF. Originals are unchanged.")
+        warnings.append(
+            f"{unsupported}"
+            f" unsupported or ambiguous link action(s) were not copied. Named actions, "
+            f"chained/additional actions and complex file specifications may require "
+            f"the original PDF. Originals are unchanged."
+        )
     return warnings
 
 
@@ -214,46 +284,64 @@ def process(request: dict) -> dict:
         raise JobError("Invalid document password")
 
     def add(path: Path, name: str | None = None) -> None:
-        if not path.is_file() or path.stat().st_size == 0:
+        if (not path.is_file() or path.stat().st_size == 0) and (
+            path.suffix != ".txt" or not path.is_file()
+        ):
             # Empty text is valid evidence of a possible scanned page.
-            if path.suffix != ".txt" or not path.is_file():
-                raise JobError("Engine did not create a usable output")
-        outputs.append({"file": path.relative_to(workdir).as_posix(), "name": safe_name(name or path.name)})
+            raise JobError("Engine did not create a usable output")
+        outputs.append(
+            {"file": path.relative_to(workdir).as_posix(), "name": safe_name(name or path.name)}
+        )
 
     def image_warnings(report: dict) -> list[str]:
         # Storage IDs are implementation details, not useful document names.
         result = []
         for warning in report.get("warnings", []):
-            for path, name in zip(paths, names):
+            for path, name in zip(paths, names, strict=True):
                 if warning.startswith(path.name + ": "):
-                    warning = safe_name(name) + warning[len(path.name):]
+                    warning = safe_name(name) + warning[len(path.name) :]
                     break
             result.append(warning)
         return result
 
     if operation == "unpack":
-        from .archives import extract_archive, ArchiveLimits
+        from .archives import ArchiveLimits, extract_archive
+
         destination = workdir / "extracted"
         destination.mkdir(mode=0o700)
-        archive_limits = ArchiveLimits(max_compressed_bytes=request["limits"]["max_file_bytes"],
-                                       max_member_bytes=request["limits"]["max_file_bytes"],
-                                       max_expanded_bytes=min(request["limits"]["max_output_bytes"], int(options.get("max_expanded_bytes", 500 * 1024 * 1024))),
-                                       max_files=min(request["limits"]["max_files"], int(options.get("max_files", 200))))
+        archive_limits = ArchiveLimits(
+            max_compressed_bytes=request["limits"]["max_file_bytes"],
+            max_member_bytes=request["limits"]["max_file_bytes"],
+            max_expanded_bytes=min(
+                request["limits"]["max_output_bytes"],
+                int(options.get("max_expanded_bytes", 500 * 1024 * 1024)),
+            ),
+            max_files=min(request["limits"]["max_files"], int(options.get("max_files", 200))),
+        )
         report = extract_archive(paths[0], destination, names[0], archive_limits)
         for item in report["files"]:
             add(Path(item["path"]), item["name"])
             outputs[-1]["member_path"] = item["member_path"]
-        return {"ok": True, "outputs": outputs, "warnings": report["warnings"],
-                "statistics": report["statistics"]}
+        return {
+            "ok": True,
+            "outputs": outputs,
+            "warnings": report["warnings"],
+            "statistics": report["statistics"],
+        }
 
     if operation == "bundle":
         from .archives import archive_output
+
         format = options.get("format", "zip")
         if format not in {"zip", "tar.gz"}:
             raise JobError("Archive format must be zip or tar.gz")
         out = workdir / ("results.zip" if format == "zip" else "results.tar.gz")
-        items = [{"path": str(path), "name": name, "archive_path": arcpath}
-                 for path, name, arcpath in zip(paths, names, request.get("archive_paths", names))]
+        items = [
+            {"path": str(path), "name": name, "archive_path": arcpath}
+            for path, name, arcpath in zip(
+                paths, names, request.get("archive_paths", names), strict=True
+            )
+        ]
         archive_output(items, out, format=format)
         add(out)
         return {"ok": True, "outputs": outputs, "warnings": []}
@@ -262,6 +350,7 @@ def process(request: dict) -> dict:
         if len(paths) != 1 or paths[0].stat().st_size > 5 * 1024 * 1024:
             raise JobError("HTML input must be at most 5 MB")
         from weasyprint import HTML
+
         blocked = set()
 
         def deny_fetch(url: str, *args, **kwargs):
@@ -274,16 +363,22 @@ def process(request: dict) -> dict:
         _validate_pdf(out)
         add(out, f"{stem}.pdf")
         if blocked:
-            warnings.append("HTML resource loading was blocked. Use self-contained text and inline CSS; images, fonts and imports are not fetched.")
+            warnings.append(
+                "HTML resource loading was blocked. Use self-contained text and "
+                "inline CSS; images, fonts and imports are not fetched."
+            )
         return {"ok": True, "outputs": outputs, "warnings": warnings}
 
     import pymupdf
+
     from .images import IMAGE_SUFFIXES
+
     image_positions = [i for i, path in enumerate(paths) if path.suffix.lower() in IMAGE_SUFFIXES]
     if operation == "imagepdf":
         if len(paths) > max_pages:
             raise JobError(f"Combined PDF exceeds {max_pages} pages")
         from .images import images_to_pdf
+
         out = workdir / "images.pdf"
         report = images_to_pdf(paths, out, dpi=options.get("dpi", 144))
         _validate_pdf(out, len(paths))
@@ -291,11 +386,21 @@ def process(request: dict) -> dict:
         return {"ok": True, "outputs": outputs, "warnings": image_warnings(report)}
     if image_positions and operation != "merge":
         from .images import images_to_pdf, inspect_image
+
         if operation == "identify":
             report = inspect_image(paths[0])
-            report.update(name=safe_name(names[0]), input_type="image", suggested_filename=safe_name(names[0]),
-                          native_text_characters=0, ocr_candidate=True, ocr_performed=False,
-                          ocr_note="An image has no native PDF text layer. OCR may be useful if it contains text; content has not been recognized.")
+            report.update(
+                name=safe_name(names[0]),
+                input_type="image",
+                suggested_filename=safe_name(names[0]),
+                native_text_characters=0,
+                ocr_candidate=True,
+                ocr_performed=False,
+                ocr_note=(
+                    "An image has no native PDF text layer. OCR may be useful if it "
+                    "contains text; content has not been recognized."
+                ),
+            )
             out = workdir / "analysis.json"
             out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
             add(out, f"{stem}-analysis.json")
@@ -311,33 +416,59 @@ def process(request: dict) -> dict:
             temporary.unlink()
             add(out)
             return {"ok": True, "outputs": outputs, "warnings": image_warnings(report)}
-        raise JobError("Image inputs support Images to PDF, Merge, Analyze and Preview. Convert to PDF first for other PDF operations. OCR is not performed by image conversion.")
+        raise JobError(
+            "Image inputs support Images to PDF, Merge, Analyze and Preview. "
+            "Convert to PDF first for other PDF operations. OCR is not "
+            "performed by image conversion."
+        )
     if operation == "identify" and not password:
         with pymupdf.open(paths[0]) as locked:
             if locked.is_pdf and locked.needs_pass:
                 out = workdir / "analysis.json"
-                out.write_text(json.dumps({"input_type": "PDF", "input_protected": True,
-                                          "authentication": "password_required",
-                                          "suggested_filename": safe_name(names[0]),
-                                          "pages": None,
-                                          "warnings": ["Protected PDF detected. Supply its password to inspect content, forms and headings."]}, indent=2), encoding="utf-8")
+                out.write_text(
+                    json.dumps(
+                        {
+                            "input_type": "PDF",
+                            "input_protected": True,
+                            "authentication": "password_required",
+                            "suggested_filename": safe_name(names[0]),
+                            "pages": None,
+                            "warnings": [
+                                (
+                                    "Protected PDF detected. Supply its password "
+                                    "to inspect content, "
+                                    "forms and headings."
+                                )
+                            ],
+                        },
+                        indent=2,
+                    ),
+                    encoding="utf-8",
+                )
                 add(out, f"{stem}-analysis.json")
                 return {"ok": True, "outputs": outputs, "warnings": []}
     if operation == "merge":
         image_pdf = None
         if image_positions:
             from .images import images_to_pdf
+
             image_pdf = workdir / "normalized-images.pdf"
-            report = images_to_pdf([paths[i] for i in image_positions], image_pdf, dpi=options.get("dpi", 144))
+            report = images_to_pdf(
+                [paths[i] for i in image_positions], image_pdf, dpi=options.get("dpi", 144)
+            )
             warnings.extend(image_warnings(report))
         merged = pymupdf.open()
         count = 0
         protected_input = False
         for position, path in enumerate(paths):
             is_image = position in image_positions
-            with _pdf(image_pdf if is_image else path, max_pages, "" if is_image else password) as source:
+            with _pdf(
+                image_pdf if is_image else path, max_pages, "" if is_image else password
+            ) as source:
                 protected_input |= bool(source.metadata.get("encryption"))
-                selected = parse_pages(str(options.get("pages", "")), 1 if is_image else len(source))
+                selected = parse_pages(
+                    str(options.get("pages", "")), 1 if is_image else len(source)
+                )
                 count += len(selected)
                 if count > max_pages:
                     raise JobError(f"Combined PDF exceeds {max_pages} pages")
@@ -350,9 +481,17 @@ def process(request: dict) -> dict:
             image_pdf.unlink()
         _validate_pdf(out, count)
         add(out)
-        warnings.append("Merging preserves page content; signatures and document-level structure such as outlines/attachments are not guaranteed to survive.")
+        warnings.append(
+            "Merging preserves page content; signatures and document-level "
+            "structure such as outlines/attachments are not guaranteed to "
+            "survive."
+        )
         if protected_input:
-            warnings.append("Merging protected inputs creates an unencrypted working copy. Encrypted originals are preserved; use Protect PDF to encrypt the merged output.")
+            warnings.append(
+                "Merging protected inputs creates an unencrypted working copy. "
+                "Encrypted originals are preserved; use Protect PDF to encrypt the"
+                " merged output."
+            )
         return {"ok": True, "outputs": outputs, "warnings": warnings}
 
     with _pdf(paths[0], max_pages, password) as doc:
@@ -362,24 +501,41 @@ def process(request: dict) -> dict:
         # Read the already-populated encryption metadata after authentication.
         input_protected = bool(doc.metadata.get("encryption"))
         if input_protected and operation == "rename":
-            warnings.append("The renamed PDF preserves its original encryption state. Its separate analysis JSON is unencrypted.")
+            warnings.append(
+                "The renamed PDF preserves its original encryption state. Its "
+                "separate analysis JSON is unencrypted."
+            )
         elif input_protected and operation != "protect":
-            warnings.append("Outputs from password-protected inputs are unencrypted working copies. The encrypted original is preserved; use Protect PDF to encrypt an output.")
+            warnings.append(
+                "Outputs from password-protected inputs are unencrypted working "
+                "copies. The encrypted original is preserved; use Protect PDF to "
+                "encrypt an output."
+            )
         if operation in {"markdown", "textlayout"}:
             from .analysis import export_markdown, export_text
+
             out = workdir / ("document.md" if operation == "markdown" else "document.txt")
             export_options = {"skip_repeated_margins": options.get("skip_repeated_margins", False)}
             if operation == "markdown":
                 export_options["include_images"] = options.get("include_images", True)
-            report = (export_markdown if operation == "markdown" else export_text)(doc, out, names[0], export_options)
+            report = (export_markdown if operation == "markdown" else export_text)(
+                doc, out, names[0], export_options
+            )
             for item in report["outputs"]:
-                add(Path(item["path"]), f"{stem}{out.suffix}" if Path(item["path"]) == out else item["name"])
+                add(
+                    Path(item["path"]),
+                    f"{stem}{out.suffix}" if Path(item["path"]) == out else item["name"],
+                )
             warnings.extend(report.get("warnings", []))
             if len(report["outputs"]) > 1:
-                warnings.append("Markdown images are companion files. Package these results as ZIP or TAR.GZ to preserve their relative links.")
+                warnings.append(
+                    "Markdown images are companion files. Package these results as ZIP"
+                    " or TAR.GZ to preserve their relative links."
+                )
         elif operation in {"identify", "pdfhtml", "rename", "repaginate"}:
             from .analysis import analyze_document, export_html
             from .document_ops import fields_report
+
             analysis = analyze_document(doc, names[0])
             analysis["forms_and_signatures"] = fields_report(doc)
             analysis["input_protected"] = input_protected
@@ -401,45 +557,73 @@ def process(request: dict) -> dict:
                     add(out, f"{suggested_stem}.html")
                     add(report, f"{suggested_stem}-analysis.json")
                 else:
-                    from weasyprint import HTML
                     import base64
                     import re
 
+                    from weasyprint import HTML
+
                     def generated_image_fetch(url, *args, **kwargs):
-                        match = re.fullmatch(r"data:(image/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)", url)
+                        match = re.fullmatch(
+                            r"data:(image/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)", url
+                        )
                         if not match or len(match[2]) > 32 * 1024 * 1024:
                             raise ValueError("Only bounded embedded generated images may be loaded")
-                        return {"string": base64.b64decode(match[2], validate=True), "mime_type": match[1]}
+                        return {
+                            "string": base64.b64decode(match[2], validate=True),
+                            "mime_type": match[1],
+                        }
 
                     pdf_out = workdir / "repaginated.pdf"
-                    HTML(string=out.read_text(encoding="utf-8"), url_fetcher=generated_image_fetch).write_pdf(pdf_out)
+                    HTML(
+                        string=out.read_text(encoding="utf-8"), url_fetcher=generated_image_fetch
+                    ).write_pdf(pdf_out)
                     _validate_pdf(pdf_out)
                     add(pdf_out, f"{suggested_stem}-repaginated.pdf")
                     add(out, f"{suggested_stem}-reflow.html")
-                    warnings.append("Repagination is reconstructed from extracted content. Original layout, formulas and complex tables may differ.")
+                    warnings.append(
+                        "Repagination is reconstructed from extracted content. Original "
+                        "layout, formulas and complex tables may differ."
+                    )
         elif operation == "signatures":
             from .document_ops import fields_report
+
             out = workdir / "signatures.json"
-            out.write_text(json.dumps(fields_report(doc), ensure_ascii=False, indent=2), encoding="utf-8")
+            out.write_text(
+                json.dumps(fields_report(doc), ensure_ascii=False, indent=2), encoding="utf-8"
+            )
             add(out, f"{stem}-signatures.json")
-            warnings.append("This is signature-field inspection only. Cryptographic verification and digital signing are not implemented.")
+            warnings.append(
+                "This is signature-field inspection only. Cryptographic "
+                "verification and digital signing are not implemented."
+            )
         elif operation in {"clean", "forms", "redact", "unlock", "protect"}:
             from .document_ops import transform
-            inspect_forms = operation == "forms" and "fields" not in options and "create_fields" not in options
+
+            inspect_forms = (
+                operation == "forms" and "fields" not in options and "create_fields" not in options
+            )
             out = workdir / ("forms.json" if inspect_forms else f"{operation}.pdf")
             report = transform(doc, operation, out, options)
             warnings.extend(report.get("warnings", []))
             if not inspect_forms:
-                _validate_pdf(out, count, options.get("new_password", "") if operation == "protect" else "")
+                _validate_pdf(
+                    out, count, options.get("new_password", "") if operation == "protect" else ""
+                )
             add(out, f"{stem}-{operation}{out.suffix}")
             if report.get("detail"):
                 detail_out = workdir / "changes.json"
                 detail_out.write_text(json.dumps(report["detail"], indent=2), encoding="utf-8")
                 add(detail_out, f"{stem}-{operation}-changes.json")
         elif operation == "split":
-            groups = [[i] for i in range(count)] if not pages_spec.strip() else [parse_pages(g, count) for g in pages_spec.split(";")]
+            groups = (
+                [[i] for i in range(count)]
+                if not pages_spec.strip()
+                else [parse_pages(g, count) for g in pages_spec.split(";")]
+            )
             if len(groups) > 500:
-                raise JobError("Split is limited to 500 output files per input; select larger page groups")
+                raise JobError(
+                    "Split is limited to 500 output files per input; select larger page groups"
+                )
             for number, group in enumerate(groups, 1):
                 out = workdir / f"part-{number:04d}.pdf"
                 with pymupdf.open() as fragment:
@@ -447,7 +631,9 @@ def process(request: dict) -> dict:
                     fragment.save(out, garbage=3, deflate=True)
                 _validate_pdf(out, len(group))
                 add(out, f"{stem}-{number:04d}.pdf")
-            warnings.append("Split outputs may not retain document-level outlines, attachments or signatures.")
+            warnings.append(
+                "Split outputs may not retain document-level outlines, attachments or signatures."
+            )
         elif operation == "rotate":
             rotation = int(options.get("rotation", 90))
             if rotation not in {90, 180, 270}:
@@ -476,13 +662,22 @@ def process(request: dict) -> dict:
                     fragment.save(selected_pdf)
             if operation == "text":
                 out = workdir / "text.txt"
-                _command(["pdftotext", "-layout", "-enc", "UTF-8", str(selected_pdf), str(out)], 110)
+                _command(
+                    ["pdftotext", "-layout", "-enc", "UTF-8", str(selected_pdf), str(out)], 110
+                )
                 add(out, f"{stem}.txt")
                 text = out.read_text(encoding="utf-8")
                 if not text.strip():
-                    warnings.append("No embedded text was extracted. These pages may need OCR; an empty result does not prove the document has no visible text.")
+                    warnings.append(
+                        "No embedded text was extracted. These pages may need OCR; an "
+                        "empty result does not prove the document has no visible text."
+                    )
                 else:
-                    warnings.append("Embedded text extraction can misorder columns or lose mathematical/chemical formatting. Review against the original; no character-completeness score is inferred.")
+                    warnings.append(
+                        "Embedded text extraction can misorder columns or lose "
+                        "mathematical/chemical formatting. Review against the original; no"
+                        " character-completeness score is inferred."
+                    )
             else:
                 dpi = int(options.get("dpi", 120))
                 if not 36 <= dpi <= 300:
@@ -491,8 +686,17 @@ def process(request: dict) -> dict:
                     raise JobError("Rendering is limited to 100 selected pages per input")
                 for number, original_index in enumerate(selected, 1):
                     prefix = workdir / f"page-{number:04d}"
-                    args = ["pdftoppm", "-png", "-r", str(dpi), "-f", str(number),
-                            "-l", str(number), "-singlefile"]
+                    args = [
+                        "pdftoppm",
+                        "-png",
+                        "-r",
+                        str(dpi),
+                        "-f",
+                        str(number),
+                        "-l",
+                        str(number),
+                        "-singlefile",
+                    ]
                     # Poppler's scale-to also upscales. Use it only as an upper cap.
                     rect = doc[original_index].rect
                     if max(rect.width, rect.height) * dpi / 72 > 6000:
@@ -504,7 +708,10 @@ def process(request: dict) -> dict:
                     raise JobError("Render output page count did not match the selected pages")
         elif operation == "compress":
             if options.get("allow_lossy") is not True:
-                raise JobError("Compression rewrites the PDF and can lose nonvisual content; explicitly acknowledge this warning first")
+                raise JobError(
+                    "Compression rewrites the PDF and can lose nonvisual content; "
+                    "explicitly acknowledge this warning first"
+                )
             profile = str(options.get("compress_profile", "ebook"))
             if profile not in {"screen", "ebook", "printer", "prepress"}:
                 raise JobError("Invalid compression profile")
@@ -513,39 +720,71 @@ def process(request: dict) -> dict:
             if password:
                 source_path = workdir / "unlocked-input.pdf"
                 doc.save(source_path, encryption=pymupdf.PDF_ENCRYPT_NONE)
-            _command(["gs", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-sDEVICE=pdfwrite",
-                      "-dCompatibilityLevel=1.7", f"-dPDFSETTINGS=/{profile}",
-                      f"-sOutputFile={out}", "-f", str(source_path)], 110)
+            _command(
+                [
+                    "gs",
+                    "-dSAFER",
+                    "-dBATCH",
+                    "-dNOPAUSE",
+                    "-sDEVICE=pdfwrite",
+                    "-dCompatibilityLevel=1.7",
+                    f"-dPDFSETTINGS=/{profile}",
+                    f"-sOutputFile={out}",
+                    "-f",
+                    str(source_path),
+                ],
+                110,
+            )
             _validate_pdf(out, count)
             add(out, f"{stem}-compressed.pdf")
-            warnings.append("Ghostscript compression is a native rewrite. It may lose forms, tags, layers, attachments, links, signatures or other nonvisual content. Keep the original.")
+            warnings.append(
+                "Ghostscript compression is a native rewrite. It may lose forms, "
+                "tags, layers, attachments, links, signatures or other nonvisual "
+                "content. Keep the original."
+            )
             if out.stat().st_size >= paths[0].stat().st_size:
                 warnings.append("The rewritten PDF is not smaller than the original.")
         elif operation == "docling":
             from .models import validate_model_manifest
+
             models = validate_model_manifest(os.environ.get("PDF_MULTITOOL_MODELS"))
             from docling.datamodel.base_models import InputFormat
-            from docling.datamodel.pipeline_options import PdfPipelineOptions, EasyOcrOptions
+            from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions
             from docling.document_converter import DocumentConverter, PdfFormatOption
-            config = PdfPipelineOptions(artifacts_path=models,
-                                        enable_remote_services=False,
-                                        allow_external_plugins=False)
+
+            config = PdfPipelineOptions(
+                artifacts_path=models, enable_remote_services=False, allow_external_plugins=False
+            )
             config.do_ocr = options.get("ocr", True) is True
-            config.ocr_options = EasyOcrOptions(download_enabled=False, use_gpu=False,
-                                               model_storage_directory=str(models / "EasyOcr"))
+            config.ocr_options = EasyOcrOptions(
+                download_enabled=False,
+                use_gpu=False,
+                model_storage_directory=str(models / "EasyOcr"),
+            )
             config.do_table_structure = True
-            converter = DocumentConverter(allowed_formats=[InputFormat.PDF],
-                                          format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=config)})
-            result = converter.convert(paths[0], raises_on_error=True,
-                                       max_num_pages=max_pages,
-                                       max_file_size=request["limits"]["max_file_bytes"])
+            converter = DocumentConverter(
+                allowed_formats=[InputFormat.PDF],
+                format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=config)},
+            )
+            result = converter.convert(
+                paths[0],
+                raises_on_error=True,
+                max_num_pages=max_pages,
+                max_file_size=request["limits"]["max_file_bytes"],
+            )
             out = workdir / "document.json"
-            out.write_text(json.dumps(result.document.export_to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+            out.write_text(
+                json.dumps(result.document.export_to_dict(), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
             add(out, f"{stem}-structured.json")
             out = workdir / "document.md"
             out.write_text(result.document.export_to_markdown(), encoding="utf-8")
             add(out, f"{stem}.md")
-            warnings.append("OCR and inferred reading order require review, particularly formulas, citations and chemical notation.")
+            warnings.append(
+                "OCR and inferred reading order require review, particularly "
+                "formulas, citations and chemical notation."
+            )
         else:
             raise JobError("Unsupported operation")
     return {"ok": True, "outputs": outputs, "warnings": warnings}

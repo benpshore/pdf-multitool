@@ -6,6 +6,7 @@ in-memory document partially changed: callers must discard it on any failure.
 Radio filling changes existing state/appearance references, never synthesizes a
 new radio appearance. New fields use Helvetica and single-line WinAnsi text.
 """
+
 from __future__ import annotations
 
 import math
@@ -41,14 +42,22 @@ def _fail(message):
 
 def _string(value, what, limit, *, empty=False, multiline=False, visible=False):
     if not isinstance(value, str) or len(value) > limit or (not empty and not value.strip()):
-        _fail(f"{what} must be {'a bounded' if empty else 'a nonempty bounded'} string (maximum {limit} characters)")
-    if any(unicodedata.category(c).startswith("C") and not (multiline and c == "\n") for c in value):
+        _fail(
+            f"{what} must be {('a bounded' if empty else 'a nonempty bounded')} string (maximum "
+            f"{limit} characters)"
+        )
+    if any(
+        unicodedata.category(c).startswith("C") and not (multiline and c == "\n") for c in value
+    ):
         _fail(f"{what} contains unsupported control characters")
     if visible:
         try:
             value.encode("cp1252")
         except UnicodeEncodeError:
-            _fail(f"{what} has unsupported characters; visible form values currently require Windows-1252 text")
+            _fail(
+                f"{what} has unsupported characters; visible form values currently require "
+                f"Windows-1252 text"
+            )
     return value
 
 
@@ -110,7 +119,7 @@ def _flags(doc, chain):
     if kind != "int":
         _fail("Malformed field flags")
     flags = int(value)
-    if not 0 <= flags <= 0x7fffffff:
+    if not 0 <= flags <= 0x7FFFFFFF:
         _fail("Malformed field flags")
     return flags
 
@@ -148,7 +157,10 @@ def _all_field_names(doc):
         _fail("Malformed AcroForm Fields array")
     if native.pdf_array_len(fields) > _MAX_WIDGETS:
         _fail("Excessive AcroForm Fields array")
-    stack = [(native.pdf_array_get(fields, index), "", 0) for index in range(native.pdf_array_len(fields))]
+    stack = [
+        (native.pdf_array_get(fields, index), "", 0)
+        for index in range(native.pdf_array_len(fields))
+    ]
     names, seen = set(), set()
     while stack:
         obj, prefix, depth = stack.pop()
@@ -221,7 +233,9 @@ def button_export_value(doc, widget) -> str:
 
 def _pdf_name(value):
     raw = value.encode("utf-8")
-    return "/" + "".join(chr(c) if 33 <= c <= 126 and c not in b"()<>[]{}/%#" else f"#{c:02X}" for c in raw)
+    return "/" + "".join(
+        chr(c) if 33 <= c <= 126 and c not in b"()<>[]{}/%#" else f"#{c:02X}" for c in raw
+    )
 
 
 def _choice_values(widget):
@@ -257,7 +271,7 @@ def _radio_plan(doc, name, value, rows):
     if parent_flags & 1:
         _fail(f"Form field is read-only: {name}")
     exports, widgets = set(), []
-    for (_, widget), chain in zip(rows, chains):
+    for (_, widget), chain in zip(rows, chains, strict=True):
         if widget.field_type != _RADIO or _flags(doc, chain) != parent_flags:
             _fail(f"Mixed radio child types or flags: {name}")
         if doc.xref_get_key(widget.xref, "T")[0] != "null":
@@ -275,13 +289,19 @@ def _radio_plan(doc, name, value, rows):
 
 
 def _snapshot(doc):
-    pages, rows = _widgets(doc)
+    _pages, rows = _widgets(doc)
     result = []
     for page, widget in rows:
-        entry = {"page": page, "name": widget.field_name, "type": widget.field_type,
-                 "rect": list(widget.rect), "flags": widget.field_flags,
-                 "label": widget.field_label, "max_length": widget.text_maxlen,
-                 "choices": widget.choice_values}
+        entry = {
+            "page": page,
+            "name": widget.field_name,
+            "type": widget.field_type,
+            "rect": list(widget.rect),
+            "flags": widget.field_flags,
+            "label": widget.field_label,
+            "max_length": widget.text_maxlen,
+            "choices": widget.choice_values,
+        }
         if widget.field_type != pymupdf.PDF_WIDGET_TYPE_SIGNATURE:
             entry["value"] = widget.field_value
         if widget.field_type in {_RADIO, _TYPES["checkbox"]}:
@@ -304,7 +324,7 @@ def fill_fields(doc, mapping: dict) -> dict:
         _fail("Form fill needs a nonempty field-name/value object with at most 200 fields")
     for name in mapping:
         _string(name, "Field name", 256)
-    pages, rows = _widgets(doc)
+    _pages, rows = _widgets(doc)
     groups = {}
     for page, widget in rows:
         groups.setdefault(widget.field_name, []).append((page, widget))
@@ -338,8 +358,14 @@ def fill_fields(doc, mapping: dict) -> dict:
                 _fail(f"Password, file-select, and rich-text fields are not supported: {name}")
             if widget.text_font and widget.text_font.lower() == "zadb":
                 _fail(f"Dingbat-font text and choice fields are not supported: {name}")
-            _string(value, f"Form value for {name}", _MAX_VALUE, empty=True,
-                    multiline=kind == _TYPES["text"] and bool(flags & _MULTILINE), visible=True)
+            _string(
+                value,
+                f"Form value for {name}",
+                _MAX_VALUE,
+                empty=True,
+                multiline=kind == _TYPES["text"] and bool(flags & _MULTILINE),
+                visible=True,
+            )
             if kind == _TYPES["text"]:
                 mk, mv = _inherited(doc, chain, "MaxLen")
                 if mk not in {"null", "int"} or (mk == "int" and int(mv) < 0):
@@ -359,14 +385,17 @@ def fill_fields(doc, mapping: dict) -> dict:
     # Snapshot first also rejects malformed unrelated radio parent hierarchies,
     # rather than discovering them after changing requested fields.
     expected = _snapshot(doc)
-    by_xref = {widget.xref: entry for (_, widget), entry in zip(rows, expected["widgets"])}
+    by_xref = {
+        widget.xref: entry for (_, widget), entry in zip(rows, expected["widgets"], strict=True)
+    }
     for kind, plan in plans:
         if kind == "radio":
             _, widgets, value = plan
             for xref, export in widgets:
                 state = export if value == export else "Off"
-                by_xref[xref].update(value=state, state=["name", "/" + state],
-                                     group_value=["name", "/" + value])
+                by_xref[xref].update(
+                    value=state, state=["name", "/" + state], group_value=["name", "/" + value]
+                )
         else:
             widget, value = plan
             by_xref[widget.xref]["value"] = value
@@ -383,12 +412,27 @@ def fill_fields(doc, mapping: dict) -> dict:
             widget.field_value = value
             widget.update()
     if _snapshot(doc) != expected:
-        _fail("Form engine did not preserve requested values or unrelated field metadata; discard this in-memory document")
+        _fail(
+            "Form engine did not preserve requested values or unrelated field "
+            "metadata; discard this in-memory document"
+        )
     return {"filled_fields": sorted(mapping), "forms_expected": expected}
 
 
 def _new_spec(doc, spec, existing, occupied):
-    allowed = {"page", "name", "type", "rect", "value", "choices", "max_length", "font_size", "label", "required", "read_only"}
+    allowed = {
+        "page",
+        "name",
+        "type",
+        "rect",
+        "value",
+        "choices",
+        "max_length",
+        "font_size",
+        "label",
+        "required",
+        "read_only",
+    }
     if not isinstance(spec, dict) or set(spec) - allowed:
         _fail("Field specification has unsupported keys or is not an object")
     if type(spec.get("page")) is not int or not 1 <= spec["page"] <= len(doc):
@@ -400,15 +444,30 @@ def _new_spec(doc, spec, existing, occupied):
         _fail(f"Duplicate or existing field name: {name}")
     kind = spec.get("type")
     if not isinstance(kind, str) or kind not in _TYPES:
-        _fail("New field type must be text, checkbox, combobox, or listbox; signature and radio creation are unsupported")
+        _fail(
+            "New field type must be text, checkbox, combobox, or listbox; "
+            "signature and radio creation are unsupported"
+        )
     coords = spec.get("rect")
-    if not isinstance(coords, list) or len(coords) != 4 or not all(type(v) in {int, float} and math.isfinite(v) for v in coords):
+    if (
+        not isinstance(coords, list)
+        or len(coords) != 4
+        or not all(type(v) in {int, float} and math.isfinite(v) for v in coords)
+    ):
         _fail("Field rectangles need four finite numeric coordinates")
     rect = pymupdf.Rect(coords)
     page = doc[spec["page"] - 1]
     bounds = page.rect * page.derotation_matrix
-    if rect.is_empty or rect.is_infinite or not bounds.contains(rect) or min(rect.width, rect.height) < 12:
-        _fail("Field rectangle must be at least 12 points wide/high and fully inside the unrotated page")
+    if (
+        rect.is_empty
+        or rect.is_infinite
+        or not bounds.contains(rect)
+        or min(rect.width, rect.height) < 12
+    ):
+        _fail(
+            "Field rectangle must be at least 12 points wide/high and fully "
+            "inside the unrotated page"
+        )
     if any((rect & other).get_area() > 0 for other in occupied.get(spec["page"], ())):
         _fail("New field rectangles cannot overlap existing or other new widgets")
     label = _string(spec.get("label", name), "Accessible field label", 256)
@@ -423,7 +482,11 @@ def _new_spec(doc, spec, existing, occupied):
     if type(size) not in {int, float} or not math.isfinite(size) or not 6 <= size <= 36:
         _fail("font_size must be a finite number from 6 to 36 points")
     maxlen = spec.get("max_length", 0)
-    if type(maxlen) is not int or not 0 <= maxlen <= _MAX_VALUE or ("max_length" in spec and kind != "text"):
+    if (
+        type(maxlen) is not int
+        or not 0 <= maxlen <= _MAX_VALUE
+        or ("max_length" in spec and kind != "text")
+    ):
         _fail("max_length is supported only for text and must be an integer from 0 to 100000")
     if "choices" in spec and kind not in {"combobox", "listbox"}:
         _fail("choices is only valid for combobox and listbox fields")
@@ -453,14 +516,25 @@ def _new_spec(doc, spec, existing, occupied):
         if rect.height < size * 1.5 + 4:
             _fail("Field rectangle is too short for font_size")
         # Avoid publishing an initial value or choice label with clipped glyphs.
-        for text in ([value] + (choices or [])):
-            if pymupdf.get_text_length(text, fontname="helv", fontsize=size) > rect.width - (20 if kind == "combobox" else 8):
+        for text in [value] + (choices or []):
+            if pymupdf.get_text_length(text, fontname="helv", fontsize=size) > rect.width - (
+                20 if kind == "combobox" else 8
+            ):
                 _fail("Initial value or choices do not fit the field width at font_size")
     existing.add(name)
     occupied.setdefault(spec["page"], []).append(rect)
-    return {"page": spec["page"], "name": name, "kind": kind, "rect": rect,
-            "label": label, "flags": flags, "size": size, "maxlen": maxlen,
-            "choices": choices, "value": value}
+    return {
+        "page": spec["page"],
+        "name": name,
+        "kind": kind,
+        "rect": rect,
+        "label": label,
+        "flags": flags,
+        "size": size,
+        "maxlen": maxlen,
+        "choices": choices,
+        "value": value,
+    }
 
 
 def create_fields(doc, specs: list) -> dict:
@@ -472,7 +546,7 @@ def create_fields(doc, specs: list) -> dict:
     """
     if not isinstance(specs, list) or not 1 <= len(specs) <= _MAX_FIELDS:
         _fail("Field creation needs a nonempty list of at most 200 specifications")
-    pages, rows = _widgets(doc)
+    _pages, rows = _widgets(doc)
     if len(rows) + len(specs) > _MAX_WIDGETS:
         _fail("Too many form widgets")
     existing = {widget.field_name for _, widget in rows} | _all_field_names(doc)
@@ -517,21 +591,41 @@ def create_fields(doc, specs: list) -> dict:
         doc.xref_set_key(added.xref, "TU", pymupdf.get_pdf_str(plan["label"]))
     expected = _snapshot(doc)
     new_names = {plan["name"] for plan in plans}
-    if [entry for entry in expected["widgets"] if entry["name"] not in new_names] != before["widgets"]:
+    if [entry for entry in expected["widgets"] if entry["name"] not in new_names] != before[
+        "widgets"
+    ]:
         _fail("Form creation changed unrelated field metadata; discard this in-memory document")
     created = {entry["name"]: entry for entry in expected["widgets"] if entry["name"] in new_names}
     for plan in plans:
         entry = created.get(plan["name"])
-        wanted_value = ("Yes" if plan["value"] else "Off") if plan["kind"] == "checkbox" else plan["value"]
-        if (not entry or entry["value"] != wanted_value or entry["type"] != _TYPES[plan["kind"]]
-                or entry["page"] != plan["page"] or entry["label"] != plan["label"]
-                or entry["flags"] != plan["flags"] or entry["max_length"] != plan["maxlen"]
-                or entry["choices"] != plan["choices"]
-                or any(abs(a - b) > 0.01 for a, b in zip(entry["rect"], plan["rect"]))):
-            _fail("Form engine did not preserve the new field specification; discard this in-memory document")
-    return {"created_fields": [plan["name"] for plan in plans],
-            "forms_expected": expected,
-            "form_limits": "New fields use single-line Windows-1252 text, Helvetica, and AcroForm tooltip labels; this does not certify PDF/UA accessibility. Radio and signature creation, scripts, multi-select, and export/display choice pairs are unsupported."}
+        wanted_value = (
+            ("Yes" if plan["value"] else "Off") if plan["kind"] == "checkbox" else plan["value"]
+        )
+        if (
+            not entry
+            or entry["value"] != wanted_value
+            or entry["type"] != _TYPES[plan["kind"]]
+            or entry["page"] != plan["page"]
+            or entry["label"] != plan["label"]
+            or entry["flags"] != plan["flags"]
+            or entry["max_length"] != plan["maxlen"]
+            or entry["choices"] != plan["choices"]
+            or any(abs(a - b) > 0.01 for a, b in zip(entry["rect"], plan["rect"], strict=True))
+        ):
+            _fail(
+                "Form engine did not preserve the new field specification; discard"
+                " this in-memory document"
+            )
+    return {
+        "created_fields": [plan["name"] for plan in plans],
+        "forms_expected": expected,
+        "form_limits": (
+            "New fields use single-line Windows-1252 text, Helvetica, and "
+            "AcroForm tooltip labels; this does not certify PDF/UA "
+            "accessibility. Radio and signature creation, scripts, "
+            "multi-select, and export/display choice pairs are unsupported."
+        ),
+    }
 
 
 def verify_forms(path: str | Path, expected: dict, *, flattened: bool = False) -> None:
@@ -552,12 +646,17 @@ def verify_forms(path: str | Path, expected: dict, *, flattened: bool = False) -
             wanted = expected["widgets"]
             if len(actual["widgets"]) != len(wanted):
                 _fail("Saved form verification failed: widget count changed")
-            for got, want in zip(actual["widgets"], wanted):
-                if any(abs(a - b) > 0.01 for a, b in zip(got["rect"], want["rect"])):
+            for got, want in zip(actual["widgets"], wanted, strict=True):
+                if any(abs(a - b) > 0.01 for a, b in zip(got["rect"], want["rect"], strict=True)):
                     _fail("Saved form verification failed: field rectangle changed")
-                if {k: v for k, v in got.items() if k != "rect"} != {k: v for k, v in want.items() if k != "rect"}:
-                    _fail("Saved form verification failed: field metadata, value, or radio state changed")
-            pages, rows = _widgets(doc)
+                if {k: v for k, v in got.items() if k != "rect"} != {
+                    k: v for k, v in want.items() if k != "rect"
+                }:
+                    _fail(
+                        "Saved form verification failed: field metadata, value, or radio "
+                        "state changed"
+                    )
+            _pages, rows = _widgets(doc)
             for _, widget in rows:
                 if widget.field_type == pymupdf.PDF_WIDGET_TYPE_SIGNATURE:
                     continue

@@ -1,13 +1,18 @@
 """Fail-closed model provenance gate; never fetches models at runtime."""
+
 import hashlib
 import json
 from pathlib import Path
+
 from .core import JobError
 
 
 def validate_model_manifest(manifest_path: str | None) -> Path:
     if not manifest_path:
-        raise JobError("Docling needs an explicit verified model manifest. No models are downloaded automatically.")
+        raise JobError(
+            "Docling needs an explicit verified model manifest. No models are "
+            "downloaded automatically."
+        )
     manifest = Path(manifest_path).resolve(strict=True)
     data = json.loads(manifest.read_text(encoding="utf-8"))
     root = (manifest.parent / data["artifacts_path"]).resolve(strict=True)
@@ -21,7 +26,11 @@ def validate_model_manifest(manifest_path: str | None) -> Path:
         expected_paths.add(file)
         digest = item["sha256"]
         # Two matching pre-download publications must be recorded by the setup verifier.
-        if digest != item.get("upstream_sha256") or not item.get("source_url", "").startswith("https://") or not item.get("checksum_url", "").startswith("https://"):
+        if (
+            digest != item.get("upstream_sha256")
+            or not item.get("source_url", "").startswith("https://")
+            or not item.get("checksum_url", "").startswith("https://")
+        ):
             raise JobError("Model manifest lacks matching authoritative SHA-256 evidence")
         if len(digest) != 64:
             raise JobError("Invalid model SHA-256")

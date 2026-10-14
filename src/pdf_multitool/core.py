@@ -1,12 +1,12 @@
 """Portable job protocol and bounded process supervisor, with no UI dependencies."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict, replace
+import contextlib
 import importlib.metadata
 import json
 import math
 import os
-from pathlib import Path
 import re
 import shutil
 import signal
@@ -16,6 +16,8 @@ import sys
 import threading
 import time
 import uuid
+from dataclasses import asdict, dataclass, replace
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -33,6 +35,9 @@ class Limits:
     max_log_bytes: int = 1024 * 1024
 
 
+DEFAULT_LIMITS = Limits()
+
+
 class JobError(Exception):
     pass
 
@@ -43,6 +48,7 @@ class Cancelled(JobError):
 
 def strict_json_loads(value: str | bytes):
     """Reject duplicate keys and non-JSON numeric constants at public boundaries."""
+
     def object_pairs(pairs):
         result = {}
         for key, item in pairs:
@@ -114,13 +120,24 @@ def safe_name(name: str) -> str:
     if not name:
         return "document.pdf"
     extension = Path(name).suffix
-    for compound in (".tar.gz", ".pdf.gz", ".html.gz", ".htm.gz", ".jpg.gz", ".jpeg.gz", ".png.gz", ".jp2.gz", ".jpx.gz", ".j2k.gz"):
+    for compound in (
+        ".tar.gz",
+        ".pdf.gz",
+        ".html.gz",
+        ".htm.gz",
+        ".jpg.gz",
+        ".jpeg.gz",
+        ".png.gz",
+        ".jp2.gz",
+        ".jpx.gz",
+        ".j2k.gz",
+    ):
         if name.lower().endswith(compound):
-            extension = name[-len(compound):]
+            extension = name[-len(compound) :]
             break
     if len(extension) > 16 or not re.fullmatch(r"\.[A-Za-z0-9.]+", extension):
         extension = ""
-    stem = name[:-len(extension)] if extension else name
+    stem = name[: -len(extension)] if extension else name
     budget = 180 - len(extension.encode("utf-8"))
     stem = stem.encode("utf-8", "ignore")[:budget].decode("utf-8", "ignore").rstrip(" .")
     return (stem or "document") + extension
@@ -150,8 +167,11 @@ def parse_pages(value: str, count: int) -> list[int]:
 
 def _package(name: str) -> dict:
     try:
-        return {"available": True, "version": importlib.metadata.version(name),
-                "provenance": "Check docs/provenance.md for installation evidence"}
+        return {
+            "available": True,
+            "version": importlib.metadata.version(name),
+            "provenance": "Check docs/provenance.md for installation evidence",
+        }
     except importlib.metadata.PackageNotFoundError:
         return {"available": False, "version": None, "reason": f"{name} is not installed"}
 
@@ -162,13 +182,22 @@ def _binary(name: str, version_arg: str) -> dict:
         return {"available": False, "version": None, "reason": f"{name} is not installed"}
     try:
         # Version arguments cannot touch document files. Keep output and time bounded.
-        proc = subprocess.run([path, version_arg], stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, timeout=5, check=False)
+        proc = subprocess.run(  # noqa: S603 -- fixed engine/CLI argv; no shell
+            [path, version_arg],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=5,
+            check=False,
+        )
         version = proc.stdout[:2048].decode("utf-8", "replace").splitlines()[0]
     except (OSError, subprocess.TimeoutExpired, IndexError) as exc:
         return {"available": False, "version": None, "reason": str(exc)}
-    return {"available": True, "version": version, "path": path,
-            "provenance": "Preinstalled; upstream artifact hash not verified by this app"}
+    return {
+        "available": True,
+        "version": version,
+        "path": path,
+        "provenance": "Preinstalled; upstream artifact hash not verified by this app",
+    }
 
 
 def engines() -> dict:
@@ -177,6 +206,7 @@ def engines() -> dict:
     if docling["available"]:
         try:
             from .models import validate_model_manifest
+
             validate_model_manifest(os.environ.get("PDF_MULTITOOL_MODELS"))
         except (JobError, OSError, ValueError) as exc:
             docling.update(available=False, reason=str(exc))
@@ -188,30 +218,33 @@ def engines() -> dict:
     if pillow["available"]:
         try:
             from PIL import features
-            pillow["codecs"] = {"JPEG": features.check("jpg"), "PNG": features.check("zlib"),
-                                "JPEG2000": features.check("jpg_2000")}
+
+            pillow["codecs"] = {
+                "JPEG": features.check("jpg"),
+                "PNG": features.check("zlib"),
+                "JPEG2000": features.check("jpg_2000"),
+            }
         except ImportError:
             pillow.update(available=False, reason="Pillow codec inspection failed")
-    return {"pymupdf": _package("PyMuPDF"), "pillow": pillow, "poppler": poppler,
-            "ghostscript": _binary("gs", "--version"),
-            "weasyprint": _package("weasyprint"), "docling": docling}
+    return {
+        "pymupdf": _package("PyMuPDF"),
+        "pillow": pillow,
+        "poppler": poppler,
+        "ghostscript": _binary("gs", "--version"),
+        "weasyprint": _package("weasyprint"),
+        "docling": docling,
+    }
 
 
 def _terminate(proc: subprocess.Popen) -> None:
     # Kill the whole session even if its leader exited while a descendant survived.
     if os.name == "posix":
-        try:
+        with contextlib.suppress(ProcessLookupError):
             os.killpg(proc.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-        try:
+        with contextlib.suppress(subprocess.TimeoutExpired):
             proc.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            pass
-        try:
+        with contextlib.suppress(ProcessLookupError):
             os.killpg(proc.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
         proc.wait(timeout=5)
         return
     if proc.poll() is not None:
@@ -222,7 +255,7 @@ def _terminate(proc: subprocess.Popen) -> None:
         else:
             proc.terminate()
         proc.wait(timeout=2)
-    except (ProcessLookupError, subprocess.TimeoutExpired):
+    except ProcessLookupError, subprocess.TimeoutExpired:
         try:
             if os.name == "posix":
                 os.killpg(proc.pid, signal.SIGKILL)
@@ -233,8 +266,9 @@ def _terminate(proc: subprocess.Popen) -> None:
         proc.wait(timeout=5)
 
 
-def run_worker(payload: dict, workdir: Path, cancel: threading.Event,
-               limits: Limits = Limits()) -> dict:
+def run_worker(
+    payload: dict, workdir: Path, cancel: threading.Event, limits: Limits = DEFAULT_LIMITS
+) -> dict:
     """All document parsing happens in a disposable process group."""
     workdir.mkdir(parents=True, exist_ok=False, mode=0o700)
     payload = {**payload, "workdir": str(workdir.resolve()), "limits": asdict(limits)}
@@ -242,25 +276,52 @@ def run_worker(payload: dict, workdir: Path, cancel: threading.Event,
     if len(encoded_payload) > 256 * 1024:
         raise JobError("Job configuration exceeds its size limit")
     # Engines do not need cloud API tokens, Git credentials or unrelated app secrets.
-    allowed_env = {"PATH", "PYTHONHOME", "LD_LIBRARY_PATH", "LANG", "LC_ALL", "LC_CTYPE",
-                   "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR", "PDF_MULTITOOL_MODELS"}
+    allowed_env = {
+        "PATH",
+        "PYTHONHOME",
+        "LD_LIBRARY_PATH",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "SYSTEMROOT",
+        "WINDIR",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "PDF_MULTITOOL_MODELS",
+    }
     env = {key: value for key, value in os.environ.items() if key in allowed_env}
     env["HOME"] = str(workdir.resolve())
-    env.update(UV_PYTHON_DOWNLOADS="never", HF_HUB_OFFLINE="1",
-               TRANSFORMERS_OFFLINE="1", HF_DATASETS_OFFLINE="1",
-               DOCLING_SERVE_ENABLE_REMOTE_SERVICES="false", OMP_NUM_THREADS="2",
-               OPENBLAS_NUM_THREADS="2", MKL_NUM_THREADS="2")
+    env.update(
+        UV_PYTHON_DOWNLOADS="never",
+        HF_HUB_OFFLINE="1",
+        TRANSFORMERS_OFFLINE="1",
+        HF_DATASETS_OFFLINE="1",
+        DOCLING_SERVE_ENABLE_REMOTE_SERVICES="false",
+        OMP_NUM_THREADS="2",
+        OPENBLAS_NUM_THREADS="2",
+        MKL_NUM_THREADS="2",
+    )
     # Source checkout launch works even when the caller's current directory differs.
     package_root = str(Path(__file__).resolve().parent.parent)
     env["PYTHONPATH"] = package_root + os.pathsep + env.get("PYTHONPATH", "")
-    timeout = (limits.docling_timeout_seconds if payload["operation"] == "docling"
-               else limits.timeout_seconds)
+    timeout = (
+        limits.docling_timeout_seconds
+        if payload["operation"] == "docling"
+        else limits.timeout_seconds
+    )
     log_path = workdir / "worker.log"
     with log_path.open("wb") as log:
         os.chmod(log_path, 0o600)
-        proc = subprocess.Popen([sys.executable, "-m", "pdf_multitool.worker"],
-                                cwd=workdir, env=env, stdin=subprocess.PIPE,
-                                stdout=log, stderr=log, start_new_session=os.name == "posix")
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "pdf_multitool.worker"],
+            cwd=workdir,
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=log,
+            stderr=log,
+            start_new_session=os.name == "posix",
+        )
         started = time.monotonic()
         try:
             # Passwords and form values travel over an anonymous pipe, never argv or disk.
@@ -294,7 +355,7 @@ def run_worker(payload: dict, workdir: Path, cancel: threading.Event,
     return result
 
 
-def validate_inputs(paths: list[Path], limits: Limits = Limits()) -> list[Path]:
+def validate_inputs(paths: list[Path], limits: Limits = DEFAULT_LIMITS) -> list[Path]:
     if not paths or len(paths) > limits.max_files:
         raise JobError(f"Choose between 1 and {limits.max_files} files")
     valid: list[Path] = []
@@ -314,9 +375,40 @@ def validate_inputs(paths: list[Path], limits: Limits = Limits()) -> list[Path]:
 
 
 class Job:
-    def __init__(self, operation: str, files: list[dict], options: dict, directory: Path,
-                 limits: Limits = Limits()):
-        if operation not in {"merge", "split", "rotate", "render", "text", "html", "compress", "docling", "preview", "identify", "pdfhtml", "rename", "repaginate", "clean", "forms", "signatures", "redact", "unlock", "protect", "unpack", "bundle", "markdown", "textlayout", "imagepdf"}:
+    def __init__(
+        self,
+        operation: str,
+        files: list[dict],
+        options: dict,
+        directory: Path,
+        limits: Limits = DEFAULT_LIMITS,
+    ):
+        if operation not in {
+            "merge",
+            "split",
+            "rotate",
+            "render",
+            "text",
+            "html",
+            "compress",
+            "docling",
+            "preview",
+            "identify",
+            "pdfhtml",
+            "rename",
+            "repaginate",
+            "clean",
+            "forms",
+            "signatures",
+            "redact",
+            "unlock",
+            "protect",
+            "unpack",
+            "bundle",
+            "markdown",
+            "textlayout",
+            "imagepdf",
+        }:
             raise JobError("Unknown operation")
         if not isinstance(options, dict):
             raise JobError("Options must be an object")
@@ -335,15 +427,27 @@ class Job:
 
     def snapshot(self) -> dict:
         with self.lock:
-            return {"id": self.id, "state": self.state, "operation": self.operation,
-                    "progress": self.progress, "message": self.message,
-                    "results": [{k: v for k, v in item.items() if k != "path"} for item in self.results],
-                    "errors": list(self.errors), "warnings": list(self.warnings)}
+            return {
+                "id": self.id,
+                "state": self.state,
+                "operation": self.operation,
+                "progress": self.progress,
+                "message": self.message,
+                "results": [
+                    {k: v for k, v in item.items() if k != "path"} for item in self.results
+                ],
+                "errors": list(self.errors),
+                "warnings": list(self.warnings),
+            }
 
     def run(self) -> None:
         with self.lock:
             self.state, self.message = "running", "Starting"
-        groups = [self.files] if self.operation in {"merge", "bundle", "imagepdf"} else [[f] for f in self.files]
+        groups = (
+            [self.files]
+            if self.operation in {"merge", "bundle", "imagepdf"}
+            else [[f] for f in self.files]
+        )
         try:
             for index, group in enumerate(groups):
                 if self.cancel_event.is_set():
@@ -359,14 +463,23 @@ class Job:
                     remaining = self.limits.max_output_bytes - used
                     if remaining <= 0:
                         raise JobError("Job output size limit reached")
-                    result = run_worker({"operation": self.operation,
-                                         "inputs": [str(f["path"]) for f in group],
-                                         "names": [f["name"] for f in group],
-                                         "archive_paths": [f.get("archive_path", f["name"]) for f in group],
-                                         "options": self.options}, workdir, self.cancel_event,
-                                        replace(self.limits, max_output_bytes=remaining))
+                    result = run_worker(
+                        {
+                            "operation": self.operation,
+                            "inputs": [str(f["path"]) for f in group],
+                            "names": [f["name"] for f in group],
+                            "archive_paths": [f.get("archive_path", f["name"]) for f in group],
+                            "options": self.options,
+                        },
+                        workdir,
+                        self.cancel_event,
+                        replace(self.limits, max_output_bytes=remaining),
+                    )
                     with self.lock:
-                        if len(self.results) + len(result["outputs"]) > self.limits.max_result_files:
+                        if (
+                            len(self.results) + len(result["outputs"])
+                            > self.limits.max_result_files
+                        ):
                             raise JobError("Job result file-count limit reached")
                         # Publish a part only after every output has been validated.
                         # A later failure removes this part, so no records may escape early.
@@ -374,22 +487,44 @@ class Job:
                         warnings = []
                         for output in result["outputs"]:
                             path = (workdir / output["file"]).resolve()
-                            if not path.is_relative_to(workdir.resolve()) or not path.is_file() or path.is_symlink():
+                            if (
+                                not path.is_relative_to(workdir.resolve())
+                                or not path.is_file()
+                                or path.is_symlink()
+                            ):
                                 raise JobError("Invalid engine output location")
                             relative = path.relative_to(workdir.resolve())
                             if relative.parent == Path("."):
                                 archive_name = safe_name(output["name"]).replace(":", "_")
-                                if archive_name.split(".", 1)[0].upper() in {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}:
+                                if archive_name.split(".", 1)[0].upper() in {
+                                    "CON",
+                                    "PRN",
+                                    "AUX",
+                                    "NUL",
+                                    *(f"COM{i}" for i in range(1, 10)),
+                                    *(f"LPT{i}" for i in range(1, 10)),
+                                }:
                                     archive_name = "Document " + archive_name
                                 if archive_name != output["name"]:
-                                    warnings.append("A result filename was made archive-safe; its displayed download name remains available separately.")
+                                    warnings.append(
+                                        "A result filename was made archive-safe; "
+                                        "its displayed download "
+                                        "name remains available separately."
+                                    )
                                 relative = Path(archive_name)
                             result_id = uuid.uuid4().hex
-                            record = {"id": result_id, "name": output["name"],
-                                      "size": path.stat().st_size, "path": str(path),
-                                      "bundle_path": f"document-{index + 1:04d}/{relative.as_posix()}",
-                                      "url": f"/api/results/{self.id}/{result_id}"}
-                            if path.suffix in {".txt", ".md"} and path.stat().st_size <= 2 * 1024 * 1024:
+                            record = {
+                                "id": result_id,
+                                "name": output["name"],
+                                "size": path.stat().st_size,
+                                "path": str(path),
+                                "bundle_path": f"document-{index + 1:04d}/{relative.as_posix()}",
+                                "url": f"/api/results/{self.id}/{result_id}",
+                            }
+                            if (
+                                path.suffix in {".txt", ".md"}
+                                and path.stat().st_size <= 2 * 1024 * 1024
+                            ):
                                 record["text"] = path.read_text(encoding="utf-8")
                             if "member_path" in output:
                                 record["source_member_path"] = output["member_path"]
@@ -407,8 +542,18 @@ class Job:
                 with self.lock:
                     self.progress = (index + 1) / len(groups)
             with self.lock:
-                self.state = "partial" if self.errors and self.results else "failed" if self.errors else "completed"
-                self.message = {"partial": "Finished with some errors", "failed": "No files completed", "completed": "Finished"}[self.state]
+                self.state = (
+                    "partial"
+                    if self.errors and self.results
+                    else "failed"
+                    if self.errors
+                    else "completed"
+                )
+                self.message = {
+                    "partial": "Finished with some errors",
+                    "failed": "No files completed",
+                    "completed": "Finished",
+                }[self.state]
                 self.warnings = list(dict.fromkeys(self.warnings))
         except Cancelled as exc:
             with self.lock:

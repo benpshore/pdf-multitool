@@ -3,22 +3,29 @@
 Runs against the available PyMuPDF engine. Engine installation provenance is not
 verified by these tests and successful tests do not establish upstream integrity.
 """
+
 from __future__ import annotations
 
 import base64
-from html.parser import HTMLParser
-from collections import Counter
 import json
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import tempfile
 import unittest
+from collections import Counter
+from html.parser import HTMLParser
+from pathlib import Path
 
 import pymupdf
 
-from pdf_multitool.analysis import analyze_document, export_html, export_markdown, export_text, _render_line
+from pdf_multitool.analysis import (
+    _render_line,
+    analyze_document,
+    export_html,
+    export_markdown,
+    export_text,
+)
 
 
 class HTMLInspection(HTMLParser):
@@ -50,10 +57,13 @@ def image_bytes():
 
 
 def body(page, y=130):
-    page.insert_textbox(pymupdf.Rect(60, y, 535, y + 180),
-                        "This document contains ordinary body text that describes a synthetic example. "
-                        "It includes enough real text to distinguish the title from paragraph typography. "
-                        "All content is invented for local tests and includes no personal information.", fontsize=11)
+    page.insert_textbox(
+        pymupdf.Rect(60, y, 535, y + 180),
+        "This document contains ordinary body text that describes a synthetic example. "
+        "It includes enough real text to distinguish the title from paragraph typography. "
+        "All content is invented for local tests and includes no personal information.",
+        fontsize=11,
+    )
 
 
 class AnalysisTests(unittest.TestCase):
@@ -81,7 +91,9 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(result["naming"]["confidence"], "high")
         self.assertEqual(result["naming"]["source"], "metadata_and_prominent_title")
         self.assertFalse(result["naming"]["preserve_original"])
-        self.assertEqual(sum(f["character_count"] for f in result["fonts"]), result["text_layer_characters"])
+        self.assertEqual(
+            sum(f["character_count"] for f in result["fonts"]), result["text_layer_characters"]
+        )
         self.assertEqual(sum(f["span_count"] for f in result["fonts"]), result["text_span_count"])
         self.assertTrue(any(f["bold"] for f in result["fonts"]))
         self.assertEqual(result["pages"][0]["text_kind"], "text_layer")
@@ -146,14 +158,18 @@ class AnalysisTests(unittest.TestCase):
             page = self.doc.new_page()
             page.insert_text((60, 38), "Shared short header", fontsize=10)
             body(page)
-        self.assertEqual(analyze_document(self.doc, "test.pdf")["repeated_header_footer_candidates"], [])
+        self.assertEqual(
+            analyze_document(self.doc, "test.pdf")["repeated_header_footer_candidates"], []
+        )
 
     def test_self_contained_images_and_all_anchors_resolve(self):
         page = self.doc.new_page()
         page.insert_text((60, 65), "A Searchable Document Title", fontsize=24)
         body(page)
         page.insert_image(pymupdf.Rect(60, 360, 150, 450), stream=image_bytes())
-        self.doc.set_toc([[1, "A Searchable Document Title", 1], [2, "Bookmark without matching text", 1]])
+        self.doc.set_toc(
+            [[1, "A Searchable Document Title", 1], [2, "Bookmark without matching text", 1]]
+        )
         result, source, parsed = self.export()
         self.assertTrue(result["self_contained"])
         self.assertEqual(result["pages_exported"], 1)
@@ -175,7 +191,9 @@ class AnalysisTests(unittest.TestCase):
         self.assertIn("Content-Security-Policy", source)
         self.assertIn("overflow-wrap:anywhere", source)
         self.assertIn("@media", source)
-        self.assertEqual(result["text_characters_exported"], result["analysis"]["text_layer_characters"])
+        self.assertEqual(
+            result["text_characters_exported"], result["analysis"]["text_layer_characters"]
+        )
         self.assertEqual(set(Path(self.temp.name).iterdir()), {self.output})
         json.dumps(result, allow_nan=False)
 
@@ -206,10 +224,22 @@ class AnalysisTests(unittest.TestCase):
 
     def test_superscript_flag_and_light_text_reporting(self):
         from collections import Counter
+
         stats = Counter()
-        line = {"dir": (1, 0), "spans": [{"text": "2", "font": 'Font" onload="bad',
-                 "size": 8, "flags": 1, "color": 0xFFFFFF,
-                 "origin": (10, 20), "bbox": (10, 10, 20, 20)}]}
+        line = {
+            "dir": (1, 0),
+            "spans": [
+                {
+                    "text": "2",
+                    "font": 'Font" onload="bad',
+                    "size": 8,
+                    "flags": 1,
+                    "color": 0xFFFFFF,
+                    "origin": (10, 20),
+                    "bbox": (10, 10, 20, 20),
+                }
+            ],
+        }
         rendered = _render_line(line, 11, stats)
         self.assertIn("<sup", rendered)
         self.assertEqual(stats["superscript_flag_spans"], 1)
@@ -253,6 +283,7 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(before_metadata, self.doc.metadata)
         self.assertEqual(before_rotation, self.doc[0].rotation)
 
+
 class StructuredExportTests(unittest.TestCase):
     def setUp(self):
         self.doc = pymupdf.open()
@@ -279,7 +310,9 @@ class StructuredExportTests(unittest.TestCase):
             report, source, _ = self.export(markdown)
             self.assertIn(original, source)
             self.assertEqual(report["text_characters_exported"], len(original))
-            self.assertEqual(report["text_characters_exported"], report["analysis"]["text_layer_characters"])
+            self.assertEqual(
+                report["text_characters_exported"], report["analysis"]["text_layer_characters"]
+            )
             self.assertNotIn("\\alpha", source)
             self.assertIn("not verified character-complete", " ".join(report["warnings"]))
             json.dumps(report, allow_nan=False)
@@ -302,10 +335,16 @@ class StructuredExportTests(unittest.TestCase):
 
     def test_explicit_superscript_and_literal_equation_spans(self):
         from collections import Counter
+
         from pdf_multitool.analysis import _render_structured_line
-        line = {"dir": (1, 0), "spans": [
-            {"text": "x", "size": 12, "flags": 0, "origin": (10, 20), "bbox": (10, 8, 16, 20)},
-            {"text": "2", "size": 8, "flags": 1, "origin": (16, 15), "bbox": (16, 7, 20, 15)}]}
+
+        line = {
+            "dir": (1, 0),
+            "spans": [
+                {"text": "x", "size": 12, "flags": 0, "origin": (10, 20), "bbox": (10, 8, 16, 20)},
+                {"text": "2", "size": 8, "flags": 1, "origin": (16, 15), "bbox": (16, 7, 20, 15)},
+            ],
+        }
         stats = Counter()
         self.assertEqual(_render_structured_line(line, stats, True), "x<sup>2</sup>")
         self.assertEqual(stats["superscript_flag_spans"], 1)
@@ -313,51 +352,100 @@ class StructuredExportTests(unittest.TestCase):
 
     def test_markdown_escapes_source_syntax_not_source_meaning(self):
         page = self.doc.new_page()
-        literal = '[link](https://example.com) ![image](x) <script>x</script> *bold* #tag $x^2$ &amp;'
+        literal = (
+            "[link](https://example.com) ![image](x) <script>x</script> *bold* #tag $x^2$ &amp;"
+        )
         page.insert_text((30, 90), literal, fontsize=8)
         _, source, _ = self.export()
-        self.assertIn(r'\[link\]\(https://example\.com\)', source)
-        self.assertIn(r'\!\[image\]\(x\)', source)
-        self.assertIn(r'\<script\>x\</script\>', source)
-        self.assertIn(r'\*bold\*', source)
-        self.assertIn(r'\$x\^2\$', source)
-        self.assertIn('&amp;amp;', source)
-        self.assertNotIn('<script>', source)
-        self.assertNotIn('![image](x)', source)
+        self.assertIn(r"\[link\]\(https://example\.com\)", source)
+        self.assertIn(r"\!\[image\]\(x\)", source)
+        self.assertIn(r"\<script\>x\</script\>", source)
+        self.assertIn(r"\*bold\*", source)
+        self.assertIn(r"\$x\^2\$", source)
+        self.assertIn("&amp;amp;", source)
+        self.assertNotIn("<script>", source)
+        self.assertNotIn("![image](x)", source)
         _, text, _ = self.export(False)
         self.assertIn(literal, text)
 
     def test_styled_markdown_source_punctuation_is_literal(self):
         from pdf_multitool.analysis import _render_structured_line
-        source = '![Click](https://example.invalid/private.png) [local](file:///etc/passwd) [js](javascript:alert(1)) <img src="x"> &amp; `code`'
+
+        source = (
+            "![Click](https://example.invalid/private.png) "
+            "[local](file:///etc/passwd) [js](javascript:alert(1)) <img "
+            'src="x"> &amp; `code`'
+        )
         for flags in (1, 8, 17, 9, 27):
             with self.subTest(flags=flags):
-                line = {"dir": (1, 0), "spans": [{"text": source, "size": 11,
-                        "flags": flags, "origin": (10, 20), "bbox": (10, 9, 500, 20)}]}
+                line = {
+                    "dir": (1, 0),
+                    "spans": [
+                        {
+                            "text": source,
+                            "size": 11,
+                            "flags": flags,
+                            "origin": (10, 20),
+                            "bbox": (10, 9, 500, 20),
+                        }
+                    ],
+                }
                 rendered = _render_structured_line(line, Counter(), True)
                 self.assertNotIn("![Click]", rendered)
                 self.assertNotIn("[local]", rendered)
-                self.assertNotIn('<img src=', rendered)
+                self.assertNotIn("<img src=", rendered)
                 self.assertIn("&#33;&#91;Click&#93;", rendered)
 
-    @unittest.skipUnless(shutil.which("pandoc"), "Optional preinstalled Pandoc renderer unavailable")
+    @unittest.skipUnless(
+        shutil.which("pandoc"), "Optional preinstalled Pandoc renderer unavailable"
+    )
     def test_commonmark_renderer_cannot_activate_styled_source_links(self):
         from pdf_multitool.analysis import _render_structured_line
-        source = '![Click](https://example.invalid/private.png) [local](file:///etc/passwd) [js](javascript:alert(1)) <img src="x"> &amp; `code`'
+
+        source = (
+            "![Click](https://example.invalid/private.png) "
+            "[local](file:///etc/passwd) [js](javascript:alert(1)) <img "
+            'src="x"> &amp; `code`'
+        )
+
         class RenderedText(HTMLParser):
             def __init__(self, html):
                 super().__init__(convert_charrefs=True)
                 self.parts = []
                 self.feed(html)
+
             def handle_data(self, data):
                 self.parts.append(data)
+
         for flags in (0, 1, 8, 17, 9, 27):
             with self.subTest(flags=flags):
-                line = {"dir": (1, 0), "spans": [{"text": source, "size": 11,
-                        "flags": flags, "origin": (10, 20), "bbox": (10, 9, 500, 20)}]}
+                line = {
+                    "dir": (1, 0),
+                    "spans": [
+                        {
+                            "text": source,
+                            "size": 11,
+                            "flags": flags,
+                            "origin": (10, 20),
+                            "bbox": (10, 9, 500, 20),
+                        }
+                    ],
+                }
                 markdown = _render_structured_line(line, Counter(), True)
-                result = subprocess.run([shutil.which("pandoc"), "--from=commonmark", "--to=html5", "--wrap=none", "--sandbox"],
-                                        input=markdown, text=True, capture_output=True, timeout=10, check=True)
+                result = subprocess.run(  # noqa: S603 -- fixed engine/CLI argv; no shell
+                    [
+                        shutil.which("pandoc"),
+                        "--from=commonmark",
+                        "--to=html5",
+                        "--wrap=none",
+                        "--sandbox",
+                    ],
+                    input=markdown,
+                    text=True,
+                    capture_output=True,
+                    timeout=10,
+                    check=True,
+                )
                 inspection = HTMLInspection(result.stdout)
                 self.assertEqual(inspection.images, [])
                 self.assertEqual(inspection.links, [])
@@ -368,7 +456,9 @@ class StructuredExportTests(unittest.TestCase):
         page = self.doc.new_page()
         page.insert_image(pymupdf.Rect(60, 120, 160, 220), stream=image_bytes())
         page.insert_text((60, 90), "Image source", fontsize=12)
-        report, source, path = self.export(filename=".. odd [name].md", original="../../malicious.pdf")
+        report, source, path = self.export(
+            filename=".. odd [name].md", original="../../malicious.pdf"
+        )
         links = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", source)
         self.assertEqual(len(links), 1)
         self.assertNotIn("base64,", source)
@@ -380,7 +470,10 @@ class StructuredExportTests(unittest.TestCase):
         self.assertEqual(report["images_exported"], 1)
         self.assertEqual(report["outputs"][1]["name"], links[0])
         self.assertEqual(Path(report["outputs"][1]["path"]), asset)
-        self.assertEqual({Path(o["path"]) for o in report["outputs"]}, {p for p in path.parent.rglob("*") if p.is_file()})
+        self.assertEqual(
+            {Path(o["path"]) for o in report["outputs"]},
+            {p for p in path.parent.rglob("*") if p.is_file()},
+        )
         # Re-export gets a separate safe asset folder rather than clobbering assets.
         second, second_source, _ = self.export(filename=path.name)
         self.assertNotEqual(second["outputs"][1]["path"], report["outputs"][1]["path"])
@@ -411,7 +504,7 @@ class StructuredExportTests(unittest.TestCase):
         self.doc.set_toc([[1, "Section One", 1], [2, "Outline only", 2], [3, "Subsection Two", 2]])
         report, source, _ = self.export()
         anchors = re.findall(r'<a id="([^\"]+)"></a>', source)
-        links = re.findall(r'\]\(#([^)]+)\)', source)
+        links = re.findall(r"\]\(#([^)]+)\)", source)
         self.assertEqual(len(anchors), len(set(anchors)))
         self.assertTrue(set(links).issubset(set(anchors)))
         self.assertIn("# Section One\n", source)
@@ -419,12 +512,16 @@ class StructuredExportTests(unittest.TestCase):
         self.assertEqual(source.count("Outline only"), 1)  # Navigation only, no invented paragraph.
         self.assertEqual(report["heading_links"], 3)
         self.assertEqual(report["source_page_links"], 2)
-        self.assertEqual(report["text_characters_exported"], report["analysis"]["text_layer_characters"])
+        self.assertEqual(
+            report["text_characters_exported"], report["analysis"]["text_layer_characters"]
+        )
 
     def test_pdf_page_labels_remain_distinct_from_source_page_positions(self):
         self.doc.new_page()
         self.doc.new_page()
-        self.doc.set_page_labels([{"startpage": 0, "prefix": "Preface ", "style": "r", "firstpagenum": 1}])
+        self.doc.set_page_labels(
+            [{"startpage": 0, "prefix": "Preface ", "style": "r", "firstpagenum": 1}]
+        )
         for markdown in (True, False):
             report, source, _ = self.export(markdown)
             self.assertEqual(report["analysis"]["pages"][0]["page_label"], "Preface i")
@@ -452,17 +549,30 @@ class StructuredExportTests(unittest.TestCase):
 
     def test_clear_paragraph_wrapping_joined_without_dehyphenation(self):
         page = self.doc.new_page()
-        text = ("A continuous paragraph contains source words and enough content to wrap onto multiple "
-                "lines within a single left aligned text block. This text should retain its words and "
-                "punctuation while conservative geometric wrapping is cleaned.")
+        text = (
+            "A continuous paragraph contains source words and enough content to wrap onto multiple "
+            "lines within a single left aligned text block. This text should retain its words and "
+            "punctuation while conservative geometric wrapping is cleaned."
+        )
         page.insert_textbox(pymupdf.Rect(60, 90, 350, 260), text, fontsize=11)
         report, source, _ = self.export(False)
         self.assertGreater(report["paragraph_line_joins"], 1)
         self.assertIn(text, source)
-        self.assertEqual(report["text_characters_exported"], report["analysis"]["text_layer_characters"])
+        self.assertEqual(
+            report["text_characters_exported"], report["analysis"]["text_layer_characters"]
+        )
         from pdf_multitool.analysis import _paragraph_continues
-        previous = {"dir": (1, 0), "bbox": (60, 100, 300, 112), "spans": [{"text": "keep this hyphen-", "size": 11}]}
-        current = {"dir": (1, 0), "bbox": (60, 113, 300, 125), "spans": [{"text": "ated source", "size": 11}]}
+
+        previous = {
+            "dir": (1, 0),
+            "bbox": (60, 100, 300, 112),
+            "spans": [{"text": "keep this hyphen-", "size": 11}],
+        }
+        current = {
+            "dir": (1, 0),
+            "bbox": (60, 113, 300, 125),
+            "spans": [{"text": "ated source", "size": 11}],
+        }
         self.assertFalse(_paragraph_continues(previous, current, {"bbox": (60, 100, 300, 125)}))
         previous["spans"][0]["text"] = "x = y + z"
         self.assertFalse(_paragraph_continues(previous, current, {"bbox": (60, 100, 300, 125)}))
@@ -482,7 +592,10 @@ class StructuredExportTests(unittest.TestCase):
             skipped, source, _ = self.export(markdown, {"skip_repeated_margins": True})
             self.assertNotIn("Repeated synthetic header", source)
             self.assertEqual(skipped["repeated_margin_lines_skipped"], 6)
-            self.assertEqual(skipped["text_characters_exported"] + skipped["text_characters_skipped"], skipped["analysis"]["text_layer_characters"])
+            self.assertEqual(
+                skipped["text_characters_exported"] + skipped["text_characters_skipped"],
+                skipped["analysis"]["text_layer_characters"],
+            )
             self.assertIn("false positives", " ".join(skipped["warnings"]))
 
     def test_source_citation_and_hyphen_characters_never_reconstructed(self):
@@ -511,10 +624,18 @@ class StructuredExportTests(unittest.TestCase):
     def test_strict_options_reject_wrong_types_and_unknown_keys(self):
         self.doc.new_page()
         for markdown in (True, False):
-            for options in ([], "", {"skip_repeated_margins": 1}, {"skip_repeated_margins": "true"}, {"unknown": True}):
-                with self.subTest(markdown=markdown, options=options):
-                    with self.assertRaises(ValueError):
-                        self.export(markdown, options)
+            for options in (
+                [],
+                "",
+                {"skip_repeated_margins": 1},
+                {"skip_repeated_margins": "true"},
+                {"unknown": True},
+            ):
+                with (
+                    self.subTest(markdown=markdown, options=options),
+                    self.assertRaises(ValueError),
+                ):
+                    self.export(markdown, options)
         with self.assertRaises(ValueError):
             self.export(options={"include_images": "false"})
         with self.assertRaises(ValueError):

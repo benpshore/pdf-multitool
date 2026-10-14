@@ -1,16 +1,24 @@
-from dataclasses import replace
 import hashlib
-import json
-from pathlib import Path
 import shutil
 import tempfile
 import threading
 import time
 import unittest
+from dataclasses import replace
+from pathlib import Path
 from unittest.mock import patch
 
 import pymupdf
-from pdf_multitool.core import Cancelled, Job, JobError, Limits, parse_pages, run_worker, safe_name, directory_size
+
+from pdf_multitool.core import (
+    Job,
+    JobError,
+    Limits,
+    directory_size,
+    parse_pages,
+    run_worker,
+    safe_name,
+)
 from pdf_multitool.models import validate_model_manifest
 from tests.fixtures import document, scanned
 
@@ -29,7 +37,12 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(safe_name("C:\\secret\\file.pdf"), "file.pdf")
 
     def test_long_names_preserve_type_suffix_and_utf8_boundary(self):
-        for name in ["a" * 210 + ".pdf", "é" * 210 + ".html", "a" * 210 + ".pdf.gz", "a" * 210 + ".tar.gz"]:
+        for name in [
+            "a" * 210 + ".pdf",
+            "é" * 210 + ".html",
+            "a" * 210 + ".pdf.gz",
+            "a" * 210 + ".tar.gz",
+        ]:
             result = safe_name(name)
             self.assertLessEqual(len(result.encode("utf-8")), 180)
             self.assertEqual(result.rsplit(".", 1)[-1], name.rsplit(".", 1)[-1])
@@ -46,16 +59,20 @@ class SelectionTests(unittest.TestCase):
             (root / "stable").write_bytes(b"12345")
             (root / "vanishing.tmp").write_bytes(b"cache")
             original = Path.stat
+
             def vanished(path, *args, **kwargs):
                 if path.name == "vanishing.tmp":
                     raise FileNotFoundError("atomically removed")
                 return original(path, *args, **kwargs)
+
             with patch.object(Path, "stat", vanished):
                 self.assertEqual(directory_size(root), 5)
+
             def denied(path, *args, **kwargs):
                 if path.name == "vanishing.tmp":
                     raise PermissionError("not a disappearing-entry race")
                 return original(path, *args, **kwargs)
+
             with patch.object(Path, "stat", denied), self.assertRaises(PermissionError):
                 directory_size(root)
             with self.assertRaisesRegex(JobError, "file-count"):
@@ -64,6 +81,7 @@ class SelectionTests(unittest.TestCase):
 
 class RealEngineTests(unittest.TestCase):
     """These exercise actual preinstalled engines, not mocks or verified releases."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
@@ -170,7 +188,9 @@ class RealEngineTests(unittest.TestCase):
         self.assertEqual(job.results, [])
 
     def test_cancel_before_start(self):
-        job = Job("rotate", [{"id": "1", "name": self.a.name, "path": str(self.a)}], {}, self.root / "out")
+        job = Job(
+            "rotate", [{"id": "1", "name": self.a.name, "path": str(self.a)}], {}, self.root / "out"
+        )
         job.cancel_event.set()
         job.run()
         self.assertEqual(job.state, "cancelled")
@@ -178,7 +198,12 @@ class RealEngineTests(unittest.TestCase):
 
     def test_cancel_running_engine(self):
         many = document(self.root / "many.pdf", 100)
-        job = Job("render", [{"id": "1", "name": many.name, "path": str(many)}], {"dpi": 300}, self.root / "out")
+        job = Job(
+            "render",
+            [{"id": "1", "name": many.name, "path": str(many)}],
+            {"dpi": 300},
+            self.root / "out",
+        )
         thread = threading.Thread(target=job.run)
         thread.start()
         time.sleep(0.15)
@@ -192,8 +217,17 @@ class RealEngineTests(unittest.TestCase):
         many = document(self.root / "many.pdf", 100)
         limits = replace(Limits(), timeout_seconds=0)
         with self.assertRaisesRegex(JobError, "exceeded"):
-            run_worker({"operation": "render", "inputs": [str(many)], "names": [many.name], "options": {"dpi": 300}},
-                       self.root / "worker", threading.Event(), limits)
+            run_worker(
+                {
+                    "operation": "render",
+                    "inputs": [str(many)],
+                    "names": [many.name],
+                    "options": {"dpi": 300},
+                },
+                self.root / "worker",
+                threading.Event(),
+                limits,
+            )
 
 
 if __name__ == "__main__":

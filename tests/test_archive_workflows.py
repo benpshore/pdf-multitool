@@ -1,10 +1,9 @@
 """Real HTTP, CLI and native-PDF archive/structured-export integration checks."""
+
 import gzip
 import http.client
 import io
 import json
-import os
-from pathlib import Path
 import subprocess
 import sys
 import tarfile
@@ -13,9 +12,11 @@ import threading
 import time
 import unittest
 import zipfile
+from pathlib import Path
 
 import pymupdf
-from pdf_multitool.server import Workbench, BoundedHTTPServer, make_handler
+
+from pdf_multitool.server import BoundedHTTPServer, Workbench, make_handler
 from tests.fixtures import document, scanned
 
 
@@ -72,12 +73,20 @@ class ArchiveWorkflowTests(unittest.TestCase):
         self.fail("Processing did not finish in test deadline")
 
     def process(self, operation, ids, options=None):
-        status, body = self.request("POST", "/api/jobs", {"operation": operation, "files": ids, "options": options or {}})
+        status, body = self.request(
+            "POST", "/api/jobs", {"operation": operation, "files": ids, "options": options or {}}
+        )
         self.assertEqual(status, 202, body)
         return self.wait_job(json.loads(body)["id"])
 
     def test_zip_upload_expand_process_and_keep_original(self):
-        data = self.zip([("folder/one.pdf", self.pdf), ("two.pdf", self.pdf), ("readme.txt", b"not a supported document")])
+        data = self.zip(
+            [
+                ("folder/one.pdf", self.pdf),
+                ("two.pdf", self.pdf),
+                ("readme.txt", b"not a supported document"),
+            ]
+        )
         imported = self.upload("batch.zip", data)
         self.assertEqual(len(imported["files"]), 2)
         self.assertTrue(imported["warnings"])
@@ -113,11 +122,13 @@ class ArchiveWorkflowTests(unittest.TestCase):
 
     def test_nested_archives_not_expanded_and_sources_deleted_with_last_member(self):
         nested = self.zip([("hidden.pdf", self.pdf)])
-        imported = self.upload("batch.zip", self.zip([("visible.pdf", self.pdf), ("nested.zip", nested)]))
+        imported = self.upload(
+            "batch.zip", self.zip([("visible.pdf", self.pdf), ("nested.zip", nested)])
+        )
         self.assertEqual(len(imported["files"]), 1)
         self.assertTrue(any("nested" in w.lower() for w in imported["warnings"]))
         file = imported["files"][0]
-        self.assertEqual(self.request("DELETE", f'/api/files/{file["id"]}')[0], 200)
+        self.assertEqual(self.request("DELETE", f"/api/files/{file['id']}")[0], 200)
         self.assertEqual(self.app.archives, {})
         self.assertEqual(self.request("GET", file["source_archive"]["url"])[0], 404)
 
@@ -152,17 +163,33 @@ class ArchiveWorkflowTests(unittest.TestCase):
             md_path = next(n for n in names if n.endswith(".md"))
             md = archive.read(md_path).decode()
             import re
+
             links = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", md)
             self.assertTrue(links)
             for link in links:
                 self.assertIn((Path(md_path).parent / link).as_posix(), names)
             self.assertFalse(any(n.endswith(".pdf") for n in names))
-            self.assertFalse(any(n.endswith("worker.log") or n.endswith("result.json") for n in names))
+            self.assertFalse(
+                any(n.endswith("worker.log") or n.endswith("result.json") for n in names)
+            )
 
     def test_cli_archive_input_runs_native_operation(self):
         path = self.root / "cli-batch.zip"
         path.write_bytes(self.zip([("a.pdf", self.pdf), ("b.pdf", self.pdf)]))
-        result = subprocess.run([sys.executable, "-m", "pdf_multitool", "merge", str(path), "-o", str(self.root / "cli-output")], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(  # noqa: S603 -- fixed engine/CLI argv; no shell
+            [
+                sys.executable,
+                "-m",
+                "pdf_multitool",
+                "merge",
+                str(path),
+                "-o",
+                str(self.root / "cli-output"),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         report = json.loads(result.stdout)
         self.assertEqual(report["state"], "completed")

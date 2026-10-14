@@ -1,20 +1,19 @@
 """Synthetic-only security and round-trip tests for bounded archive intake."""
-from dataclasses import replace
+
 import gzip
 import io
-import os
-from pathlib import Path
 import stat
 import struct
 import tarfile
 import tempfile
 import unittest
-from unittest.mock import patch
 import warnings
 import zipfile
+from dataclasses import replace
+from pathlib import Path
+from unittest.mock import patch
 
 from pdf_multitool.archives import ArchiveError, ArchiveLimits, archive_output, extract_archive
-
 
 PDF = b"%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\n%%EOF\n"
 HTML = b"<!DOCTYPE html><html><body><h1>Synthetic</h1></body></html>"
@@ -60,7 +59,14 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(list(self.out.iterdir()), [])
 
     def test_mixed_zip_flat_manifest_and_private_permissions(self):
-        source = self.zip([("folder/report.pdf", PDF), ("page.HTML", HTML), ("readme.txt", b"text"), ("nested.zip", b"PK\x05\x06" + b"\0" * 18)])
+        source = self.zip(
+            [
+                ("folder/report.pdf", PDF),
+                ("page.HTML", HTML),
+                ("readme.txt", b"text"),
+                ("nested.zip", b"PK\x05\x06" + b"\0" * 18),
+            ]
+        )
         result = self.extract(source)
         self.assertEqual([item["name"] for item in result["files"]], ["report.pdf", "page.HTML"])
         self.assertEqual(result["files"][0]["member_path"], "folder/report.pdf")
@@ -79,7 +85,18 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(Path(result["files"][0]["path"]).read_bytes(), PDF)
 
     def test_zip_paths_atomic(self):
-        for name in ["../escape.pdf", "/escape.pdf", "C:/escape.pdf", "C:escape.pdf", "\\\\server\\share.pdf", "folder\\escape.pdf", "a/../../escape.pdf", "bad\n.pdf", "trailing./a.pdf", "NUL.pdf"]:
+        for name in [
+            "../escape.pdf",
+            "/escape.pdf",
+            "C:/escape.pdf",
+            "C:escape.pdf",
+            "\\\\server\\share.pdf",
+            "folder\\escape.pdf",
+            "a/../../escape.pdf",
+            "bad\n.pdf",
+            "trailing./a.pdf",
+            "NUL.pdf",
+        ]:
             with self.subTest(name=name):
                 self.fails_clean(self.zip([("safe.pdf", PDF), (name, PDF)]))
         self.assertFalse((self.root / "escape.pdf").exists())
@@ -90,9 +107,18 @@ class ArchiveTests(unittest.TestCase):
         self.fails_clean(source, "control")
 
     def test_duplicate_normalization_and_case_collisions(self):
-        for names in [("a.pdf", "a.pdf"), ("a.pdf", "./a.pdf"), ("a.pdf", "A.pdf"), ("caf\u00e9.pdf", "cafe\u0301.pdf"), ("Dir/a.pdf", "dir/b.pdf"), ("a.pdf", "a.pdf/b.pdf")]:
+        for names in [
+            ("a.pdf", "a.pdf"),
+            ("a.pdf", "./a.pdf"),
+            ("a.pdf", "A.pdf"),
+            ("caf\u00e9.pdf", "cafe\u0301.pdf"),
+            ("Dir/a.pdf", "dir/b.pdf"),
+            ("a.pdf", "a.pdf/b.pdf"),
+        ]:
             with self.subTest(names=names):
-                self.fails_clean(self.zip([(name, PDF) for name in names]), "[Cc]ollision|Duplicate")
+                self.fails_clean(
+                    self.zip([(name, PDF) for name in names]), "[Cc]ollision|Duplicate"
+                )
 
     def test_zip_special_types_rejected(self):
         for kind in [stat.S_IFLNK, stat.S_IFCHR, stat.S_IFIFO, stat.S_IFSOCK, stat.S_IFBLK]:
@@ -131,10 +157,16 @@ class ArchiveTests(unittest.TestCase):
         central = raw.index(b"PK\x01\x02")
         struct.pack_into("<I", raw, central + 24, len(PDF))
         source.write_bytes(raw)
-        self.fails_clean(source, "member expanded-byte", limits=replace(ArchiveLimits(), max_member_bytes=1024, max_compression_ratio=10000))
+        self.fails_clean(
+            source,
+            "member expanded-byte",
+            limits=replace(ArchiveLimits(), max_member_bytes=1024, max_compression_ratio=10000),
+        )
 
     def test_zip_ratio_quota(self):
-        self.fails_clean(self.zip([("bomb.pdf", PDF + b"X" * 100000)], zipfile.ZIP_DEFLATED), "ratio")
+        self.fails_clean(
+            self.zip([("bomb.pdf", PDF + b"X" * 100000)], zipfile.ZIP_DEFLATED), "ratio"
+        )
 
     def test_zip_declared_compressed_size_and_stream_truncation(self):
         source = self.zip([("safe.pdf", PDF)], zipfile.ZIP_DEFLATED)
@@ -162,18 +194,39 @@ class ArchiveTests(unittest.TestCase):
 
     def test_each_intake_limit(self):
         entries = [("one.pdf", PDF), ("two.pdf", PDF)]
-        cases = [({"max_compressed_bytes": 1}, "compressed-byte"), ({"max_expanded_bytes": len(PDF)}, "total expanded-byte"), ({"max_member_bytes": 4}, "member expanded-byte"), ({"max_files": 1}, "accepted-file"), ({"max_entries": 1}, "entry limit")]
+        cases = [
+            ({"max_compressed_bytes": 1}, "compressed-byte"),
+            ({"max_expanded_bytes": len(PDF)}, "total expanded-byte"),
+            ({"max_member_bytes": 4}, "member expanded-byte"),
+            ({"max_files": 1}, "accepted-file"),
+            ({"max_entries": 1}, "entry limit"),
+        ]
         for fields, text in cases:
             with self.subTest(fields=fields):
                 self.fails_clean(self.zip(entries), text, limits=replace(ArchiveLimits(), **fields))
-        self.fails_clean(self.zip([("a/b/c.pdf", PDF)]), "path-depth", limits=replace(ArchiveLimits(), max_path_depth=2))
+        self.fails_clean(
+            self.zip([("a/b/c.pdf", PDF)]),
+            "path-depth",
+            limits=replace(ArchiveLimits(), max_path_depth=2),
+        )
 
     def test_unsupported_members_count_toward_byte_quotas(self):
         source = self.zip([("skip.dat", b"X" * 1000)])
-        self.fails_clean(source, "expanded-byte", limits=replace(ArchiveLimits(), max_expanded_bytes=100))
+        self.fails_clean(
+            source, "expanded-byte", limits=replace(ArchiveLimits(), max_expanded_bytes=100)
+        )
 
     def test_content_sniffing_and_disguised_nested_archives(self):
-        result = self.extract(self.zip([("fake.pdf", b"no document"), ("fake.html", b"binary\0stuff"), ("nested.pdf", b"PK\x03\x04"), ("real.htm", HTML)]))
+        result = self.extract(
+            self.zip(
+                [
+                    ("fake.pdf", b"no document"),
+                    ("fake.html", b"binary\0stuff"),
+                    ("nested.pdf", b"PK\x03\x04"),
+                    ("real.htm", HTML),
+                ]
+            )
+        )
         self.assertEqual(len(result["files"]), 1)
         self.assertEqual(len(result["warnings"]), 3)
         self.assertIn("nested archive", result["warnings"][2])
@@ -189,7 +242,10 @@ class ArchiveTests(unittest.TestCase):
                     child.unlink()
 
     def test_tar_unicode_pax_and_gnu_longname(self):
-        for format, name in [(tarfile.PAX_FORMAT, "caf\u00e9.pdf"), (tarfile.GNU_FORMAT, "a" * 120 + ".pdf")]:
+        for format, name in [
+            (tarfile.PAX_FORMAT, "caf\u00e9.pdf"),
+            (tarfile.GNU_FORMAT, "a" * 120 + ".pdf"),
+        ]:
             with self.subTest(format=format):
                 result = self.extract(self.tar([(name, PDF)], format=format))
                 self.assertEqual(result["files"][0]["name"], name)
@@ -198,7 +254,14 @@ class ArchiveTests(unittest.TestCase):
                     child.unlink()
 
     def test_tar_special_files_rejected(self):
-        for kind in [tarfile.SYMTYPE, tarfile.LNKTYPE, tarfile.FIFOTYPE, tarfile.CHRTYPE, tarfile.BLKTYPE, tarfile.GNUTYPE_SPARSE]:
+        for kind in [
+            tarfile.SYMTYPE,
+            tarfile.LNKTYPE,
+            tarfile.FIFOTYPE,
+            tarfile.CHRTYPE,
+            tarfile.BLKTYPE,
+            tarfile.GNUTYPE_SPARSE,
+        ]:
             with self.subTest(kind=kind):
                 info = tarfile.TarInfo("link.pdf")
                 info.type = kind
@@ -211,7 +274,13 @@ class ArchiveTests(unittest.TestCase):
                 self.fails_clean(self.tar([("safe.pdf", PDF), (name, PDF)]))
 
     def test_pax_path_override_and_sparse_rejected(self):
-        for metadata in [{"path": "../evil.pdf"}, {"GNU.sparse.size": "20"}, {"GNU.sparse.map": "0,20"}, {"SCHILY.filetype": "sparse"}, {"linkpath": "/outside"}]:
+        for metadata in [
+            {"path": "../evil.pdf"},
+            {"GNU.sparse.size": "20"},
+            {"GNU.sparse.map": "0,20"},
+            {"SCHILY.filetype": "sparse"},
+            {"linkpath": "/outside"},
+        ]:
             with self.subTest(metadata=metadata):
                 info = tarfile.TarInfo("safe.pdf")
                 info.size = len(PDF)
@@ -252,7 +321,11 @@ class ArchiveTests(unittest.TestCase):
         source = self.root / "document.pdf.gz"
         source.write_bytes(gzip.compress(PDF + b"a" * 100000))
         self.fails_clean(source, "ratio")
-        self.fails_clean(source, "member expanded-byte", limits=replace(ArchiveLimits(), max_compression_ratio=10000, max_member_bytes=1000))
+        self.fails_clean(
+            source,
+            "member expanded-byte",
+            limits=replace(ArchiveLimits(), max_compression_ratio=10000, max_member_bytes=1000),
+        )
 
     def test_nested_gzip_is_not_expanded(self):
         source = self.root / "nested.zip.gz"
@@ -263,8 +336,10 @@ class ArchiveTests(unittest.TestCase):
 
     def test_cancellation_and_timeout_cleanup(self):
         source = self.zip([("safe.pdf", PDF), ("other.pdf", PDF)])
+
         def cancelled():
             return bool(list(self.out.iterdir()))
+
         self.fails_clean(source, "cancelled", cancelled=cancelled)
         with patch("pdf_multitool.archives.time.monotonic", side_effect=[0, 31]):
             self.fails_clean(source, "wall-time")
@@ -286,7 +361,12 @@ class ArchiveTests(unittest.TestCase):
         self.fails_clean(source_link)
 
     def test_limits_invalid_values(self):
-        for kw in [{"max_files": 0}, {"max_entries": True}, {"max_compression_ratio": float("inf")}, {"wall_time_seconds": float("nan")}]:
+        for kw in [
+            {"max_files": 0},
+            {"max_entries": True},
+            {"max_compression_ratio": float("inf")},
+            {"wall_time_seconds": float("nan")},
+        ]:
             with self.subTest(kw=kw), self.assertRaises(ValueError):
                 ArchiveLimits(**kw)
 
@@ -295,7 +375,14 @@ class ArchiveTests(unittest.TestCase):
         md.write_bytes(b"![Image](document_assets/image-0001.png)")
         image = self.root / "image.png"
         image.write_bytes(b"synthetic image bytes")
-        files = [{"path": str(md), "name": md.name, "archive_path": "document-0001/document.md"}, {"path": str(image), "name": image.name, "archive_path": "document-0001/document_assets/image-0001.png"}]
+        files = [
+            {"path": str(md), "name": md.name, "archive_path": "document-0001/document.md"},
+            {
+                "path": str(image),
+                "name": image.name,
+                "archive_path": "document-0001/document_assets/image-0001.png",
+            },
+        ]
         for format in ["zip", "tar.gz"]:
             with self.subTest(format=format):
                 destination = self.root / ("result." + format)
@@ -308,7 +395,9 @@ class ArchiveTests(unittest.TestCase):
                 else:
                     with tarfile.open(destination) as archive:
                         self.assertEqual(archive.getnames(), [f["archive_path"] for f in files])
-                        self.assertEqual(archive.extractfile(files[0]["archive_path"]).read(), md.read_bytes())
+                        self.assertEqual(
+                            archive.extractfile(files[0]["archive_path"]).read(), md.read_bytes()
+                        )
 
     def test_output_never_overwrites_and_rejects_unsafe_duplicates(self):
         source = self.root / "report.pdf"
@@ -320,7 +409,12 @@ class ArchiveTests(unittest.TestCase):
             archive_output([item], destination)
         self.assertEqual(destination.read_bytes(), b"keep existing")
         destination.unlink()
-        for files in [[item, item], [{**item, "archive_path": "../escape.pdf"}], [{**item, "name": "nested/report.pdf"}], [{**item, "archive_path": "a//report.pdf"}]]:
+        for files in [
+            [item, item],
+            [{**item, "archive_path": "../escape.pdf"}],
+            [{**item, "name": "nested/report.pdf"}],
+            [{**item, "archive_path": "a//report.pdf"}],
+        ]:
             with self.subTest(files=files), self.assertRaises(ArchiveError):
                 archive_output(files, destination)
         self.assertFalse(destination.exists())
@@ -336,18 +430,29 @@ class ArchiveTests(unittest.TestCase):
         with self.assertRaisesRegex(ArchiveError, "1000"):
             archive_output(items, self.root / "too-many.zip")
 
-
     def test_html_fragment_and_utf16(self):
-        result = self.extract(self.zip([("fragment.html", b'<a href="https://example.com">Synthetic</a>'), ("utf16.html", "<html>synthetic</html>".encode("utf-16"))]))
+        result = self.extract(
+            self.zip(
+                [
+                    ("fragment.html", b'<a href="https://example.com">Synthetic</a>'),
+                    ("utf16.html", "<html>synthetic</html>".encode("utf-16")),
+                ]
+            )
+        )
         self.assertEqual(len(result["files"]), 2)
 
     def test_output_failure_removes_partial_archive(self):
         source = self.root / "report.pdf"
         source.write_bytes(PDF)
         destination = self.root / "result.zip"
-        with patch("pdf_multitool.archives._CountedSource.read", side_effect=[PDF, OSError("synthetic read failure")]):
-            with self.assertRaisesRegex(ArchiveError, "synthetic read failure"):
-                archive_output([{"path": str(source), "name": source.name}], destination)
+        with (
+            patch(
+                "pdf_multitool.archives._CountedSource.read",
+                side_effect=[PDF, OSError("synthetic read failure")],
+            ),
+            self.assertRaisesRegex(ArchiveError, "synthetic read failure"),
+        ):
+            archive_output([{"path": str(source), "name": source.name}], destination)
         self.assertFalse(destination.exists())
 
     def test_output_byte_quotas_and_source_symlink(self):
@@ -355,13 +460,23 @@ class ArchiveTests(unittest.TestCase):
         source.write_bytes(PDF)
         destination = self.root / "result.zip"
         item = {"path": str(source), "name": source.name}
-        with patch("pdf_multitool.archives.ArchiveLimits", return_value=replace(ArchiveLimits(), max_expanded_bytes=10)):
-            with self.assertRaisesRegex(ArchiveError, "input-byte"):
-                archive_output([item], destination)
+        with (
+            patch(
+                "pdf_multitool.archives.ArchiveLimits",
+                return_value=replace(ArchiveLimits(), max_expanded_bytes=10),
+            ),
+            self.assertRaisesRegex(ArchiveError, "input-byte"),
+        ):
+            archive_output([item], destination)
         self.assertFalse(destination.exists())
-        with patch("pdf_multitool.archives.ArchiveLimits", return_value=replace(ArchiveLimits(), max_expanded_bytes=100)):
-            with self.assertRaisesRegex(ArchiveError, "Output archive byte"):
-                archive_output([item], destination)
+        with (
+            patch(
+                "pdf_multitool.archives.ArchiveLimits",
+                return_value=replace(ArchiveLimits(), max_expanded_bytes=100),
+            ),
+            self.assertRaisesRegex(ArchiveError, "Output archive byte"),
+        ):
+            archive_output([item], destination)
         self.assertFalse(destination.exists())
         link = self.root / "link.pdf"
         link.symlink_to(source)
@@ -373,27 +488,38 @@ class ArchiveTests(unittest.TestCase):
         source = self.root / "document.pdf.gz"
         source.write_bytes(gzip.compress(b"") * 100 + gzip.compress(PDF))
         calls = 0
+
         def cancelled():
             nonlocal calls
             calls += 1
             return calls > 30
+
         self.fails_clean(source, "cancelled", cancelled=cancelled)
 
     def test_tar_skips_nested_and_unsupported_but_validates_all(self):
-        result = self.extract(self.tar([("report.pdf", PDF), ("nested.zip", b"PK\x05\x06" + b"\0" * 18), ("unsupported.txt", b"synthetic")]))
+        result = self.extract(
+            self.tar(
+                [
+                    ("report.pdf", PDF),
+                    ("nested.zip", b"PK\x05\x06" + b"\0" * 18),
+                    ("unsupported.txt", b"synthetic"),
+                ]
+            )
+        )
         self.assertEqual(len(result["files"]), 1)
         self.assertEqual(len(result["warnings"]), 2)
         self.assertIn("nested", result["warnings"][0])
-
 
     def test_output_publication_is_atomic(self):
         source = self.root / "report.pdf"
         source.write_bytes(PDF)
         destination = self.root / "result.zip"
         chunks = iter([PDF, b""])
+
         def read(_size):
             self.assertFalse(destination.exists())
             return next(chunks)
+
         with patch("pdf_multitool.archives._CountedSource.read", side_effect=read):
             archive_output([{"path": str(source), "name": source.name}], destination)
         self.assertTrue(destination.exists())

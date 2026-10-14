@@ -1,21 +1,22 @@
 """Real installed-codec and adversarial image tests; no network or downloads."""
+
 import hashlib
 import json
 import math
 import os
-from pathlib import Path
 import struct
 import tempfile
 import unittest
-from unittest import mock
 import zlib
+from pathlib import Path
+from unittest import mock
 
-from PIL import Image, ImageFile, ImageOps, PngImagePlugin, features
 import pymupdf
+from PIL import Image, ImageFile, ImageOps, PngImagePlugin, features
 
+from pdf_multitool import images
 from pdf_multitool.core import JobError
 from pdf_multitool.images import IMAGE_SUFFIXES, ImageLimits, images_to_pdf, inspect_image
-from pdf_multitool import images
 
 
 class ImageTests(unittest.TestCase):
@@ -43,7 +44,9 @@ class ImageTests(unittest.TestCase):
 
     @staticmethod
     def png_chunk(kind, data):
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+        return (
+            struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+        )
 
     def header_png(self, width, height):
         path = self.root / "oversized.png"
@@ -60,17 +63,27 @@ class ImageTests(unittest.TestCase):
             return Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
 
     def test_real_codecs_and_report(self):
-        self.assertTrue(all(features.check_codec(name) for name in ("jpg", "jpg_2000", "zlib")),
-                        "These tests require the existing JPEG/PNG/JPEG2000 codecs")
-        inputs = [self.fixture("first.jpg"), self.fixture("second.png"),
-                  self.fixture("third.jp2"), self.fixture("fourth.j2k"),
-                  self.fixture("fifth.jpx", format="JPEG2000")]
+        self.assertTrue(
+            all(features.check_codec(name) for name in ("jpg", "jpg_2000", "zlib")),
+            "These tests require the existing JPEG/PNG/JPEG2000 codecs",
+        )
+        inputs = [
+            self.fixture("first.jpg"),
+            self.fixture("second.png"),
+            self.fixture("third.jp2"),
+            self.fixture("fourth.j2k"),
+            self.fixture("fifth.jpx", format="JPEG2000"),
+        ]
         before = {path: hashlib.sha256(path.read_bytes()).digest() for path in inputs}
-        for path, format_name in zip(inputs, ("JPEG", "PNG", "JPEG2000", "JPEG2000", "JPEG2000")):
+        for path, format_name in zip(
+            inputs, ("JPEG", "PNG", "JPEG2000", "JPEG2000", "JPEG2000"), strict=True
+        ):
             with self.subTest(format=format_name, suffix=path.suffix):
                 metadata = inspect_image(path)
                 self.assertEqual(metadata["format"], format_name)
-                self.assertEqual((metadata["width"], metadata["height"], metadata["pixels"]), (32, 20, 640))
+                self.assertEqual(
+                    (metadata["width"], metadata["height"], metadata["pixels"]), (32, 20, 640)
+                )
                 self.assertEqual(metadata["frames"], 1)
                 self.assertTrue(metadata["image_only"])
                 self.assertFalse(metadata["ocr_performed"])
@@ -146,7 +159,10 @@ class ImageTests(unittest.TestCase):
 
     def test_animated_png_rejected(self):
         path = self.root / "animated.png"
-        with Image.new("RGBA", (20, 10), "red") as first, Image.new("RGBA", (20, 10), "blue") as second:
+        with (
+            Image.new("RGBA", (20, 10), "red") as first,
+            Image.new("RGBA", (20, 10), "blue") as second,
+        ):
             first.save(path, save_all=True, append_images=[second], duration=50, loop=0)
         self.assert_rejected(path, "animated")
 
@@ -160,8 +176,8 @@ class ImageTests(unittest.TestCase):
         path = self.fixture("multiple.jp2")
         raw = path.read_bytes()
         index = raw.index(b"jp2c") - 4
-        length = struct.unpack(">I", raw[index:index + 4])[0]
-        path.write_bytes(raw + raw[index:index + length])
+        length = struct.unpack(">I", raw[index : index + 4])[0]
+        path.write_bytes(raw + raw[index : index + length])
         self.assert_rejected(path, "multiframe")
 
     def test_raw_j2k_concatenation_rejected(self):
@@ -184,15 +200,21 @@ class ImageTests(unittest.TestCase):
         path = self.fixture("extended.jpx", format="JPEG2000")
         raw = bytearray(path.read_bytes())
         index = raw.index(b"ftyp") + 4
-        raw[index:index + 4] = b"jpx "
+        raw[index : index + 4] = b"jpx "
         path.write_bytes(raw)
         self.assert_rejected(path, "jpx")
 
     def test_oversized_headers_fail_before_decode(self):
-        for size, phrase in (((16_001, 1), "dimension"), ((7000, 6000), "pixel"),
-                             ((20_000, 20_000), "decompression bomb")):
+        for size, phrase in (
+            ((16_001, 1), "dimension"),
+            ((7000, 6000), "pixel"),
+            ((20_000, 20_000), "decompression bomb"),
+        ):
             path = self.header_png(*size)
-            with self.subTest(size=size), mock.patch.object(Image.Image, "load", side_effect=AssertionError("decoded")):
+            with (
+                self.subTest(size=size),
+                mock.patch.object(Image.Image, "load", side_effect=AssertionError("decoded")),
+            ):
                 with self.assertRaises(JobError) as context:
                     inspect_image(path)
                 self.assertIn(phrase, str(context.exception).lower())
@@ -212,9 +234,19 @@ class ImageTests(unittest.TestCase):
 
     def test_png_preflight_has_no_implicit_pixel_decode(self):
         first, second = self.fixture("first.png"), self.fixture("second.png")
-        with mock.patch.object(PngImagePlugin.PngImageFile, "load", side_effect=AssertionError("early pixel decode")):
-            with self.assertRaisesRegex(JobError, "Total image pixel limit"):
-                images_to_pdf([first, second], self.root / "out.pdf", limits=ImageLimits(max_total_pixels=1000))
+        with (
+            mock.patch.object(
+                PngImagePlugin.PngImageFile,
+                "load",
+                side_effect=AssertionError("early pixel decode"),
+            ),
+            self.assertRaisesRegex(JobError, "Total image pixel limit"),
+        ):
+            images_to_pdf(
+                [first, second],
+                self.root / "out.pdf",
+                limits=ImageLimits(max_total_pixels=1000),
+            )
 
     def test_jpeg_concatenation_rejected(self):
         path = self.fixture("concatenated.jpg")
@@ -224,7 +256,10 @@ class ImageTests(unittest.TestCase):
 
     def test_mpo_disguised_as_jpeg_rejected(self):
         path = self.root / "multiple.jpg"
-        with Image.new("RGB", (32, 20), "red") as first, Image.new("RGB", (32, 20), "blue") as second:
+        with (
+            Image.new("RGB", (32, 20), "red") as first,
+            Image.new("RGB", (32, 20), "blue") as second,
+        ):
             first.save(path, format="MPO", save_all=True, append_images=[second])
         self.assert_rejected(path, "multiple images")
 
@@ -250,8 +285,8 @@ class ImageTests(unittest.TestCase):
         raw = path.read_bytes()
         chunks, position, moved = [], 8, None
         while position < len(raw):
-            length = struct.unpack(">I", raw[position:position + 4])[0]
-            chunk = raw[position:position + 12 + length]
+            length = struct.unpack(">I", raw[position : position + 4])[0]
+            chunk = raw[position : position + 12 + length]
             if chunk[4:8] == b"eXIf":
                 moved = chunk
             else:
@@ -274,9 +309,11 @@ class ImageTests(unittest.TestCase):
 
     def test_file_byte_limit(self):
         path = self.fixture()
-        with mock.patch.object(images, "_preflight", side_effect=AssertionError("parsed")):
-            with self.assertRaisesRegex(JobError, "input-byte"):
-                inspect_image(path, limits=ImageLimits(max_file_bytes=10))
+        with (
+            mock.patch.object(images, "_preflight", side_effect=AssertionError("parsed")),
+            self.assertRaisesRegex(JobError, "input-byte"),
+        ):
+            inspect_image(path, limits=ImageLimits(max_file_bytes=10))
 
     def test_invalid_limits(self):
         for field in ImageLimits().__dict__:
@@ -316,12 +353,16 @@ class ImageTests(unittest.TestCase):
         path = self.fixture()
         output = self.root / "racing.pdf"
         real_link = os.link
+
         def racing_link(source, target):
             Path(target).write_bytes(b"Other writer")
             return real_link(source, target)
-        with mock.patch.object(images.os, "link", side_effect=racing_link):
-            with self.assertRaises(JobError):
-                images_to_pdf([path], output)
+
+        with (
+            mock.patch.object(images.os, "link", side_effect=racing_link),
+            self.assertRaises(JobError),
+        ):
+            images_to_pdf([path], output)
         self.assertEqual(output.read_bytes(), b"Other writer")
         self.assertEqual(list(self.root.glob(".image-pdf-*")), [])
 
@@ -342,23 +383,29 @@ class ImageTests(unittest.TestCase):
 
     def test_failed_pdf_verification_removes_partial_output(self):
         path = self.fixture()
-        with mock.patch.object(images, "_verify_pdf", side_effect=JobError("verification failure")):
-            with self.assertRaisesRegex(JobError, "verification failure"):
-                images_to_pdf([path], self.root / "out.pdf")
+        with (
+            mock.patch.object(images, "_verify_pdf", side_effect=JobError("verification failure")),
+            self.assertRaisesRegex(JobError, "verification failure"),
+        ):
+            images_to_pdf([path], self.root / "out.pdf")
         self.assertFalse((self.root / "out.pdf").exists())
         self.assertEqual(list(self.root.glob(".image-pdf-*")), [])
 
     def test_source_mutation_is_detected(self):
         path = self.fixture()
         original = images._decode
+
         def mutate(source, *args):
             result = original(source, *args)
             with path.open("ab") as file:
                 file.write(b"changed")
             return result
-        with mock.patch.object(images, "_decode", side_effect=mutate):
-            with self.assertRaisesRegex(JobError, "changed during processing"):
-                images_to_pdf([path], self.root / "out.pdf")
+
+        with (
+            mock.patch.object(images, "_decode", side_effect=mutate),
+            self.assertRaisesRegex(JobError, "changed during processing"),
+        ):
+            images_to_pdf([path], self.root / "out.pdf")
         self.assertFalse((self.root / "out.pdf").exists())
         self.assertEqual(list(self.root.glob(".image-pdf-*")), [])
 
@@ -399,7 +446,9 @@ class ImageTests(unittest.TestCase):
                 with Image.open(path) as source, self.render(output) as rendered:
                     expected = ImageOps.exif_transpose(source).convert("RGB")
                     self.assertEqual(rendered.size, expected.size)
-                    self.assertEqual(rendered.tobytes(), expected.tobytes(), f"orientation {orientation}")
+                    self.assertEqual(
+                        rendered.tobytes(), expected.tobytes(), f"orientation {orientation}"
+                    )
                 self.assertEqual(report["pages"][0]["orientation"], orientation)
 
     def test_alpha_and_white_background_render_correctly(self):
@@ -416,7 +465,7 @@ class ImageTests(unittest.TestCase):
         with self.render(output) as rendered:
             self.assertEqual(rendered.getpixel((5, 10)), (255, 255, 255))
             self.assertEqual(rendered.getpixel((25, 10)), (0, 0, 255))
-            for actual, expected in zip(rendered.getpixel((15, 10)), (255, 127, 127)):
+            for actual, expected in zip(rendered.getpixel((15, 10)), (255, 127, 127), strict=True):
                 self.assertLessEqual(abs(actual - expected), 1)
 
     def test_opaque_alpha_channel_still_preserved(self):
@@ -456,14 +505,19 @@ class ImageTests(unittest.TestCase):
     def test_missing_pillow_error(self):
         path = self.fixture()
         import builtins
+
         real_import = builtins.__import__
+
         def missing(name, *args, **kwargs):
             if name == "PIL":
                 raise ImportError("test unavailable Pillow")
             return real_import(name, *args, **kwargs)
-        with mock.patch.object(builtins, "__import__", side_effect=missing):
-            with self.assertRaisesRegex(JobError, "installed Pillow"):
-                inspect_image(path)
+
+        with (
+            mock.patch.object(builtins, "__import__", side_effect=missing),
+            self.assertRaisesRegex(JobError, "installed Pillow"),
+        ):
+            inspect_image(path)
 
     def test_palette_transparency_is_preserved(self):
         path = self.root / "palette.png"
@@ -529,7 +583,11 @@ class ImageTests(unittest.TestCase):
             for xref in range(1, document.xref_length()):
                 obj = document.xref_object(xref).encode()
                 stream = document.xref_stream(xref) or b""
-                for secret in (b"PRIVATE-COMMENT-923745", b"PRIVATE-EXIF-528734", b"PRIVATE-PROFILE-137649"):
+                for secret in (
+                    b"PRIVATE-COMMENT-923745",
+                    b"PRIVATE-EXIF-528734",
+                    b"PRIVATE-PROFILE-137649",
+                ):
                     self.assertNotIn(secret, obj + stream)
         self.assertEqual(path.read_bytes(), before)
 
@@ -539,9 +597,11 @@ class ImageTests(unittest.TestCase):
         try:
             ImageFile.LOAD_TRUNCATED_IMAGES = True
             original = images._decode
+
             def check(*args):
                 self.assertFalse(ImageFile.LOAD_TRUNCATED_IMAGES)
                 return original(*args)
+
             with mock.patch.object(images, "_decode", side_effect=check):
                 inspect_image(path)
             self.assertTrue(ImageFile.LOAD_TRUNCATED_IMAGES)
@@ -552,9 +612,18 @@ class ImageTests(unittest.TestCase):
         for suffix, codec in ((".png", "zlib"), (".jpg", "jpg"), (".jp2", "jpg_2000")):
             path = self.fixture("codec" + suffix)
             real_check = features.check_codec
-            with mock.patch.object(features, "check_codec", side_effect=lambda name: False if name == codec else real_check(name)):
-                with self.subTest(codec=codec), self.assertRaisesRegex(JobError, f"Pillow {codec} codec"):
-                    inspect_image(path)
+            with (
+                mock.patch.object(
+                    features,
+                    "check_codec",
+                    side_effect=lambda name, codec=codec, real_check=real_check: (
+                        False if name == codec else real_check(name)
+                    ),
+                ),
+                self.subTest(codec=codec),
+                self.assertRaisesRegex(JobError, f"Pillow {codec} codec"),
+            ):
+                inspect_image(path)
 
 
 if __name__ == "__main__":
