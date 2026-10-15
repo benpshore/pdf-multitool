@@ -5,7 +5,7 @@
   const state = { files: [], selected: new Set(), engines: {}, ready: false, uploading: false, busy: false, deleting: false, job: null, jobOperation: null, textMode: 'clipboard', previews: new Map(), maxFiles: 200, maxBytes: 50 * 1024 * 1024, pollTimer: null };
   const operations = {
     merge: { label: 'Merge PDFs & images', description: 'Combine selected PDFs and supported images in the order shown. Images become pages without OCR.', engine: 'pymupdf', pages: false },
-    imagepdf: { label: 'Images → PDF', description: 'Make one PDF from selected JPEG, PNG or JPEG2000 images. EXIF orientation is applied; no OCR is performed. Animated images are rejected.', engine: 'pillow', pages: false },
+    imagepdf: { label: 'Images to PDF', description: 'Make one PDF from selected JPEG, PNG or JPEG2000 images. EXIF orientation is applied; no OCR is performed. Animated images are rejected.', engine: 'pillow', pages: false },
     split: { label: 'Split PDFs', description: 'Split every page into a PDF, or extract the page groups you choose.', engine: 'pymupdf', pages: true },
     rotate: { label: 'Rotate pages', description: 'Turn the chosen pages clockwise. A new PDF is made for each file.', engine: 'pymupdf', pages: true },
     render: { label: 'Render images', description: 'Turn PDF pages into crisp images with the local Poppler engine.', engine: 'poppler', pages: true },
@@ -16,7 +16,7 @@
     identify: { label: 'Analyze documents', description: 'Identify text layers, scan candidates, headings, fonts, forms and signature fields. Counts describe observed content, not completeness.', engine: 'pymupdf', pages: false },
     pdfhtml: { label: 'Build HTML reader', description: 'Extract text and raster images into a self-contained HTML reader with linked heading navigation and page boundaries.', engine: 'pymupdf', pages: false },
     rename: { label: 'Name document copies', description: 'Use a strongly supported document title as the filename. Keep the original filename when the evidence is uncertain.', engine: 'pymupdf', pages: false },
-    clean: { label: 'Clean PDF structure', description: 'Rebuild content streams, remove unreachable objects and compress streams. Deskew and dewarping are not available yet.', engine: 'pymupdf', pages: false },
+    clean: { label: 'Clean PDF structure', description: 'Rebuild content streams, remove unreachable objects and compress streams. To straighten scanned pages, choose Deskew scanned pages. Curved-page dewarping is not available.', engine: 'pymupdf', pages: false },
     repaginate: { label: 'Reflow & repaginate', description: 'Reconstruct flowing content through HTML and WeasyPrint. Complex scientific layout may differ.', engine: 'weasyprint', pages: false },
     forms: { label: 'Inspect / fill / create forms', description: 'Inspect fields, fill explicit values (radio buttons use export values), or create bounded fields from local JSON. Nothing is inferred or signed.', engine: 'pymupdf', pages: false },
     signatures: { label: 'Inspect signatures', description: 'Report signature fields and whether values are present. Cryptographic validation and digital signing are not implemented.', engine: 'pymupdf', pages: false },
@@ -168,6 +168,21 @@
     const op = $('operation').value;
     return op === 'text' && ['markdown', 'textlayout', 'pdfhtml'].includes($('text-export').value) ? $('text-export').value : op;
   }
+  function refreshOutputContext() {
+    const operation = state.job?.operation || state.jobOperation;
+    if (!operation) {
+      $('output-heading').textContent = 'Your results';
+      $('output-context').textContent = '';
+      return;
+    }
+    const sourceOperation = operation === 'bundle' ? state.bundleSource?.operation : operation;
+    const label = operations[sourceOperation]?.label || operations[operation]?.label || operation;
+    $('output-heading').textContent = `${label} results${operation === 'bundle' ? ' and package' : ''}`;
+    const selected = effectiveOperation();
+    $('output-context').textContent = selected !== sourceOperation
+      ? `These results are from ${label}. Selected tool: ${operations[selected].label}. Run it to create new results.`
+      : `Results from ${label}. Changing options does not change these files; run the tool again to create new results.`;
+  }
   function refreshControls() {
     const count = state.selected.size;
     const op = $('operation').value;
@@ -198,6 +213,7 @@
     else if (op === 'merge' && count < 2) hint = 'Select at least two PDFs or images to merge.';
     else if (op === 'compress' && !$('allow-lossy').checked) hint = 'Confirm PDF rewriting and possible quality loss to continue.';
     $('run-hint').textContent = hint;
+    refreshOutputContext();
   }
   function refreshOperation() {
     const op = $('operation').value;
@@ -249,7 +265,7 @@
     for (const option of $('operation').options) {
       const ok = operationAvailable(option.value);
       option.disabled = !ok;
-      const names = { merge: 'Merge PDFs & images', split: 'Split / extract pages', rotate: 'Rotate pages', render: 'Render to images', text: 'Extract text', html: 'HTML → PDF', compress: 'Compress PDF', docling: 'Convert with Docling' };
+      const names = { merge: 'Merge PDFs & images', split: 'Split / extract pages', rotate: 'Rotate pages', render: 'Render to images', text: 'Extract text', html: 'HTML to PDF', compress: 'Compress PDF', docling: 'Convert with Docling' };
       option.textContent = (names[option.value] || operations[option.value].label) + (ok ? '' : ' · unavailable');
     }
     if ($('operation').selectedOptions[0]?.disabled) {
@@ -268,7 +284,7 @@
     list.replaceChildren();
     if (!state.files.length) {
       const empty = node('div', 'empty-files');
-      const glyph = node('span', 'empty-glyph', '▤'); glyph.setAttribute('aria-hidden', 'true');
+      const glyph = node('span', 'empty-glyph', ''); glyph.setAttribute('aria-hidden', 'true');
       empty.append(glyph, node('p', '', 'A little less paperwork.'), node('span', '', 'Add a document or a whole stack to get started.'));
       list.append(empty);
     }
@@ -285,15 +301,15 @@
       meta.append(node('span', '', size(file.size)));
       const previewButton = button(state.previews.has(file.id) ? 'Hide preview' : 'Preview', 'text-button', `Toggle preview of ${file.name}`, () => togglePreview(file.id));
       previewButton.setAttribute('aria-expanded', String(state.previews.has(file.id)));
-      meta.append(previewButton, button('Original ↗', 'text-button', `Open original ${file.name} in a new tab`, () => openOriginal(file)));
+      meta.append(previewButton, button('Original', 'text-button', `Open original ${file.name} in a new tab`, () => openOriginal(file)));
       if (file.member_path) meta.append(node('span', '', file.member_path));
-      if (file.source_archive?.url) meta.append(button('Source archive ↓', 'text-button', 'Download the original source archive', () => downloadResult({url: file.source_archive.url, name: file.source_archive.name})));
+      if (file.source_archive?.url) meta.append(button('Source archive', 'text-button', 'Download the original source archive', () => downloadResult({url: file.source_archive.url, name: file.source_archive.name})));
       info.append(name, meta);
       const move = node('div', 'file-order');
-      const up = button('↑', 'order-button', `Move ${file.name} up`, () => moveFile(file.id, -1)); up.disabled = blocked() || index === 0;
-      const down = button('↓', 'order-button', `Move ${file.name} down`, () => moveFile(file.id, 1)); down.disabled = blocked() || index === state.files.length - 1;
+      const up = button('Up', 'order-button', `Move ${file.name} up`, () => moveFile(file.id, -1)); up.disabled = blocked() || index === 0;
+      const down = button('Down', 'order-button', `Move ${file.name} down`, () => moveFile(file.id, 1)); down.disabled = blocked() || index === state.files.length - 1;
       move.append(up, down);
-      const remove = button('×', 'file-remove', `Remove ${file.name} from workspace`, () => removeFiles([file.id])); remove.disabled = blocked();
+      const remove = button('Remove', 'file-remove', `Remove ${file.name} from workspace`, () => removeFiles([file.id])); remove.disabled = blocked();
       const selectArea = node('label', 'file-select'); selectArea.append(check);
       const actions = node('div', 'file-actions'); actions.append(move, remove);
       main.append(selectArea, node('span', 'file-badge', /\.html?$/i.test(file.name) ? 'HTML' : /\.(jpe?g|png|jp2|jpx|j2k)$/i.test(file.name) ? 'IMG' : 'PDF'), info, actions);
@@ -494,6 +510,7 @@
     try {
       const job = await json(`/api/jobs/${encodeURIComponent(state.job.id)}`);
       state.job = job;
+      refreshOutputContext();
       let progress = Number(job.progress) * 100;
       if (!Number.isFinite(progress)) progress = 0;
       progress = Math.max(0, Math.min(100, progress));
@@ -547,7 +564,7 @@
       const info = node('div', 'result-info');
       const name = node('span', 'result-name', result.name || 'Result'); name.title = result.name || 'Result';
       info.append(name, node('span', 'result-size', size(result.size)));
-      const download = button('Download ↓', 'button small', `Download ${result.name || 'result'}`, () => downloadResult(result, download));
+      const download = button('Download', 'button small', `Download ${result.name || 'result'}`, () => downloadResult(result, download));
       card.append(info, download); $('results').append(card);
     }
     $('bundle-controls').hidden = !results.length || (state.jobOperation === 'bundle' && !state.bundleSource);
@@ -560,7 +577,7 @@
         pieces.push(textResults.length > 1 ? `=== ${result.name || 'Document'} ===\n\n${text}` : text);
       }
       $('extracted-text').value = pieces.join('\n\n'); $('text-result').hidden = false;
-      if (!pieces.join('').trim()) { notice('No selectable text was found. Scanned PDFs may need the Docling OCR tool.'); return; }
+      if (!pieces.join('').trim()) { notice('No selectable text was found. For scanned PDFs, choose OCR with Tesseract or a configured Docling model.'); return; }
       if (state.textMode === 'clipboard') await copyText(false);
       else if (state.textMode === 'view') $('text-result').open = true;
       else if (state.textMode === 'download') {
@@ -589,7 +606,7 @@
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(textarea.value);
       notice('Text copied to your clipboard.', 'success');
-      $('copy-text').textContent = 'Copied ✓'; setTimeout(() => { $('copy-text').textContent = 'Copy text'; }, 1800);
+      $('copy-text').textContent = 'Copied'; setTimeout(() => { $('copy-text').textContent = 'Copy text'; }, 1800);
     } catch (_) {
       if (userGesture) {
         textarea.focus(); textarea.select(); textarea.setSelectionRange(0, textarea.value.length);
