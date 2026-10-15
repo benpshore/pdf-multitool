@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "base_commit": "4ed4f914fe11024cb8771734afbda6747f6521e3",
+  "generator_sha256": "fefaa71c0c61339d2a29b87fd249f6501583c76dc332e8f34175fbb3666db041",
+  "expectations_sha256": "dcbc1fc9f348ff63290ff891f2b9869fb2ec5f2d98423640758744ad2c069c10",
+  "pdf_sha256": {
+    "space_explicit": "135021687affe0be6f8e41c11b431c8a49f6fa3ad92263f74600711b76cbcd21",
+    "space_tj": "e624cba13bed56f44c4b4c3e075aabb566b88d384c392596af11fc274421afd7",
+    "operator_chunks": "1c3630a7ae252a5226592c1410d2cf9665256ef7e68aedb35361c897ebf0961e",
+    "objects_forward": "38a4d4b5c7f6cce37d0028924c9f00abd439d4d666944e5d98f0de08f9ecdf55",
+    "objects_reverse": "838aaad1a32eb4d61dfb9dd83a2ee4fa5a9c9871c636dd9b45236a4da2c121c6",
+    "form_repeated": "5033d439397e00a9ff95f8cd26649fbf581f1fb91e6077a353009cbd7c2a0c3a",
+    "form_expanded": "05e2f61b99805f631797db7c1c215e98b54e84bbf049d4971614a3f9db1e6d72",
+    "prose_row_operators": "d7a24635115ffd3e3c99af355f8db4b04e8a08da4c7e2280185c86fb3bc5794f",
+    "prose_column_operators": "89d2277ccd3d2775abce29fe53fae382e878d152a51e2081d30e4a0a7f1b1302",
+    "table_row_operators": "be45678df1348ff98c30e6fed816b619358858176e0ed9112ff949cc0427817b",
+    "table_column_operators": "666fa78301c42f3d02e95893b083e635001788b1321d219d4e8d57eef081efa4"
+  }
+}
