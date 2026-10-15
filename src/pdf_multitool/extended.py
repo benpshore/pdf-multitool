@@ -478,6 +478,10 @@ def process(request):
                 from .svg import export_pages
 
                 warnings = export_pages(doc, options, workdir, request["limits"], add)
+            elif operation == "recolor":
+                from .recolor import convert_document
+
+                warnings = convert_document(doc, options, workdir, request["limits"], add)
             elif operation in {"tables", "geometry"}:
                 warnings, partial = _plumber(path, doc, options, workdir, operation, add)
             elif operation in {"optimize", "inspectpdf", "attachments"}:

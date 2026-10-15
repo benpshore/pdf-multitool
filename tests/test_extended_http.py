@@ -119,3 +119,30 @@ class AdditionalHTTPTests(unittest.TestCase):
         self.assertIn(b"<svg", body)
         self.assertEqual(self.request("GET", svg["url"], auth=False)[0], 401)
         self.assertEqual(self.request("GET", f"/api/files/{source['id']}/original")[2], self.pdf)
+
+    def test_recolor_acknowledgment_failure_and_actual_pdf_download(self):
+        source = self.upload()
+        request = {
+            "operation": "recolor",
+            "files": [source["id"]],
+            "options": {"colorspace": "lab"},
+        }
+        self.assertEqual(self.request("POST", "/api/jobs", request)[0], 400)
+        self.assertFalse(self.app.jobs)
+        request["options"] = {}
+        status, _, body = self.request("POST", "/api/jobs", request)
+        self.assertEqual(status, 202)
+        failed = self.wait_job(json.loads(body)["id"])
+        self.assertEqual(failed["state"], "failed")
+        self.assertEqual(failed["results"], [])
+        request["options"] = {"colorspace": "rgb", "allow_color_change": True}
+        status, _, body = self.request("POST", "/api/jobs", request)
+        self.assertEqual(status, 202)
+        finished = self.wait_job(json.loads(body)["id"])
+        self.assertEqual(finished["state"], "completed", finished)
+        output = next(r for r in finished["results"] if r["name"].endswith(".pdf"))
+        status, headers, body = self.request("GET", output["url"])
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "application/pdf")
+        self.assertTrue(body.startswith(b"%PDF-"))
+        self.assertEqual(self.request("GET", f"/api/files/{source['id']}/original")[2], self.pdf)

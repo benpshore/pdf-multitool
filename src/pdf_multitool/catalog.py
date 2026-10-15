@@ -10,6 +10,23 @@ def field(label, kind="string", default="", **kwargs):
 
 
 OPERATIONS = {
+    "recolor": {
+        "label": "Convert PDF colors",
+        "engine": "pymupdf",
+        "inputs": 1,
+        "pages": False,
+        "feature_ids": ["PY-036"],
+        "description": (
+            "Convert the text, vectors and images on every page to gray, RGB or CMYK "
+            "in a new PDF. Color information can be lost; changing back cannot restore "
+            "it. Originals are retained. This is not a calibrated print-proofing tool."
+        ),
+        "outputs": ["application/pdf", "application/json"],
+        "options": {
+            "colorspace": field("Output color space", default="gray", enum=["gray", "rgb", "cmyk"]),
+            "allow_color_change": field("Allow color conversion in the new PDF", "boolean", False),
+        },
+    },
     "svg": {
         "label": "Export SVG pages",
         "engine": "pymupdf",

@@ -2,7 +2,7 @@
   "schema_version": "product-feature-reconciliation/v1",
   "matrix_sha256": "b4aeb7325765cceabe3d1164119b67036d1a18e8f9b8746b01a20cf625ebdfe5",
   "acceptance_sha256": "eec52cb604c777de5d0e3ff92384ba4f73ba3ab0d944de86061378afd330914f",
-  "base_commit": "662a5e449d5636adcd1068ec8a3863a3357c607c",
+  "base_commit": "e180142ccdbd5cc7c2a66c400bd36550c36986b7",
   "scope": "Conservative product-route crosswalk, not public-symbol enumeration or acceptance execution.",
   "acceptance_cases_received": false,
   "proposed_case_count_reported_by_acceptance": 1626,
@@ -3928,13 +3928,23 @@
         "Document.recolor",
         "Page.recolor"
       ],
-      "product_status": "no_product_route_identified",
-      "product_routes": [],
-      "code_evidence": [],
-      "test_evidence": [],
+      "product_status": "new_bounded_route",
+      "product_routes": [
+        "recolor"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/recolor.py",
+        "src/pdf_multitool/catalog.py",
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_recolor.py",
+        "tests/test_extended_http.py",
+        "scripts/qualify_recolor_workflow.py"
+      ],
       "remaining_contract": "Text vectors and images use requested component policy; independent colors checked",
       "qualification": "not_run_against_supplied_acceptance_cases",
-      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+      "gap": "Whole-document gray/RGB/CMYK component conversion is exposed with explicit acknowledgment, bounded image resources and post-save text/geometry checks. Per-page editing, full colorimetry, user ICC profiles, spot/overprint and annotation/form appearance fidelity remain unqualified. Parent visual review and required Poppler comparison are pending."
     },
     {
       "feature_id": "PY-037",

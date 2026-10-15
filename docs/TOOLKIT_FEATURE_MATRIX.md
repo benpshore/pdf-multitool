@@ -13,6 +13,8 @@ The [machine-readable reconciliation](feature_reconciliation.json) records every
 family's actual route, source/tests and remaining contract. No family is declared
 fully qualified. The [SVG follow-up](SVG_QUALIFICATION_20261015.md) adds a bounded
 PY-006 route and records the matrix hashes and version differences.
+The [recoloring follow-up](RECOLOR_QUALIFICATION_20261015.md) adds whole-document
+PY-036 gray/RGB/CMYK conversion; exact colorimetry and print proofing remain unqualified.
 
 | Toolkit and chosen version | Application coverage | Remaining boundaries | Official source |
 | --- | --- | --- | --- |
@@ -42,6 +44,7 @@ not certification of every Python build, architecture or operating system.
 | Variable compression | Existing Ghostscript profiles plus pikepdf Flate levels 1–9; no guaranteed size reduction. Fine-grained JPEG/color sampling controls are not exposed. |
 | Parsing/extraction | Native text, geometry and candidate-table routes implemented; source labels/reports preserved. OCR and inferred table/text order still require review. |
 | Rasterization | Poppler, MuPDF and Ghostscript paths, explicit DPI and output bounds; requested Poppler 26.10 comparison remains blocked. |
+| Recoloring | Whole-document gray/RGB/CMYK component conversion with explicit acknowledgment and reopened text/geometry checks. No selected-page editing, calibrated proofing, custom ICC profiles or spot/overprint fidelity claim. |
 | OCR | Tesseract real synthetic inference tested. Docling model inference remains gated. Image input can first use Images → PDF; direct image-to-OCR job intake is not yet supported. |
 | Forms | Existing inspection/filling/creation/flattening and failure tests retained. No cryptographic signing, inferred form answers or JavaScript/XFA execution. |
 | Media/audio | Safe document-attachment extraction and media-annotation inventory only. No playback, native codec conversion, general muxing or qualified transcription. |

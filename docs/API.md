@@ -47,6 +47,7 @@ in process arguments or result records. `pages` is one-based, for example `1,3-5
 
 | Operation | Options (defaults shown) | Outputs and boundaries |
 | --- | --- | --- |
+| `recolor` | `colorspace="gray"` (`rgb`, `cmyk`), `allow_color_change=false` | New PDF converting text/vector/image component counts on every page, plus a hash/geometry report. Explicit color-loss acknowledgment required. Maximum 100 pages; no per-page selection or calibrated print-proofing claim. |
 | `svg` | `pages=""`, `text_mode="paths"` or `text`, `scale=1` (0.25–4) | SVG per selected page, preserving visible crop/rotation, plus a manifest with page geometry and hashes. Paths preserve glyph shapes; text references fonts without embedding them. Maximum 100 pages, 14,400-point side and 16 MiB/page. PDF interactions are not transferred. |
 | `create` | `content=""`, `paper="a4"` or `letter`, `font_size=12`, `margin=36` | Paginated PDF using a bundled Unicode font. Missing glyphs fail. 20,000 characters and 100 pages maximum; no rich-text editor. |
 | `paginate` | `pages=""`, `header=""`, `footer="Page {page} of {pages}"`, `font_size=10`, `margin=24` | New PDF with measured single-line headers/footers; unrotated pages only; overflow fails. Review overlap. |
@@ -72,6 +73,12 @@ live HTML. Engine-generated SVG is checked for passive elements, internal fragme
 references, bounded embedded PNG/JPEG images and forbidden external resources.
 This output check is not an arbitrary SVG upload sanitizer. See the
 [SVG qualification](SVG_QUALIFICATION_20261015.md) for additional limits.
+
+Recoloring checks page geometry and extracted text again after saving. It uses
+the pinned engine's conversions and profiles; grayscale cannot be changed back
+to recover lost colors. User ICC profiles, spot-color/overprint behavior and
+annotation/form appearance conversion remain unqualified. See the
+[recoloring qualification](RECOLOR_QUALIFICATION_20261015.md).
 
 ## Existing operation options retained
 

@@ -1158,6 +1158,32 @@
           "warnings"
         ]
       },
+      "recolorOptions": {
+        "type": "object",
+        "properties": {
+          "colorspace": {
+            "type": "string",
+            "default": "gray",
+            "enum": [
+              "gray",
+              "rgb",
+              "cmyk"
+            ],
+            "description": "Output color space"
+          },
+          "allow_color_change": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow color conversion in the new PDF"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
       "svgOptions": {
         "type": "object",
         "properties": {
@@ -1555,6 +1581,31 @@
               "operation",
               "files"
             ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "recolor"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/recolorOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Convert the text, vectors and images on every page to gray, RGB or CMYK in a new PDF. Color information can be lost; changing back cannot restore it. Originals are retained. This is not a calibrated print-proofing tool."
           },
           {
             "type": "object",

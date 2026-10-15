@@ -64,3 +64,20 @@ def test_svg_browser_export_and_independent_rendering(tmp_path, monkeypatch):
     assert report["feature_id"] == "PY-006"
     assert len(report["scenarios"]) == 2
     assert not report["svg_external_requests"]
+
+
+@pytest.mark.skipif(
+    not importlib.util.find_spec("playwright") or not shutil.which("chromium"),
+    reason="Requires playwright and system chromium",
+)
+def test_recolor_browser_component_conversion_and_independent_rendering(tmp_path, monkeypatch):
+    from scripts.qualify_recolor_workflow import main
+
+    output = tmp_path / "recolor"
+    monkeypatch.setattr(sys, "argv", ["qualify_recolor_workflow", "--output", str(output)])
+    main()
+    report = json.loads((output / "report.json").read_text())
+    assert report["passed"]
+    assert report["feature_id"] == "PY-036"
+    assert len(report["scenarios"]) == 3
+    assert report["acknowledgment_failure_tested"]
