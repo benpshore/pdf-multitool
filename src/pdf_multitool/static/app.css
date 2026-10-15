@@ -73,7 +73,7 @@ input[type=checkbox]{accent-color:var(--green);width:14px;height:14px;margin:0;f
 .tools-panel>.panel-heading{padding-left:0;padding-right:0}
 .field-label{display:block;font-size:11px;font-weight:600;margin:0 0 7px}
 .field-label>span{font-weight:400;color:var(--muted);margin-left:4px}
-input[type=text],select,textarea{width:100%;background:var(--panel);color:var(--ink);border:1px solid var(--strong-border);border-radius:6px;padding:10px;font-size:12px;min-height:37px}
+input[type=text],input[type=number],input[type=password],select,textarea{width:100%;background:var(--panel);color:var(--ink);border:1px solid var(--strong-border);border-radius:6px;padding:10px;font-size:12px;min-height:37px}
 select{padding-right:25px}
 select option:disabled{color:var(--muted)}
 .operation-select{font-weight:600;font-size:13px;background:var(--raised);height:41px}
@@ -186,7 +186,7 @@ textarea{resize:vertical;min-height:150px;max-height:600px;line-height:1.7;font-
 .file-meta{gap:4px}
 .file-badge{display:block}
 .file-select input[type=checkbox]{width:18px;height:18px}
-input[type=text],select,textarea{font-size:16px}
+input[type=text],input[type=number],input[type=password],select,textarea{font-size:16px}
 .operation-select{font-size:16px}
 .file-list{max-height:430px}
 }
