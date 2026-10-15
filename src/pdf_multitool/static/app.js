@@ -88,7 +88,8 @@
   async function json(path, options) { const response = await api(path, options); return response.status === 204 ? {} : response.json(); }
   function rememberJob() {
     try {
-      if (state.job?.id && state.busy) sessionStorage.setItem('pdf-workbench-job', JSON.stringify({ id: state.job.id, operation: state.jobOperation, textMode: state.textMode, bundleSourceId: state.bundleSource?.id || null }));
+      // Keep completed results recoverable after Back or reload; store only job metadata.
+      if (state.job?.id) sessionStorage.setItem('pdf-workbench-job', JSON.stringify({ id: state.job.id, operation: state.jobOperation, textMode: state.textMode, bundleSourceId: state.bundleSource?.id || null }));
       else sessionStorage.removeItem('pdf-workbench-job');
     } catch (_) { /* Reload recovery is optional when browser storage is blocked. */ }
   }
@@ -375,7 +376,7 @@
     const operation = effectiveOperation();
     const pages = operations[operation].pages ? $('pages').value.trim() : '';
     if (!validatePages(pages, operation)) { notice(operation === 'split' ? 'Use page groups such as 1-3; 4; 5-7. Page numbers must start at 1.' : 'Use page numbers such as 1-3, 5, 8-10. Page numbers must start at 1.', 'error'); $('pages').focus(); return; }
-    state.busy = true; state.jobOperation = operation; state.textMode = $('text-export').value;
+    state.busy = true; state.job = null; rememberJob(); state.jobOperation = operation; state.textMode = $('text-export').value;
     state.bundleSource = null;
     $('bundle-controls').hidden = true;
     notice(''); renderFiles();
@@ -444,7 +445,7 @@
       }
     } catch (error) {
       if ([401, 403, 404].includes(error.status)) {
-        state.busy = false; rememberJob(); $('cancel-job').hidden = true; $('job-status').classList.add('is-error');
+        state.job = null; state.busy = false; rememberJob(); $('cancel-job').hidden = true; $('job-status').classList.add('is-error');
         $('job-message').textContent = error.status === 404 ? 'This job is no longer available. Select your files and run the tool again.' : error.message;
         renderFiles(); return;
       }
@@ -591,7 +592,8 @@
       let saved;
       try { saved = JSON.parse(sessionStorage.getItem('pdf-workbench-job') || 'null'); } catch (_) { /* Ignore incomplete local state. */ }
       if (saved && typeof saved.id === 'string' && Object.prototype.hasOwnProperty.call(operations, saved.operation)) {
-        state.job = { id: saved.id }; state.jobOperation = saved.operation; state.textMode = ['clipboard', 'download', 'view'].includes(saved.textMode) ? saved.textMode : 'view'; state.busy = true;
+        // Restoring results must not repeat clipboard writes or automatic downloads.
+        state.job = { id: saved.id }; state.jobOperation = saved.operation; state.textMode = 'view'; state.busy = true;
         // Packaging is an output action, not an option in the tool selector.
         if (saved.operation !== 'bundle') $('operation').value = saved.operation;
         if (saved.operation === 'bundle' && typeof saved.bundleSourceId === 'string') {

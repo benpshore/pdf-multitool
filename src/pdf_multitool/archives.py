@@ -5,13 +5,13 @@ Expanded-byte and ratio limits include TAR headers/padding. Gzip concatenation
 is supported, but is a single logical file; inner archives are never expanded.
 The caller must also supervise this code in a time/memory-limited subprocess.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
+import contextlib
 import gzip
 import math
 import os
-from pathlib import Path
 import re
 import stat
 import struct
@@ -21,8 +21,9 @@ import time
 import unicodedata
 import zipfile
 import zlib
-from typing import Callable, Iterator
-
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
+from pathlib import Path
 
 _MIB = 1024 * 1024
 _CHUNK = 64 * 1024
@@ -45,15 +46,29 @@ class ArchiveLimits:
     wall_time_seconds: float = 30
 
     def __post_init__(self):
-        for field in ("max_compressed_bytes", "max_expanded_bytes", "max_member_bytes",
-                      "max_files", "max_entries", "max_path_depth"):
+        for field in (
+            "max_compressed_bytes",
+            "max_expanded_bytes",
+            "max_member_bytes",
+            "max_files",
+            "max_entries",
+            "max_path_depth",
+        ):
             value = getattr(self, field)
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ValueError(f"{field} must be a positive integer")
         for field in ("max_compression_ratio", "wall_time_seconds"):
             value = getattr(self, field)
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value <= 0
+            ):
                 raise ValueError(f"{field} must be finite and positive")
+
+
+DEFAULT_ARCHIVELIMITS = ArchiveLimits()
 
 
 class _Budget:
@@ -102,7 +117,14 @@ def _name_parts(name: str, limits: ArchiveLimits, *, directory=False):
         if part.endswith((".", " ")):
             raise ArchiveError("Archive member name has an ambiguous trailing dot or space")
         # These names have special meanings on Windows, even with an extension.
-        if part.split(".", 1)[0].upper() in {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}:
+        if part.split(".", 1)[0].upper() in {
+            "CON",
+            "PRN",
+            "AUX",
+            "NUL",
+            *(f"COM{i}" for i in range(1, 10)),
+            *(f"LPT{i}" for i in range(1, 10)),
+        }:
             raise ArchiveError("Archive member uses a reserved device name")
         parts.append(part)
     if not parts and not directory:
@@ -125,7 +147,7 @@ class _Names:
         for i, part in enumerate(parts):
             keys.append(unicodedata.normalize("NFC", part).casefold())
             key = "/".join(keys)
-            spelling = "/".join(parts[:i + 1])
+            spelling = "/".join(parts[: i + 1])
             if key in self.spellings and self.spellings[key] != spelling:
                 raise ArchiveError("Archive name normalization or case collision")
             self.spellings[key] = spelling
@@ -155,19 +177,38 @@ def _open_regular(path):
 
 
 def _archive_magic(head):
-    return (head.startswith((b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08", b"\x1f\x8b", b"BZh", b"\xfd7zXZ\x00", b"7z\xbc\xaf\x27\x1c", b"Rar!"))
-            or head[257:262] == b"ustar")
+    return (
+        head.startswith(
+            (
+                b"PK\x03\x04",
+                b"PK\x05\x06",
+                b"PK\x07\x08",
+                b"\x1f\x8b",
+                b"BZh",
+                b"\xfd7zXZ\x00",
+                b"7z\xbc\xaf\x27\x1c",
+                b"Rar!",
+            )
+        )
+        or head[257:262] == b"ustar"
+    )
 
 
 def _classification(name, head):
     lower = name.lower()
-    if lower.endswith((".zip", ".tar", ".gz", ".tgz", ".bz2", ".xz", ".7z", ".rar")) or _archive_magic(head):
+    if lower.endswith(
+        (".zip", ".tar", ".gz", ".tgz", ".bz2", ".xz", ".7z", ".rar")
+    ) or _archive_magic(head):
         return None, "nested archive (not expanded)"
     suffix = Path(name).suffix.lower()
     if suffix in {".jpg", ".jpeg", ".png", ".jp2", ".jpx", ".j2k"}:
-        magic = (head.startswith(b"\xff\xd8\xff") if suffix in {".jpg", ".jpeg"}
-                 else head.startswith(b"\x89PNG\r\n\x1a\n") if suffix == ".png"
-                 else head.startswith((b"\x00\x00\x00\x0cjP  \r\n\x87\n", b"\xff\x4f\xff\x51")))
+        magic = (
+            head.startswith(b"\xff\xd8\xff")
+            if suffix in {".jpg", ".jpeg"}
+            else head.startswith(b"\x89PNG\r\n\x1a\n")
+            if suffix == ".png"
+            else head.startswith((b"\x00\x00\x00\x0cjP  \r\n\x87\n", b"\xff\x4f\xff\x51"))
+        )
         return (suffix, None) if magic else (None, "image extension does not match file signature")
     if suffix not in {".pdf", ".html", ".htm"}:
         return None, "unsupported file type"
@@ -179,7 +220,9 @@ def _classification(name, head):
             return None, "HTML extension does not match file content"
         encoding = "utf-16" if head.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
         text = head.decode(encoding, errors="replace")
-        if not re.search(r"<!doctype\s+html\b|<!--|</?[a-z][a-z0-9:-]*(?:\s|/?>)", text, re.IGNORECASE):
+        if not re.search(
+            r"<!doctype\s+html\b|<!--|</?[a-z][a-z0-9:-]*(?:\s|/?>)", text, re.IGNORECASE
+        ):
             return None, "HTML extension does not match file content"
     return suffix, None
 
@@ -226,10 +269,19 @@ class _Intake:
                         if len(self.files) >= self.budget.limits.max_files:
                             raise ArchiveError("Archive accepted-file limit exceeded")
                         filename = f"document-{len(self.files) + 1:04d}{suffix}"
-                        fd = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=self.dirfd)
+                        fd = os.open(
+                            filename,
+                            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+                            0o600,
+                            dir_fd=self.dirfd,
+                        )
                         self.created.append(filename)
                         output = os.fdopen(fd, "wb")
-                        result = {"path": str(self.destination / filename), "name": parts[-1], "member_path": name}
+                        result = {
+                            "path": str(self.destination / filename),
+                            "name": parts[-1],
+                            "member_path": name,
+                        }
                 if output is not None:
                     output.write(chunk)
             if expected is not None and total != expected:
@@ -239,7 +291,9 @@ class _Intake:
                 self.files.append(result)
             else:
                 self.skipped += 1
-                self.warnings.append(f"Skipped {name!r}: {reason or 'empty or unsupported file content'}.")
+                self.warnings.append(
+                    f"Skipped {name!r}: {reason or 'empty or unsupported file content'}."
+                )
         finally:
             if output is not None:
                 output.close()
@@ -252,7 +306,9 @@ def _zip_directory(source, size, budget):
     pos = tail.rfind(b"PK\x05\x06")
     if pos < 0 or len(tail) - pos < 22:
         raise ArchiveError("Malformed ZIP end record")
-    signature, disk, central_disk, disk_count, count, central_size, central_offset, comment_len = struct.unpack("<4s4H2IH", tail[pos:pos + 22])
+    _signature, disk, central_disk, disk_count, count, central_size, central_offset, comment_len = (
+        struct.unpack("<4s4H2IH", tail[pos : pos + 22])
+    )
     eocd = size - len(tail) + pos
     if pos + 22 + comment_len != len(tail) or disk or central_disk or disk_count != count:
         raise ArchiveError("Unsupported multipart or malformed ZIP")
@@ -353,11 +409,22 @@ def _extract_zip(source, intake):
             name_len, extra_len = struct.unpack_from("<HH", header, 26)
             raw_name = source.read(name_len)
             encoding = "utf-8" if flags & 0x800 else "cp437"
-            if raw_name.decode(encoding) != name or flags != info.flag_bits or method != info.compress_type:
+            if (
+                raw_name.decode(encoding) != name
+                or flags != info.flag_bits
+                or method != info.compress_type
+            ):
                 raise ArchiveError("ZIP local and central headers disagree")
             offset = info.header_offset + 30 + name_len + extra_len
             end = offset + info.compress_size
-            if end > central or offset > central or any(info.header_offset < old_end and end > old_start for old_start, old_end in ranges):
+            if (
+                end > central
+                or offset > central
+                or any(
+                    info.header_offset < old_end and end > old_start
+                    for old_start, old_end in ranges
+                )
+            ):
                 raise ArchiveError("Overlapping or out-of-bounds ZIP members")
             ranges.append((info.header_offset, end))
             chunks = _zip_chunks(source, info, offset, budget)
@@ -374,6 +441,7 @@ def _extract_zip(source, intake):
 
 class _CompressedReader:
     """Enforce time and actual input bounds even while gzip scans empty members."""
+
     def __init__(self, stream, budget):
         self.stream, self.budget, self.count = stream, budget, 0
 
@@ -430,17 +498,27 @@ def _pax(data, limits):
             raise ArchiveError("Malformed TAR PAX record")
         length = int(data[offset:space])
         end = offset + length
-        if end > len(data) or end <= space + 2 or data[end - 1:end] != b"\n":
+        if end > len(data) or end <= space + 2 or data[end - 1 : end] != b"\n":
             raise ArchiveError("Malformed TAR PAX record length")
-        record = data[space + 1:end - 1].decode("utf-8")
+        record = data[space + 1 : end - 1].decode("utf-8")
         if "=" not in record:
             raise ArchiveError("Malformed TAR PAX field")
         key, value = record.split("=", 1)
-        if key in result or "sparse" in key.lower() or key == "linkpath" or key in {"SCHILY.filetype", "SCHILY.realsize"}:
+        if (
+            key in result
+            or "sparse" in key.lower()
+            or key == "linkpath"
+            or key in {"SCHILY.filetype", "SCHILY.realsize"}
+        ):
             raise ArchiveError("Unsafe or duplicate TAR PAX metadata")
         if key == "path":
             _name_parts(value, limits)
-        if key == "size" and (not value.isascii() or not value.isdecimal() or len(value) > 12 or int(value) > limits.max_member_bytes):
+        if key == "size" and (
+            not value.isascii()
+            or not value.isdecimal()
+            or len(value) > 12
+            or int(value) > limits.max_member_bytes
+        ):
             raise ArchiveError("Invalid or excessive TAR PAX member size")
         result[key] = value
         offset = end
@@ -463,8 +541,17 @@ def _extract_tar(reader, intake):
         intake.budget.entry()
         info = tarfile.TarInfo.frombuf(block, encoding="utf-8", errors="strict")
         _name_parts(info.name, intake.budget.limits, directory=info.isdir())
-        if info.type == tarfile.GNUTYPE_SPARSE or info.type not in {tarfile.REGTYPE, tarfile.AREGTYPE, tarfile.DIRTYPE, tarfile.XHDTYPE, tarfile.XGLTYPE, tarfile.GNUTYPE_LONGNAME}:
-            raise ArchiveError("TAR links, sparse files, devices, FIFOs, and special files are rejected")
+        if info.type == tarfile.GNUTYPE_SPARSE or info.type not in {
+            tarfile.REGTYPE,
+            tarfile.AREGTYPE,
+            tarfile.DIRTYPE,
+            tarfile.XHDTYPE,
+            tarfile.XGLTYPE,
+            tarfile.GNUTYPE_LONGNAME,
+        }:
+            raise ArchiveError(
+                "TAR links, sparse files, devices, FIFOs, and special files are rejected"
+            )
         if info.size < 0 or info.size > intake.budget.limits.max_member_bytes:
             raise ArchiveError("Archive member expanded-byte limit exceeded")
         if info.type in {tarfile.XHDTYPE, tarfile.XGLTYPE, tarfile.GNUTYPE_LONGNAME}:
@@ -500,9 +587,14 @@ def _extract_tar(reader, intake):
             _exact(reader, 512 - size % 512)
 
 
-def extract_archive(source: Path, destination: Path, original_name: str,
-                    limits: ArchiveLimits = ArchiveLimits(), *,
-                    cancelled: Callable[[], bool] | None = None) -> dict:
+def extract_archive(
+    source: Path,
+    destination: Path,
+    original_name: str,
+    limits: ArchiveLimits = DEFAULT_ARCHIVELIMITS,
+    *,
+    cancelled: Callable[[], bool] | None = None,
+) -> dict:
     """Extract safe document members, or raise ArchiveError and remove all output.
 
     destination must be an existing empty nonsymlink directory; it is made 0700.
@@ -540,7 +632,9 @@ def extract_archive(source: Path, destination: Path, original_name: str,
             elif lower.endswith((".tar.gz", ".tgz", ".gz")):
                 if not magic.startswith(b"\x1f\x8b"):
                     raise ArchiveError("Gzip extension does not match archive content")
-                with gzip.GzipFile(fileobj=_CompressedReader(stream, budget), mode="rb") as inflated:
+                with gzip.GzipFile(
+                    fileobj=_CompressedReader(stream, budget), mode="rb"
+                ) as inflated:
                     reader = _ExpandedReader(inflated, budget)
                     if lower.endswith((".tar.gz", ".tgz")):
                         archive_format = "tar.gz"
@@ -556,17 +650,23 @@ def extract_archive(source: Path, destination: Path, original_name: str,
             else:
                 raise ArchiveError("Supported archive formats are ZIP, TAR, TAR.GZ/TGZ, and GZ")
             budget.check()
-            return {"files": intake.files, "warnings": intake.warnings,
-                    "statistics": {"format": archive_format, "compressed_bytes": compressed,
-                                   "expanded_bytes": budget.expanded, "entries": budget.entries,
-                                   "accepted_files": len(intake.files), "skipped_files": intake.skipped}}
+            return {
+                "files": intake.files,
+                "warnings": intake.warnings,
+                "statistics": {
+                    "format": archive_format,
+                    "compressed_bytes": compressed,
+                    "expanded_bytes": budget.expanded,
+                    "entries": budget.entries,
+                    "accepted_files": len(intake.files),
+                    "skipped_files": intake.skipped,
+                },
+            }
     except BaseException as exc:
         if intake is not None:
             for filename in intake.created:
-                try:
+                with contextlib.suppress(FileNotFoundError):
                     os.unlink(filename, dir_fd=dirfd)
-                except FileNotFoundError:
-                    pass
         if isinstance(exc, (ArchiveError, KeyboardInterrupt, SystemExit)):
             raise
         raise ArchiveError(f"Invalid archive: {exc}") from exc
@@ -643,12 +743,16 @@ def archive_output(files: list[dict], destination: Path, format: str = "zip") ->
     temporary = None
     published = False
     try:
-        fd, temporary_name = tempfile.mkstemp(prefix=".archive-", suffix=".part", dir=destination.parent)
+        fd, temporary_name = tempfile.mkstemp(
+            prefix=".archive-", suffix=".part", dir=destination.parent
+        )
         temporary = Path(temporary_name)
         with os.fdopen(fd, "wb") as raw:
             out = _BoundedOutput(raw, budget, limits.max_expanded_bytes)
             if format == "zip":
-                with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+                with zipfile.ZipFile(
+                    out, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6
+                ) as archive:
                     for path, name, size in planned:
                         with _open_regular(path) as src:
                             if os.fstat(src.fileno()).st_size != size:
@@ -665,17 +769,19 @@ def archive_output(files: list[dict], destination: Path, format: str = "zip") ->
                             if copied != size:
                                 raise ArchiveError("Output source changed during packaging")
             else:
-                with gzip.GzipFile(fileobj=out, mode="wb", filename="", mtime=0) as gz:
-                    with tarfile.open(fileobj=gz, mode="w|", format=tarfile.PAX_FORMAT) as archive:
-                        for path, name, size in planned:
-                            with _open_regular(path) as src:
-                                if os.fstat(src.fileno()).st_size != size:
-                                    raise ArchiveError("Output source changed during packaging")
-                                info = tarfile.TarInfo(name)
-                                info.size = size
-                                info.mode = 0o600
-                                info.mtime = 0
-                                archive.addfile(info, _CountedSource(src, budget))
+                with (
+                    gzip.GzipFile(fileobj=out, mode="wb", filename="", mtime=0) as gz,
+                    tarfile.open(fileobj=gz, mode="w|", format=tarfile.PAX_FORMAT) as archive,
+                ):
+                    for path, name, size in planned:
+                        with _open_regular(path) as src:
+                            if os.fstat(src.fileno()).st_size != size:
+                                raise ArchiveError("Output source changed during packaging")
+                            info = tarfile.TarInfo(name)
+                            info.size = size
+                            info.mode = 0o600
+                            info.mtime = 0
+                            archive.addfile(info, _CountedSource(src, budget))
         budget.check()
         # A hard-link publication is atomic and fails if the destination appeared
         # concurrently. Unlike replace(), it can never overwrite another file.
@@ -683,7 +789,11 @@ def archive_output(files: list[dict], destination: Path, format: str = "zip") ->
         published = True
         temporary.unlink()
         temporary = None
-        return {"path": str(destination), "name": destination.name, "size": destination.stat().st_size}
+        return {
+            "path": str(destination),
+            "name": destination.name,
+            "size": destination.stat().st_size,
+        }
     except BaseException as exc:
         if published:
             destination.unlink(missing_ok=True)

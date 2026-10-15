@@ -17,10 +17,11 @@ preserved. No tag, release, deployment, or main-branch merge is part of this imp
 - The historical native tests used preinstalled Python 3.12, PyMuPDF 1.26.6,
   Pillow 12.3.0, Poppler and Ghostscript. Their upstream artifact provenance was
   not independently verified. This does not establish Python 3.14 compatibility.
-- No verified engine wheelhouse, full dependency lock, or Docling model set is
-  included. The destination's existing `uv.lock` is preserved but predates the
-  added engine dependencies, so `uv sync --locked` must fail until an authorized,
-  verified dependency-lock update is completed. Do not bypass that gate.
+- The import initially preserved a stale `uv.lock`. The subsequent authorized
+  qualification resolves the declared dependencies and verifies selected wheels;
+  see [Python 3.14 qualification](PYTHON314_QUALIFICATION.md). No wheelhouse or
+  verified Docling model set is included in source. Keep locked installation and
+  the model verification gate enabled.
 - WeasyPrint and Docling real-engine integration, real-browser/Safari QA, full
   product acceptance, and native/Rust/WASM ports remain unverified or deferred.
 - Local repository-wide Ruff, pytest, dependency audit, and build checks require

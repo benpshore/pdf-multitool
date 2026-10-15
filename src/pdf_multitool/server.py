@@ -1,14 +1,10 @@
 """Single-user, loopback-only browser workbench. Not an internet hosting service."""
+
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
 import hmac
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
-import mimetypes
 import os
-from pathlib import Path
 import secrets
 import shutil
 import tempfile
@@ -16,12 +12,26 @@ import threading
 import urllib.parse
 import uuid
 import webbrowser
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
-from .core import Cancelled, Job, JobError, Limits, engines, run_worker, safe_name, directory_size, strict_json_loads
+from .core import (
+    DEFAULT_LIMITS,
+    Job,
+    JobError,
+    Limits,
+    directory_size,
+    engines,
+    run_worker,
+    safe_name,
+    strict_json_loads,
+)
 
 
 class Workbench:
-    def __init__(self, directory: Path, limits: Limits = Limits()):
+    def __init__(self, directory: Path, limits: Limits = DEFAULT_LIMITS):
         self.directory, self.limits = directory, limits
         self.token = secrets.token_urlsafe(32)
         self.lock = threading.RLock()
@@ -54,17 +64,28 @@ class Workbench:
             if self.closed.is_set():
                 raise JobError("Workspace is closing")
             with self.lock:
-                used = sum(f["size"] for f in self.files.values()) + sum(a["size"] for a in self.archives.values())
-                available = self.limits.max_session_bytes - used - sum(self.pending_uploads.values())
+                used = sum(f["size"] for f in self.files.values()) + sum(
+                    a["size"] for a in self.archives.values()
+                )
+                available = (
+                    self.limits.max_session_bytes - used - sum(self.pending_uploads.values())
+                )
                 count = self.limits.max_files - len(self.files) - len(self.pending_uploads) + 1
                 if available <= 0 or count <= 0:
                     raise JobError("No session capacity remains for expanded archive files")
                 # Reserve the full possible expansion so concurrent uploads cannot race it.
                 self.pending_uploads[file_id] = length + available
-            result = run_worker({"operation": "unpack", "inputs": [str(target)], "names": [name],
-                                 "options": {"max_expanded_bytes": available, "max_files": count}},
-                                staging, self.closed,
-                                replace(self.limits, timeout_seconds=35, max_output_bytes=available))
+            result = run_worker(
+                {
+                    "operation": "unpack",
+                    "inputs": [str(target)],
+                    "names": [name],
+                    "options": {"max_expanded_bytes": available, "max_files": count},
+                },
+                staging,
+                self.closed,
+                replace(self.limits, timeout_seconds=35, max_output_bytes=available),
+            )
             if not result["outputs"]:
                 raise JobError("Archive contained no supported PDF, HTML or image files")
             entries = []
@@ -73,21 +94,41 @@ class Workbench:
                 if not path.is_relative_to(staging.resolve()) or not path.is_file():
                     raise JobError("Invalid extracted file location")
                 new_id = uuid.uuid4().hex
-                destination = self.directory / "inputs" / (new_id + Path(output["name"]).suffix.lower())
+                destination = (
+                    self.directory / "inputs" / (new_id + Path(output["name"]).suffix.lower())
+                )
                 if destination.exists():
                     raise JobError("Unexpected input filename collision")
                 path.rename(destination)
                 created.append(destination)
-                entries.append({"id": new_id, "name": output["name"], "size": destination.stat().st_size,
-                                "path": str(destination), "member_path": output.get("member_path", output["name"]),
-                                "source_archive": {"id": file_id, "name": name,
-                                                   "url": f"/api/archives/{file_id}/original"}})
+                entries.append(
+                    {
+                        "id": new_id,
+                        "name": output["name"],
+                        "size": destination.stat().st_size,
+                        "path": str(destination),
+                        "member_path": output.get("member_path", output["name"]),
+                        "source_archive": {
+                            "id": file_id,
+                            "name": name,
+                            "url": f"/api/archives/{file_id}/original",
+                        },
+                    }
+                )
             with self.lock:
                 for entry in entries:
                     self.files[entry["id"]] = entry
-                self.archives[file_id] = {"id": file_id, "name": name, "size": length, "path": str(target)}
-            return {"files": [{k: v for k, v in entry.items() if k != "path"} for entry in entries],
-                    "warnings": result.get("warnings", []), "statistics": result.get("statistics", {})}
+                self.archives[file_id] = {
+                    "id": file_id,
+                    "name": name,
+                    "size": length,
+                    "path": str(target),
+                }
+            return {
+                "files": [{k: v for k, v in entry.items() if k != "path"} for entry in entries],
+                "warnings": result.get("warnings", []),
+                "statistics": result.get("statistics", {}),
+            }
         except BaseException:
             for path in created:
                 path.unlink(missing_ok=True)
@@ -117,6 +158,7 @@ class Workbench:
 
 class BoundedHTTPServer(ThreadingHTTPServer):
     """Reject excess connections before creating a thread or accepting a body."""
+
     daemon_threads = True
     request_queue_size = 8
 
@@ -160,7 +202,14 @@ def make_handler(app: Workbench):
             self.send_header("X-Frame-Options", "DENY")
             self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+            self.send_header(
+                "Content-Security-Policy",
+                (
+                    "default-src 'none'; script-src 'self'; style-src 'self'; img-src "
+                    "'self' blob:; connect-src 'self'; font-src 'self'; base-uri "
+                    "'none'; form-action 'none'; frame-ancestors 'none'"
+                ),
+            )
             super().end_headers()
 
         def send_json(self, data: dict, status: int = 200):
@@ -210,10 +259,35 @@ def make_handler(app: Workbench):
         def send_file(self, path: Path, name: str | None = None):
             size = path.stat().st_size
             self.send_response(200)
-            self.send_header("Content-Type", mimetypes.guess_type(path.name)[0] or "application/octet-stream")
+            # Only fixed header values; never consult host MIME registrations or echo filenames.
+            self.send_header(
+                "Content-Type",
+                {
+                    ".pdf": "application/pdf",
+                    ".html": "text/html",
+                    ".htm": "text/html",
+                    ".css": "text/css",
+                    ".js": "text/javascript",
+                    ".json": "application/json",
+                    ".txt": "text/plain",
+                    ".md": "text/markdown",
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".jp2": "image/jp2",
+                    ".jpx": "image/jpx",
+                    ".zip": "application/zip",
+                    ".tar": "application/x-tar",
+                    ".gz": "application/gzip",
+                    ".tgz": "application/gzip",
+                }.get(path.suffix.lower(), "application/octet-stream"),
+            )
             self.send_header("Content-Length", str(size))
             if name:
-                self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + urllib.parse.quote(name, safe=""))
+                self.send_header(
+                    "Content-Disposition",
+                    "attachment; filename*=UTF-8''" + urllib.parse.quote(name, safe=""),
+                )
             self.end_headers()
             with path.open("rb") as source:
                 shutil.copyfileobj(source, self.wfile, length=64 * 1024)
@@ -225,8 +299,15 @@ def make_handler(app: Workbench):
             try:
                 if path == "/api/status":
                     from dataclasses import asdict
-                    self.send_json({"engines": app.engine_status, "limits": asdict(app.limits),
-                                    "mode": "local-development", "storage": "temporary-session"})
+
+                    self.send_json(
+                        {
+                            "engines": app.engine_status,
+                            "limits": asdict(app.limits),
+                            "mode": "local-development",
+                            "storage": "temporary-session",
+                        }
+                    )
                 elif path == "/api/files":
                     self.send_json({"files": app.file_list()})
                 elif path.startswith("/api/archives/"):
@@ -251,13 +332,24 @@ def make_handler(app: Workbench):
                                 if preview.exists():
                                     shutil.rmtree(preview)
                                 if not app.engine_lock.acquire(blocking=False):
-                                    raise JobError("Processing is active; preview is available after it finishes")
+                                    raise JobError(
+                                        "Processing is active; preview is available "
+                                        "after it finishes"
+                                    )
                                 try:
                                     if app.closed.is_set():
                                         raise JobError("Workspace is closing")
-                                    run_worker({"operation": "preview", "inputs": [item["path"]],
-                                                "names": [item["name"]], "options": {}},
-                                               preview, app.closed, app.limits)
+                                    run_worker(
+                                        {
+                                            "operation": "preview",
+                                            "inputs": [item["path"]],
+                                            "names": [item["name"]],
+                                            "options": {},
+                                        },
+                                        preview,
+                                        app.closed,
+                                        app.limits,
+                                    )
                                 finally:
                                     app.engine_lock.release()
                             self.send_file(preview / "preview.png")
@@ -277,10 +369,12 @@ def make_handler(app: Workbench):
                     self.send_file(Path(result["path"]), result["name"])
                 elif path in {"/", "/app.css", "/app.js", "/static/app.css", "/static/app.js"}:
                     static = Path(__file__).parent / "static"
-                    self.send_file(static / ("index.html" if path == "/" else path.rsplit("/", 1)[1]))
+                    self.send_file(
+                        static / ("index.html" if path == "/" else path.rsplit("/", 1)[1])
+                    )
                 else:
                     self.send_json({"error": "Not found"}, 404)
-            except (KeyError, StopIteration, FileNotFoundError):
+            except KeyError, StopIteration, FileNotFoundError:
                 self.send_json({"error": "Not found"}, 404)
             except (JobError, ValueError, OSError) as exc:
                 self.send_json({"error": str(exc)[:2000]}, 400)
@@ -292,11 +386,29 @@ def make_handler(app: Workbench):
             path = urllib.parse.urlsplit(self.path).path
             try:
                 if path == "/api/files":
-                    name = safe_name(urllib.parse.unquote(self.headers.get("X-Filename", "document.pdf")))
+                    name = safe_name(
+                        urllib.parse.unquote(self.headers.get("X-Filename", "document.pdf"))
+                    )
                     suffix = Path(name).suffix.lower()
                     archive_input = suffix in {".zip", ".tar", ".gz", ".tgz"}
-                    if suffix not in {".pdf", ".html", ".htm", ".zip", ".tar", ".gz", ".tgz", ".jpg", ".jpeg", ".png", ".jp2", ".jpx", ".j2k"}:
-                        raise JobError("Choose PDF, HTML, JPEG, PNG, JPEG2000 or supported archive files")
+                    if suffix not in {
+                        ".pdf",
+                        ".html",
+                        ".htm",
+                        ".zip",
+                        ".tar",
+                        ".gz",
+                        ".tgz",
+                        ".jpg",
+                        ".jpeg",
+                        ".png",
+                        ".jp2",
+                        ".jpx",
+                        ".j2k",
+                    }:
+                        raise JobError(
+                            "Choose PDF, HTML, JPEG, PNG, JPEG2000 or supported archive files"
+                        )
                     length = self.body_length(app.limits.max_file_bytes)
                     if not length:
                         raise JobError("Empty file")
@@ -305,7 +417,12 @@ def make_handler(app: Workbench):
                     with app.lock:
                         if len(app.files) + len(app.pending_uploads) >= app.limits.max_files:
                             raise JobError("Session file count limit reached")
-                        total = sum(f["size"] for f in app.files.values()) + sum(a["size"] for a in app.archives.values()) + sum(app.pending_uploads.values()) + length
+                        total = (
+                            sum(f["size"] for f in app.files.values())
+                            + sum(a["size"] for a in app.archives.values())
+                            + sum(app.pending_uploads.values())
+                            + length
+                        )
                         if total > app.limits.max_session_bytes:
                             raise JobError("Session upload size limit reached")
                         app.pending_uploads[file_id] = length
@@ -322,7 +439,12 @@ def make_handler(app: Workbench):
                         if archive_input:
                             response = app.expand_archive(target, name, file_id, length)
                         else:
-                            item = {"id": file_id, "name": name, "size": length, "path": str(target)}
+                            item = {
+                                "id": file_id,
+                                "name": name,
+                                "size": length,
+                                "path": str(target),
+                            }
                             with app.lock:
                                 app.files[file_id] = item
                             response = {k: v for k, v in item.items() if k != "path"}
@@ -344,16 +466,28 @@ def make_handler(app: Workbench):
                             raise JobError("Session job limit reached")
                         source = app.jobs[data["job"]]
                         with source.lock:
-                            files = [{"id": item["id"], "name": item["name"], "path": item["path"],
-                                      "archive_path": item["bundle_path"]} for item in source.results]
+                            files = [
+                                {
+                                    "id": item["id"],
+                                    "name": item["name"],
+                                    "path": item["path"],
+                                    "archive_path": item["bundle_path"],
+                                }
+                                for item in source.results
+                            ]
                         if not files:
                             raise JobError("No completed results to package")
                         used = directory_size(app.directory / "jobs")
                         remaining = app.limits.max_output_bytes - used
                         if remaining <= 0:
                             raise JobError("Session output limit reached")
-                        job = Job("bundle", files, {"format": data["format"]}, app.directory / "jobs",
-                                  replace(app.limits, max_output_bytes=remaining))
+                        job = Job(
+                            "bundle",
+                            files,
+                            {"format": data["format"]},
+                            app.directory / "jobs",
+                            replace(app.limits, max_output_bytes=remaining),
+                        )
                         app.jobs[job.id] = job
                         app.executor.submit(app.run_job, job)
                     self.send_json({"id": job.id}, 202)
@@ -362,7 +496,12 @@ def make_handler(app: Workbench):
                     if not isinstance(data, dict):
                         raise JobError("Job request must be a JSON object")
                     ids = data["files"]
-                    if not isinstance(ids, list) or not all(isinstance(v, str) for v in ids) or not 1 <= len(ids) <= app.limits.max_files or len(set(ids)) != len(ids):
+                    if (
+                        not isinstance(ids, list)
+                        or not all(isinstance(v, str) for v in ids)
+                        or not 1 <= len(ids) <= app.limits.max_files
+                        or len(set(ids)) != len(ids)
+                    ):
                         raise JobError("Choose distinct files for this job")
                     with app.lock:
                         if any(j.state in {"queued", "running"} for j in app.jobs.values()):
@@ -372,10 +511,17 @@ def make_handler(app: Workbench):
                         used = directory_size(app.directory / "jobs")
                         remaining = app.limits.max_output_bytes - used
                         if remaining <= 0:
-                            raise JobError("Session output limit reached; download results and restart")
+                            raise JobError(
+                                "Session output limit reached; download results and restart"
+                            )
                         files = [app.files[file_id].copy() for file_id in ids]
-                        job = Job(data["operation"], files, data.get("options", {}),
-                                  app.directory / "jobs", replace(app.limits, max_output_bytes=remaining))
+                        job = Job(
+                            data["operation"],
+                            files,
+                            data.get("options", {}),
+                            app.directory / "jobs",
+                            replace(app.limits, max_output_bytes=remaining),
+                        )
                         app.jobs[job.id] = job
                         app.executor.submit(app.run_job, job)
                     self.send_json({"id": job.id}, 202)
@@ -403,13 +549,20 @@ def make_handler(app: Workbench):
                     raise KeyError("Unknown route")
                 file_id = path.rsplit("/", 1)[1]
                 with app.lock:
-                    if any(j.state in {"queued", "running"} and any(f["id"] == file_id for f in j.files) for j in app.jobs.values()):
+                    if any(
+                        j.state in {"queued", "running"}
+                        and any(f["id"] == file_id for f in j.files)
+                        for j in app.jobs.values()
+                    ):
                         raise JobError("Cannot remove a file while its job is active")
                     item = app.files.pop(file_id)
                     Path(item["path"]).unlink(missing_ok=True)
                     shutil.rmtree(app.directory / "previews" / file_id, ignore_errors=True)
                     archive_id = item.get("source_archive", {}).get("id")
-                    if archive_id and not any(f.get("source_archive", {}).get("id") == archive_id for f in app.files.values()):
+                    if archive_id and not any(
+                        f.get("source_archive", {}).get("id") == archive_id
+                        for f in app.files.values()
+                    ):
                         archive = app.archives.pop(archive_id, None)
                         if archive:
                             Path(archive["path"]).unlink(missing_ok=True)
@@ -428,7 +581,13 @@ def serve(port: int = 0, open_browser: bool = True) -> None:
         server.daemon_threads = True
         url = f"http://127.0.0.1:{server.server_port}/#token={app.token}"
         print(f"PDF Multitool: {url}", flush=True)
-        print("Single-user loopback session. Files are deleted when this server exits. Ctrl-C stops it.", flush=True)
+        print(
+            (
+                "Single-user loopback session. Files are deleted when this server "
+                "exits. Ctrl-C stops it."
+            ),
+            flush=True,
+        )
         if open_browser:
             webbrowser.open(url)
         try:
@@ -438,4 +597,3 @@ def serve(port: int = 0, open_browser: bool = True) -> None:
         finally:
             app.close()
             server.server_close()
-

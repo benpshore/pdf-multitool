@@ -8,10 +8,13 @@ jobs:
     steps:
       # Runner/action provisioning is not an upstream engine provenance attestation.
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.14"
       - name: Python syntax and fail-closed verifier tests
         run: |
-          python3 -m compileall -q src/pdf_multitool tests scripts
-          python3 scripts/verify_pypi_artifact_tests.py
+          uv run --no-project --python 3.14 python -m compileall -q src/pdf_multitool tests scripts
+          uv run --no-project --python 3.14 python scripts/verify_pypi_artifact_tests.py
       - name: JavaScript syntax and mocked DOM checks
         run: |
           node --check src/pdf_multitool/static/app.js

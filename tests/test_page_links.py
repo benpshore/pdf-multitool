@@ -1,7 +1,8 @@
 """Real MuPDF regressions for links in merge and grouped page extraction."""
-from pathlib import Path
+
 import tempfile
 import unittest
+from pathlib import Path
 
 import pymupdf
 
@@ -17,12 +18,21 @@ class PageLinkTests(unittest.TestCase):
             for index in range(3):
                 doc.new_page().insert_text((40, 80), f"Source page {index + 1}")
             for origin, target, y in [(0, 2, 100), (2, 0, 100), (0, 1, 140)]:
-                doc[origin].insert_link({"kind": pymupdf.LINK_GOTO,
-                                         "from": pymupdf.Rect(40, y, 180, y + 20),
-                                         "page": target, "to": pymupdf.Point(40, 80)})
-            doc[0].insert_link({"kind": pymupdf.LINK_URI,
-                                "from": pymupdf.Rect(40, 180, 180, 200),
-                                "uri": "https://example.invalid/synthetic"})
+                doc[origin].insert_link(
+                    {
+                        "kind": pymupdf.LINK_GOTO,
+                        "from": pymupdf.Rect(40, y, 180, y + 20),
+                        "page": target,
+                        "to": pymupdf.Point(40, 80),
+                    }
+                )
+            doc[0].insert_link(
+                {
+                    "kind": pymupdf.LINK_URI,
+                    "from": pymupdf.Rect(40, 180, 180, 200),
+                    "uri": "https://example.invalid/synthetic",
+                }
+            )
             widget = pymupdf.Widget()
             widget.field_name = "Synthetic field"
             widget.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
@@ -37,8 +47,10 @@ class PageLinkTests(unittest.TestCase):
         self.temp.cleanup()
 
     def run_job(self, operation, inputs=None, options=None):
-        files = [{"id": str(i), "name": p.name, "path": str(p)}
-                 for i, p in enumerate(inputs or [self.source])]
+        files = [
+            {"id": str(i), "name": p.name, "path": str(p)}
+            for i, p in enumerate(inputs or [self.source])
+        ]
         job = Job(operation, files, options or {}, self.root / "out")
         job.run()
         self.assertEqual(job.state, "completed", job.errors)
@@ -47,12 +59,17 @@ class PageLinkTests(unittest.TestCase):
     def assert_links(self, output, page, destinations, uri=False, widget=False):
         with pymupdf.open(output) as doc:
             links = doc[page].get_links()
-            self.assertEqual(sorted(link["page"] for link in links if link["kind"] == pymupdf.LINK_GOTO), destinations)
+            self.assertEqual(
+                sorted(link["page"] for link in links if link["kind"] == pymupdf.LINK_GOTO),
+                destinations,
+            )
             for link in links:
                 if link["kind"] == pymupdf.LINK_GOTO:
                     self.assertEqual(link["to"], pymupdf.Point(40, 80))
-            self.assertEqual([link["uri"] for link in links if link["kind"] == pymupdf.LINK_URI],
-                             ["https://example.invalid/synthetic"] if uri else [])
+            self.assertEqual(
+                [link["uri"] for link in links if link["kind"] == pymupdf.LINK_URI],
+                ["https://example.invalid/synthetic"] if uri else [],
+            )
             if widget:
                 self.assertEqual([w.field_value for w in doc[page].widgets()], ["Retain me"])
 
@@ -83,9 +100,15 @@ class PageLinkTests(unittest.TestCase):
     def test_split_encrypted_source_with_password(self):
         encrypted = self.root / "encrypted.pdf"
         with pymupdf.open(self.source) as doc:
-            doc.save(encrypted, encryption=pymupdf.PDF_ENCRYPT_AES_256,
-                     owner_pw="synthetic-owner", user_pw="synthetic-user")
-        job = self.run_job("split", inputs=[encrypted], options={"pages": "3,1;1-3", "password": "synthetic-user"})
+            doc.save(
+                encrypted,
+                encryption=pymupdf.PDF_ENCRYPT_AES_256,
+                owner_pw="synthetic-owner",
+                user_pw="synthetic-user",
+            )
+        job = self.run_job(
+            "split", inputs=[encrypted], options={"pages": "3,1;1-3", "password": "synthetic-user"}
+        )
         self.assert_links(job.results[0]["path"], 1, [0], uri=True, widget=True)
         self.assert_links(job.results[1]["path"], 0, [1, 2], uri=True, widget=True)
 
@@ -94,15 +117,29 @@ class PageLinkTests(unittest.TestCase):
         with pymupdf.open() as doc:
             doc.new_page(width=400, height=600)
             doc.new_page(width=800, height=300)
-            doc[0].insert_link({"kind": pymupdf.LINK_GOTO,
-                                "from": pymupdf.Rect(30, 50, 170, 80),
-                                "page": 1, "to": pymupdf.Point(120, 90)})
-            doc[0].insert_link({"kind": pymupdf.LINK_GOTO,
-                                "from": pymupdf.Rect(30, 100, 170, 130),
-                                "page": 0, "to": pymupdf.Point(40, 150)})
-            doc[0].insert_link({"kind": pymupdf.LINK_URI,
-                                "from": pymupdf.Rect(30, 160, 170, 190),
-                                "uri": "https://example.invalid/rotated"})
+            doc[0].insert_link(
+                {
+                    "kind": pymupdf.LINK_GOTO,
+                    "from": pymupdf.Rect(30, 50, 170, 80),
+                    "page": 1,
+                    "to": pymupdf.Point(120, 90),
+                }
+            )
+            doc[0].insert_link(
+                {
+                    "kind": pymupdf.LINK_GOTO,
+                    "from": pymupdf.Rect(30, 100, 170, 130),
+                    "page": 0,
+                    "to": pymupdf.Point(40, 150),
+                }
+            )
+            doc[0].insert_link(
+                {
+                    "kind": pymupdf.LINK_URI,
+                    "from": pymupdf.Rect(30, 160, 170, 190),
+                    "uri": "https://example.invalid/rotated",
+                }
+            )
             doc[0].set_rotation(90)
             doc[1].set_rotation(270)
             doc.save(rotated)
@@ -122,7 +159,7 @@ class PageLinkTests(unittest.TestCase):
                     self.assertEqual(len(links), 3)
                     self.assertEqual(links[0]["page"], 0)
                     self.assertEqual(links[1]["page"], 1)
-                    for actual, expected in zip(links, original_links):
+                    for actual, expected in zip(links, original_links, strict=True):
                         self.assertEqual(actual["kind"], expected["kind"])
                         self.assertEqual(actual["from"], expected["from"])
                         if expected["kind"] == pymupdf.LINK_GOTO:
@@ -134,13 +171,23 @@ class PageLinkTests(unittest.TestCase):
         external = self.root / "external-links.pdf"
         with pymupdf.open() as doc:
             page = doc.new_page()
-            page.insert_link({"kind": pymupdf.LINK_GOTOR,
-                              "from": pymupdf.Rect(20, 30, 160, 50),
-                              "file": "synthetic-other.pdf", "page": 2,
-                              "to": pymupdf.Point(70, 80), "zoom": 1.5})
-            page.insert_link({"kind": pymupdf.LINK_LAUNCH,
-                              "from": pymupdf.Rect(20, 90, 160, 110),
-                              "file": "synthetic.txt"})
+            page.insert_link(
+                {
+                    "kind": pymupdf.LINK_GOTOR,
+                    "from": pymupdf.Rect(20, 30, 160, 50),
+                    "file": "synthetic-other.pdf",
+                    "page": 2,
+                    "to": pymupdf.Point(70, 80),
+                    "zoom": 1.5,
+                }
+            )
+            page.insert_link(
+                {
+                    "kind": pymupdf.LINK_LAUNCH,
+                    "from": pymupdf.Rect(20, 90, 160, 110),
+                    "file": "synthetic.txt",
+                }
+            )
             page.set_rotation(90)
             doc.save(external)
         with pymupdf.open(external) as doc:
@@ -150,6 +197,6 @@ class PageLinkTests(unittest.TestCase):
             for page in (3, 4):
                 actual = doc[page].get_links()
                 self.assertEqual(len(actual), 2)
-                for found, original in zip(actual, expected):
+                for found, original in zip(actual, expected, strict=True):
                     for key in ("kind", "from", "file", "page", "to", "zoom"):
                         self.assertEqual(found.get(key), original.get(key))

@@ -4,25 +4,31 @@ Run parsing in the normal time/memory-limited worker. Dimensions and cumulative
 pixel budgets are checked before any pixel decoding. Pillow and PyMuPDF imports
 are intentionally lazy so capability discovery need not load either engine.
 """
+
 from __future__ import annotations
 
-from contextlib import contextmanager
-from dataclasses import dataclass
 import math
 import os
-from pathlib import Path
 import stat
 import struct
 import tempfile
 import threading
 import warnings
+from contextlib import contextmanager, suppress
+from dataclasses import dataclass
+from pathlib import Path
 
 from .core import JobError
 
-
 IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".png", ".jp2", ".jpx", ".j2k"})
-_FORMATS = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG",
-            ".jp2": "JPEG2000", ".jpx": "JPEG2000", ".j2k": "JPEG2000"}
+_FORMATS = {
+    ".jpg": "JPEG",
+    ".jpeg": "JPEG",
+    ".png": "PNG",
+    ".jp2": "JPEG2000",
+    ".jpx": "JPEG2000",
+    ".j2k": "JPEG2000",
+}
 _LOCK = threading.RLock()
 
 
@@ -38,6 +44,9 @@ class ImageLimits:
         for key, value in self.__dict__.items():
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ValueError(f"{key} must be a positive integer")
+
+
+DEFAULT_IMAGELIMITS = ImageLimits()
 
 
 def _dependencies():
@@ -65,6 +74,7 @@ def _safety():
 
 def _require_codec(format_name):
     from PIL import features
+
     codec = {"JPEG": "jpg", "JPEG2000": "jpg_2000", "PNG": "zlib"}[format_name]
     if not features.check_codec(codec):
         raise JobError(f"{format_name} processing needs the installed Pillow {codec} codec")
@@ -78,8 +88,7 @@ def _no_symlinks(path: Path):
 
 def _stamp(fd):
     value = os.fstat(fd)
-    return (value.st_dev, value.st_ino, value.st_size,
-            value.st_mtime_ns, value.st_ctime_ns)
+    return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns)
 
 
 @dataclass
@@ -111,8 +120,7 @@ def _open_source(path, limits):
     if path.suffix.lower() not in IMAGE_SUFFIXES:
         raise JobError("Supported image suffixes are .jpg, .jpeg, .png, .jp2, .jpx and .j2k")
     _no_symlinks(path)
-    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-                 | getattr(os, "O_NONBLOCK", 0))
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
     try:
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
@@ -213,23 +221,23 @@ def _jpeg_framing(file, size):
             raise JobError("Truncated JPEG marker")
         marker = data[position]
         position += 1
-        if marker == 0xd9:
+        if marker == 0xD9:
             if position != size:
                 raise JobError("JPEG contains trailing data or multiple images")
             if not saw_scan:
                 raise JobError("JPEG has no image scan")
             return
-        if marker in {0, 0xd8} or 0xd0 <= marker <= 0xd7:
+        if marker in {0, 0xD8} or 0xD0 <= marker <= 0xD7:
             raise JobError("Invalid JPEG marker or multiple images")
         if marker == 1:
             continue
         if position + 2 > size:
             raise JobError("Truncated JPEG segment")
-        length = struct.unpack(">H", data[position:position + 2])[0]
+        length = struct.unpack(">H", data[position : position + 2])[0]
         if length < 2 or position + length > size:
             raise JobError("Truncated or invalid JPEG segment")
         position += length
-        if marker == 0xda:
+        if marker == 0xDA:
             saw_scan = True
             while True:
                 start = data.find(b"\xff", position)
@@ -240,7 +248,7 @@ def _jpeg_framing(file, size):
                     position += 1
                 if position >= size:
                     raise JobError("Truncated JPEG scan marker")
-                if data[position] in {0, 1} or 0xd0 <= data[position] <= 0xd7:
+                if data[position] in {0, 1} or 0xD0 <= data[position] <= 0xD7:
                     position += 1
                     continue
                 position = start
@@ -267,7 +275,7 @@ def _structure(source):
                     raise JobError("PNG chunk-count limit exceeded")
                 file.seek(position)
                 length, kind = struct.unpack(">I4s", _read_exact(file, 8))
-                if length > 0x7fffffff or position + 12 + length > size:
+                if length > 0x7FFFFFFF or position + 12 + length > size:
                     raise JobError("Truncated or invalid PNG chunk")
                 if chunks == 1:
                     if kind != b"IHDR" or length != 13:
@@ -326,9 +334,8 @@ def _structure(source):
 
 @contextmanager
 def _image(source, Image):
-    with _reader(source) as file:
-        with Image.open(file, formats=["JPEG", "PNG", "JPEG2000"]) as image:
-            yield image
+    with _reader(source) as file, Image.open(file, formats=["JPEG", "PNG", "JPEG2000"]) as image:
+        yield image
 
 
 def _preflight(source, limits, Image):
@@ -354,7 +361,11 @@ def _preflight(source, limits, Image):
         # IDAT. The structural scan has collected eXIf already; call the base
         # method to guarantee all-file pixel preflight remains decode-free.
         orientation = Image.Image.getexif(image).get(274, 1)
-        if isinstance(orientation, bool) or not isinstance(orientation, int) or not 1 <= orientation <= 8:
+        if (
+            isinstance(orientation, bool)
+            or not isinstance(orientation, int)
+            or not 1 <= orientation <= 8
+        ):
             raise JobError("Invalid EXIF orientation")
         has_alpha = "A" in image.getbands() or "transparency" in image.info
         mode = "RGBA" if has_alpha else "RGB"
@@ -362,27 +373,47 @@ def _preflight(source, limits, Image):
         if format_name == "JPEG":
             notices.append("JPEG source is lossy; PDF embedding adds no further lossy compression.")
         if format_name == "JPEG2000":
-            notices.append("JPEG2000 source may already be lossy; decoded pixels are embedded losslessly.")
+            notices.append(
+                "JPEG2000 source may already be lossy; decoded pixels are embedded losslessly."
+            )
         if image.mode == "CMYK":
-            notices.append("CMYK converted to RGB using Pillow; exact print colors are not preserved.")
+            notices.append(
+                "CMYK converted to RGB using Pillow; exact print colors are not preserved."
+            )
         if image.info.get("icc_profile"):
-            notices.append("Embedded ICC profile removed without color-managed conversion; colors may differ.")
+            notices.append(
+                "Embedded ICC profile removed without color-managed conversion; colors may differ."
+            )
         if format_name == "PNG" and any(key in image.info for key in ("gamma", "chromaticity")):
-            notices.append("PNG gamma/chromaticity metadata is not applied; decoded color values are retained.")
+            notices.append(
+                "PNG gamma/chromaticity metadata is not applied; decoded color values are retained."
+            )
         if bit_depth > 8:
-            notices.append(f"{bit_depth}-bit image samples normalized to 8-bit {mode}; high-depth precision is reduced.")
+            notices.append(
+                f"{bit_depth}-bit image samples normalized to 8-bit {mode}"
+                f"; high-depth precision is reduced."
+            )
         if orientation != 1:
             notices.append(f"EXIF orientation {orientation} applied to the image pixels.")
         if image.mode not in {"RGB", "RGBA", "CMYK"}:
             notices.append(f"Image mode {image.mode} normalized to {mode}.")
         metadata = {
-            "name": source.path.name, "format": format_name, "input_bytes": source.stamp[2],
-            "source_width": width, "source_height": height,
+            "name": source.path.name,
+            "format": format_name,
+            "input_bytes": source.stamp[2],
+            "source_width": width,
+            "source_height": height,
             "width": height if orientation in {5, 6, 7, 8} else width,
             "height": width if orientation in {5, 6, 7, 8} else height,
-            "pixels": pixels, "frames": 1, "orientation": orientation,
-            "source_mode": image.mode, "mode": mode, "source_bit_depth": bit_depth,
-            "has_alpha": has_alpha, "image_only": True, "ocr_performed": False,
+            "pixels": pixels,
+            "frames": 1,
+            "orientation": orientation,
+            "source_mode": image.mode,
+            "mode": mode,
+            "source_bit_depth": bit_depth,
+            "has_alpha": has_alpha,
+            "image_only": True,
+            "ocr_performed": False,
             "warnings": notices,
         }
     source.unchanged()
@@ -410,9 +441,8 @@ def _decode(source, Image, ImageOps):
         try:
             if image.mode in {"I", "I;16", "I;16B", "I;16L"} and metadata["source_bit_depth"] > 8:
                 scale = 255.0 / ((1 << metadata["source_bit_depth"]) - 1)
-                with image.convert("I") as wide:
-                    with wide.point(lambda value: value * scale) as scaled:
-                        converted = scaled.convert("L")
+                with image.convert("I") as wide, wide.point(lambda value: value * scale) as scaled:
+                    converted = scaled.convert("L")
             elif image.mode != metadata["mode"]:
                 converted = image.convert(metadata["mode"])
             normalized.paste(converted if converted is not None else image)
@@ -426,7 +456,7 @@ def _decode(source, Image, ImageOps):
                 converted.close()
 
 
-def inspect_image(path, limits: ImageLimits = ImageLimits()) -> dict:
+def inspect_image(path, limits: ImageLimits = DEFAULT_IMAGELIMITS) -> dict:
     """Validate a supported image and return JSON-compatible normalized metadata.
 
     This performs strict verification and decode, not merely extension/header
@@ -465,9 +495,11 @@ def _verify_pdf(path, pages, pymupdf):
     with pymupdf.open(path) as document:
         if not document.is_pdf or len(document) != len(pages):
             raise JobError("Generated image PDF failed page-count verification")
-        for page, expected in zip(document, pages):
-            if (abs(page.rect.width - expected["page_width_points"]) > 0.01
-                    or abs(page.rect.height - expected["page_height_points"]) > 0.01):
+        for page, expected in zip(document, pages, strict=True):
+            if (
+                abs(page.rect.width - expected["page_width_points"]) > 0.01
+                or abs(page.rect.height - expected["page_height_points"]) > 0.01
+            ):
                 raise JobError("Generated image PDF failed page-size verification")
             images = page.get_images(full=True)
             if len(images) != 1 or images[0][2:4] != (expected["width"], expected["height"]):
@@ -476,7 +508,7 @@ def _verify_pdf(path, pages, pymupdf):
                 raise JobError("Generated image PDF failed alpha-channel verification")
 
 
-def images_to_pdf(paths, output, dpi=144, limits: ImageLimits = ImageLimits()) -> dict:
+def images_to_pdf(paths, output, dpi=144, limits: ImageLimits = DEFAULT_IMAGELIMITS) -> dict:
     """One page per image, in order, using lossless normalized RGB/RGBA rasters.
 
     Explicit DPI sets page dimensions and must be finite within 36..300; embedded
@@ -485,7 +517,12 @@ def images_to_pdf(paths, output, dpi=144, limits: ImageLimits = ImageLimits()) -
     """
     sources, temporary = [], None
     try:
-        if isinstance(dpi, bool) or not isinstance(dpi, (int, float)) or not math.isfinite(dpi) or not 36 <= dpi <= 300:
+        if (
+            isinstance(dpi, bool)
+            or not isinstance(dpi, (int, float))
+            or not math.isfinite(dpi)
+            or not 36 <= dpi <= 300
+        ):
             raise JobError("Image DPI must be a finite number from 36 through 300")
         if isinstance(paths, (str, bytes, os.PathLike)):
             raise JobError("Provide an ordered collection of image paths")
@@ -508,44 +545,71 @@ def images_to_pdf(paths, output, dpi=144, limits: ImageLimits = ImageLimits()) -
                     raise JobError("Total image pixel limit exceeded")
             _require_codec("PNG")
             import io
+
             import pymupdf
-            fd, temporary = tempfile.mkstemp(prefix=".image-pdf-", suffix=".tmp", dir=destination.parent)
+
+            fd, temporary = tempfile.mkstemp(
+                prefix=".image-pdf-", suffix=".tmp", dir=destination.parent
+            )
             os.close(fd)
             pages = []
             with pymupdf.open() as document:
                 for number, source in enumerate(sources, 1):
                     metadata = dict(source.metadata)
-                    metadata.update(page=number,
-                                    page_width_points=metadata["width"] * 72.0 / dpi,
-                                    page_height_points=metadata["height"] * 72.0 / dpi)
+                    metadata.update(
+                        page=number,
+                        page_width_points=metadata["width"] * 72.0 / dpi,
+                        page_height_points=metadata["height"] * 72.0 / dpi,
+                    )
                     with _decode(source, Image, ImageOps) as normalized, io.BytesIO() as encoded:
                         normalized.save(encoded, format="PNG")
                         if min(metadata["page_width_points"], metadata["page_height_points"]) < 1:
                             # MuPDF clamps a MediaBox side below 1 user-space unit.
                             # A positive explicit UserUnit preserves tiny images'
                             # exact physical dimensions without resizing pixels.
-                            page = document.new_page(width=metadata["width"], height=metadata["height"])
+                            page = document.new_page(
+                                width=metadata["width"], height=metadata["height"]
+                            )
                             document.xref_set_key(page.xref, "UserUnit", str(72.0 / dpi))
                             page = document.reload_page(page)
                         else:
-                            page = document.new_page(width=metadata["page_width_points"],
-                                                     height=metadata["page_height_points"])
+                            page = document.new_page(
+                                width=metadata["page_width_points"],
+                                height=metadata["page_height_points"],
+                            )
                         page.draw_rect(page.rect, color=None, fill=(1, 1, 1), overlay=False)
-                        page.insert_image(page.rect, stream=encoded.getvalue(), keep_proportion=False)
+                        page.insert_image(
+                            page.rect, stream=encoded.getvalue(), keep_proportion=False
+                        )
                     pages.append(metadata)
-                document.set_metadata({"creator": "PDF Multitool", "producer": "Local image normalization"})
+                document.set_metadata(
+                    {"creator": "PDF Multitool", "producer": "Local image normalization"}
+                )
                 document.save(temporary, garbage=3, deflate=True)
             _verify_pdf(temporary, pages, pymupdf)
             for source in sources:
                 source.unchanged()
             report = {
-                "page_count": len(pages), "pages": pages, "dpi": float(dpi),
-                "total_pixels": total_pixels, "formats": sorted({p["format"] for p in pages}),
-                "image_only": True, "ocr_performed": False,
-                "warnings": ["No OCR is performed; source metadata is stripped from generated raster streams."]
-                            + [f"{p['name']}: {warning}" for p in pages for warning in p["warnings"]],
-                "verified": {"page_count": True, "page_dimensions": True,
-                             "raster_dimensions": True, "alpha_channels": True},
+                "page_count": len(pages),
+                "pages": pages,
+                "dpi": float(dpi),
+                "total_pixels": total_pixels,
+                "formats": sorted({p["format"] for p in pages}),
+                "image_only": True,
+                "ocr_performed": False,
+                "warnings": [
+                    (
+                        "No OCR is performed; source metadata is stripped from generated "
+                        "raster streams."
+                    )
+                ]
+                + [f"{p['name']}: {warning}" for p in pages for warning in p["warnings"]],
+                "verified": {
+                    "page_count": True,
+                    "page_dimensions": True,
+                    "raster_dimensions": True,
+                    "alpha_channels": True,
+                },
             }
             with open(temporary, "rb") as file:
                 os.fsync(file.fileno())
@@ -562,7 +626,5 @@ def images_to_pdf(paths, output, dpi=144, limits: ImageLimits = ImageLimits()) -
         for source in sources:
             source.close()
         if temporary is not None:
-            try:
+            with suppress(FileNotFoundError):
                 os.unlink(temporary)
-            except FileNotFoundError:
-                pass

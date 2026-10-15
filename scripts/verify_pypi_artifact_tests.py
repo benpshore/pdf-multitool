@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Offline safety tests; fixtures are generated locally, never downloaded."""
-from copy import deepcopy
+
 import hashlib
 import io
-from pathlib import Path
 import tempfile
 import unittest
+from copy import deepcopy
+from pathlib import Path
 from unittest.mock import patch
 
 import verify_pypi_artifact as verifier
@@ -17,12 +18,29 @@ class MetadataTests(unittest.TestCase):
         self.sha = hashlib.sha256(self.content).hexdigest()
         self.name = "sample-1.0-py3-none-any.whl"
         self.url = "https://files.pythonhosted.org/packages/example/" + self.name
-        self.release = {"info": {"name": "sample", "version": "1.0"}, "urls": [{
-            "filename": self.name, "url": self.url, "size": len(self.content),
-            "digests": {"sha256": self.sha}, "yanked": False}]}
-        self.simple = {"name": "sample", "files": [{
-            "filename": self.name, "url": self.url, "hashes": {"sha256": self.sha},
-            "yanked": False}]}
+        self.release = {
+            "info": {"name": "sample", "version": "1.0"},
+            "urls": [
+                {
+                    "filename": self.name,
+                    "url": self.url,
+                    "size": len(self.content),
+                    "digests": {"sha256": self.sha},
+                    "yanked": False,
+                }
+            ],
+        }
+        self.simple = {
+            "name": "sample",
+            "files": [
+                {
+                    "filename": self.name,
+                    "url": self.url,
+                    "hashes": {"sha256": self.sha},
+                    "yanked": False,
+                }
+            ],
+        }
 
     def compare(self):
         return verifier.compare_metadata("sample", "1.0", self.name, self.release, self.simple)
@@ -53,7 +71,9 @@ class MetadataTests(unittest.TestCase):
             self.compare()
 
     def test_mirror_fails(self):
-        self.simple["files"][0]["url"] = self.url.replace("files.pythonhosted.org", "mirror.example.com")
+        self.simple["files"][0]["url"] = self.url.replace(
+            "files.pythonhosted.org", "mirror.example.com"
+        )
         with self.assertRaises(verifier.VerificationError):
             self.compare()
 
@@ -74,11 +94,16 @@ class MetadataTests(unittest.TestCase):
 
     def test_source_build_fails(self):
         with self.assertRaises(verifier.VerificationError):
-            verifier.compare_metadata("sample", "1.0", "sample-1.0.tar.gz", self.release, self.simple)
+            verifier.compare_metadata(
+                "sample", "1.0", "sample-1.0.tar.gz", self.release, self.simple
+            )
 
     def test_oversize_does_not_open_network(self):
         record = self.compare()
-        with tempfile.TemporaryDirectory() as temp, patch.object(verifier.urllib.request, "build_opener") as opener:
+        with (
+            tempfile.TemporaryDirectory() as temp,
+            patch.object(verifier.urllib.request, "build_opener") as opener,
+        ):
             with self.assertRaises(verifier.VerificationError):
                 verifier.download(record, Path(temp), 1)
             opener.assert_not_called()
@@ -87,7 +112,10 @@ class MetadataTests(unittest.TestCase):
         record = self.compare()
         response = io.BytesIO(self.content)
         response.geturl = lambda: self.url
-        with tempfile.TemporaryDirectory() as temp, patch.object(verifier.urllib.request, "build_opener") as opener:
+        with (
+            tempfile.TemporaryDirectory() as temp,
+            patch.object(verifier.urllib.request, "build_opener") as opener,
+        ):
             opener.return_value.open.return_value = response
             target = verifier.download(record, Path(temp), 1024)
             self.assertEqual(target.read_bytes(), self.content)
@@ -97,7 +125,10 @@ class MetadataTests(unittest.TestCase):
         record = self.compare()
         response = io.BytesIO(b"x" * len(self.content))
         response.geturl = lambda: self.url
-        with tempfile.TemporaryDirectory() as temp, patch.object(verifier.urllib.request, "build_opener") as opener:
+        with (
+            tempfile.TemporaryDirectory() as temp,
+            patch.object(verifier.urllib.request, "build_opener") as opener,
+        ):
             opener.return_value.open.return_value = response
             with self.assertRaises(verifier.VerificationError):
                 verifier.download(record, Path(temp), 1024)

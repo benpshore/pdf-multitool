@@ -1,16 +1,24 @@
-from dataclasses import replace
 import hashlib
-import json
-from pathlib import Path
 import shutil
 import tempfile
 import threading
 import time
 import unittest
+from dataclasses import replace
+from pathlib import Path
 from unittest.mock import patch
 
 import pymupdf
-from pdf_multitool.core import Cancelled, Job, JobError, Limits, parse_pages, run_worker, safe_name, directory_size
+
+from pdf_multitool.core import (
+    Job,
+    JobError,
+    Limits,
+    directory_size,
+    parse_pages,
+    run_worker,
+    safe_name,
+)
 from pdf_multitool.models import validate_model_manifest
 from tests.fixtures import document, scanned
 
@@ -29,7 +37,12 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(safe_name("C:\\secret\\file.pdf"), "file.pdf")
 
     def test_long_names_preserve_type_suffix_and_utf8_boundary(self):
-        for name in ["a" * 210 + ".pdf", "é" * 210 + ".html", "a" * 210 + ".pdf.gz", "a" * 210 + ".tar.gz"]:
+        for name in [
+            "a" * 210 + ".pdf",
+            "é" * 210 + ".html",
+            "a" * 210 + ".pdf.gz",
+            "a" * 210 + ".tar.gz",
+        ]:
             result = safe_name(name)
             self.assertLessEqual(len(result.encode("utf-8")), 180)
             self.assertEqual(result.rsplit(".", 1)[-1], name.rsplit(".", 1)[-1])
@@ -46,16 +59,20 @@ class SelectionTests(unittest.TestCase):
             (root / "stable").write_bytes(b"12345")
             (root / "vanishing.tmp").write_bytes(b"cache")
             original = Path.stat
+
             def vanished(path, *args, **kwargs):
                 if path.name == "vanishing.tmp":
                     raise FileNotFoundError("atomically removed")
                 return original(path, *args, **kwargs)
+
             with patch.object(Path, "stat", vanished):
                 self.assertEqual(directory_size(root), 5)
+
             def denied(path, *args, **kwargs):
                 if path.name == "vanishing.tmp":
                     raise PermissionError("not a disappearing-entry race")
                 return original(path, *args, **kwargs)
+
             with patch.object(Path, "stat", denied), self.assertRaises(PermissionError):
                 directory_size(root)
             with self.assertRaisesRegex(JobError, "file-count"):
@@ -64,6 +81,7 @@ class SelectionTests(unittest.TestCase):
 
 class RealEngineTests(unittest.TestCase):
     """These exercise actual preinstalled engines, not mocks or verified releases."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
@@ -170,30 +188,92 @@ class RealEngineTests(unittest.TestCase):
         self.assertEqual(job.results, [])
 
     def test_cancel_before_start(self):
-        job = Job("rotate", [{"id": "1", "name": self.a.name, "path": str(self.a)}], {}, self.root / "out")
+        job = Job(
+            "rotate", [{"id": "1", "name": self.a.name, "path": str(self.a)}], {}, self.root / "out"
+        )
         job.cancel_event.set()
         job.run()
         self.assertEqual(job.state, "cancelled")
         self.assertEqual(job.results, [])
 
     def test_cancel_running_engine(self):
-        many = document(self.root / "many.pdf", 100)
-        job = Job("render", [{"id": "1", "name": many.name, "path": str(many)}], {"dpi": 300}, self.root / "out")
-        thread = threading.Thread(target=job.run)
-        thread.start()
-        time.sleep(0.15)
-        job.cancel_event.set()
-        thread.join(timeout=5)
+        import subprocess
+        import sys
+
+        ready = self.root / "engine-started"
+        original = self.a.read_bytes()
+        job = Job(
+            "rotate",
+            [{"id": "1", "name": self.a.name, "path": str(self.a)}],
+            {},
+            self.root / "out",
+        )
+        # A real child produces an actual PDF before signaling readiness and blocking.
+        # The output is still unpublished: worker.main has not written result.json.
+        script = (
+            "import threading; from pathlib import Path; "
+            "from pdf_multitool import worker; "
+            "original = worker.process; "
+            f"ready = Path({str(ready)!r}); "
+            "worker.process = lambda request: "
+            "(original(request), ready.write_text('started'), threading.Event().wait(30))[0]; "
+            "worker.main()"
+        )
+        spawn = subprocess.Popen
+        children = []
+
+        def controlled_spawn(args, **kwargs):
+            child = spawn([sys.executable, "-c", script], **kwargs)
+            children.append(child)
+            return child
+
+        with patch("pdf_multitool.core.subprocess.Popen", controlled_spawn):
+            thread = threading.Thread(target=job.run)
+            thread.start()
+            try:
+                deadline = time.monotonic() + 10
+                while not ready.exists() and thread.is_alive() and time.monotonic() < deadline:
+                    threading.Event().wait(0.01)
+                self.assertTrue(ready.exists(), "Engine did not signal startup")
+                self.assertEqual(job.state, "running")
+                part = job.directory / "part-0001"
+                outputs = list(part.glob("*.pdf"))
+                self.assertEqual(
+                    len(outputs), 1, "Real engine output must exist before cancellation"
+                )
+                with pymupdf.open(outputs[0]) as partial:
+                    self.assertGreater(len(partial), 0)
+                    self.assertIn("Synthetic title", partial[0].get_text())
+                self.assertFalse((part / "result.json").exists())
+                self.assertEqual(job.results, [])
+            finally:
+                job.cancel_event.set()
+                thread.join(timeout=8)
         self.assertFalse(thread.is_alive(), "Engine process failed to terminate")
         self.assertEqual(job.state, "cancelled")
         self.assertEqual(job.results, [])
+        self.assertEqual(len(children), 1)
+        self.assertIsNotNone(children[0].poll(), "Cancelled child was not reaped")
+        self.assertFalse((job.directory / "part-0001").exists())
+        self.assertEqual(self.a.read_bytes(), original)
+        retry = self.job("rotate", [self.a])
+        self.assertEqual(retry.state, "completed", retry.errors)
 
     def test_supervisor_timeout(self):
         many = document(self.root / "many.pdf", 100)
         limits = replace(Limits(), timeout_seconds=0)
         with self.assertRaisesRegex(JobError, "exceeded"):
-            run_worker({"operation": "render", "inputs": [str(many)], "names": [many.name], "options": {"dpi": 300}},
-                       self.root / "worker", threading.Event(), limits)
+            run_worker(
+                {
+                    "operation": "render",
+                    "inputs": [str(many)],
+                    "names": [many.name],
+                    "options": {"dpi": 300},
+                },
+                self.root / "worker",
+                threading.Event(),
+                limits,
+            )
 
 
 if __name__ == "__main__":

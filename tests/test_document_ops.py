@@ -3,11 +3,12 @@
 All fixtures are generated locally. The dummy signature dictionary tests presence
 reporting only and is deliberately not a cryptographically valid signature.
 """
+
 import hashlib
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 import pymupdf
 
@@ -30,18 +31,29 @@ class DocumentOperationTests(unittest.TestCase):
     def job(self, operation, path=None, options=None):
         path = path or self.plain
         before = hashlib.sha256(path.read_bytes()).digest()
-        job = Job(operation, [{"id": "synthetic", "name": path.name, "path": str(path)}],
-                  options if options is not None else {}, self.root / "jobs")
+        job = Job(
+            operation,
+            [{"id": "synthetic", "name": path.name, "path": str(path)}],
+            options if options is not None else {},
+            self.root / "jobs",
+        )
         job.run()
-        self.assertEqual(hashlib.sha256(path.read_bytes()).digest(), before,
-                         "An operation modified its input")
+        self.assertEqual(
+            hashlib.sha256(path.read_bytes()).digest(), before, "An operation modified its input"
+        )
         return job
 
     def output(self, job, suffix=".pdf", filename=None):
         self.assertEqual(job.state, "completed", job.errors)
-        paths = [Path(item["path"]) for item in job.results
-                 if (Path(item["path"]).name == filename if filename else
-                     Path(item["path"]).suffix == suffix)]
+        paths = [
+            Path(item["path"])
+            for item in job.results
+            if (
+                Path(item["path"]).name == filename
+                if filename
+                else Path(item["path"]).suffix == suffix
+            )
+        ]
         self.assertEqual(len(paths), 1, job.results)
         self.assertGreater(paths[0].stat().st_size, 0)
         return paths[0]
@@ -52,8 +64,11 @@ class DocumentOperationTests(unittest.TestCase):
         self.assertTrue(job.errors)
         if fragment:
             self.assertIn(fragment.lower(), job.errors[0]["error"].lower())
-        self.assertEqual(list(job.directory.rglob("*")), [],
-                         "Failed job left partial outputs or diagnostics behind")
+        self.assertEqual(
+            list(job.directory.rglob("*")),
+            [],
+            "Failed job left partial outputs or diagnostics behind",
+        )
 
     def assert_no_password_on_disk(self, job, *passwords):
         snapshot = json.dumps(job.snapshot()).encode()
@@ -66,11 +81,12 @@ class DocumentOperationTests(unittest.TestCase):
         self.assertNotIn("password", job.options)
         self.assertNotIn("new_password", job.options)
 
-    def encrypted_fixture(self, password="Input-secret-978203"):
+    def encrypted_fixture(self, password="Input-secret-978203"):  # noqa: S107 -- synthetic regression fixture
         path = self.root / "encrypted.pdf"
         with pymupdf.open(self.plain) as doc:
-            doc.save(path, encryption=pymupdf.PDF_ENCRYPT_AES_256,
-                     user_pw=password, owner_pw=password)
+            doc.save(
+                path, encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw=password, owner_pw=password
+            )
         return path, password
 
     def forms_fixture(self):
@@ -100,9 +116,12 @@ class DocumentOperationTests(unittest.TestCase):
             for widget in page.widgets():
                 if widget.field_name == "dummy_present":
                     sig = doc.get_new_xref()
-                    doc.update_object(sig, "<< /Type /Sig /Filter /Adobe.PPKLite "
-                                      "/SubFilter /adbe.pkcs7.detached "
-                                      "/ByteRange [0 0 0 0] /Contents <00> >>")
+                    doc.update_object(
+                        sig,
+                        "<< /Type /Sig /Filter /Adobe.PPKLite "
+                        "/SubFilter /adbe.pkcs7.detached "
+                        "/ByteRange [0 0 0 0] /Contents <00> >>",
+                    )
                     doc.xref_set_key(widget.xref, "V", f"{sig} 0 R")
             doc.save(path)
         return path
@@ -111,8 +130,10 @@ class DocumentOperationTests(unittest.TestCase):
     def dark_pixels(page, clip):
         pix = page.get_pixmap(clip=pymupdf.Rect(clip), alpha=False)
         pixels = pix.samples
-        return sum(any(component < 180 for component in pixels[i:i + pix.n])
-                   for i in range(0, len(pixels), pix.n))
+        return sum(
+            any(component < 180 for component in pixels[i : i + pix.n])
+            for i in range(0, len(pixels), pix.n)
+        )
 
     def test_password_missing_wrong_and_correct(self):
         path, password = self.encrypted_fixture()
@@ -151,14 +172,20 @@ class DocumentOperationTests(unittest.TestCase):
         self.assert_failed_cleanly(bad, "inside")
 
     def test_redaction_removes_accessibility_alternative_text(self):
-        secret = "TAGGED_SECRET_857493"
+        secret = "TAGGED_SECRET_857493"  # noqa: S105 -- synthetic regression fixture
         path = self.root / "tagged.pdf"
         with pymupdf.open() as doc:
             page = doc.new_page()
             page.insert_text((40, 80), secret)
             tree, element = doc.get_new_xref(), doc.get_new_xref()
             doc.update_object(tree, f"<< /Type /StructTreeRoot /K [{element} 0 R] >>")
-            doc.update_object(element, f"<< /Type /StructElem /S /P /P {tree} 0 R /Pg {page.xref} 0 R /Alt ({secret}) /ActualText ({secret}) /K 0 >>")
+            doc.update_object(
+                element,
+                (
+                    f"<< /Type /StructElem /S /P /P {tree} 0 R /Pg {page.xref} 0 R /Alt ({secret}"
+                    f") /ActualText ({secret}) /K 0 >>"
+                ),
+            )
             doc.xref_set_key(doc.pdf_catalog(), "StructTreeRoot", f"{tree} 0 R")
             doc.xref_set_key(doc.pdf_catalog(), "MarkInfo", "<< /Marked true >>")
             doc.xref_set_key(page.xref, "StructParents", "0")
@@ -175,7 +202,7 @@ class DocumentOperationTests(unittest.TestCase):
 
     def test_redaction_removes_pieceinfo_and_ignores_pending_annotations(self):
         path = self.root / "pieceinfo.pdf"
-        secret = "CUSTOM_SECRET_629382"
+        secret = "CUSTOM_SECRET_629382"  # noqa: S105 -- synthetic regression fixture
         with pymupdf.open() as doc:
             first = doc.new_page()
             first.insert_text((40, 80), secret)
@@ -183,7 +210,9 @@ class DocumentOperationTests(unittest.TestCase):
             second = doc.new_page()
             second.insert_text((40, 80), "KEEP THIS")
             second.add_redact_annot(second.search_for("KEEP THIS")[0])
-            doc.xref_set_key(doc.pdf_catalog(), "PieceInfo", f"<< /Private << /Text ({secret}) >> >>")
+            doc.xref_set_key(
+                doc.pdf_catalog(), "PieceInfo", f"<< /Private << /Text ({secret}) >> >>"
+            )
             doc.save(path)
         job = self.job("redact", path, {"redact_text": secret, "pages": "1"})
         output = self.output(job)
@@ -195,7 +224,7 @@ class DocumentOperationTests(unittest.TestCase):
 
     def test_unknown_residual_target_fails_closed(self):
         path = self.root / "custom-reservoir.pdf"
-        secret = "RESIDUAL_SECRET_849378"
+        secret = "RESIDUAL_SECRET_849378"  # noqa: S105 -- synthetic regression fixture
         with pymupdf.open() as doc:
             page = doc.new_page()
             page.insert_text((40, 80), secret)
@@ -228,7 +257,9 @@ class DocumentOperationTests(unittest.TestCase):
             kind, value = doc.xref_get_key(widget.xref, "V")
             self.assertEqual(kind, "xref")
             parent = doc.get_new_xref()
-            doc.update_object(parent, f"<< /FT /Sig /T (dummy_present) /Kids [{widget.xref} 0 R] /V {value} >>")
+            doc.update_object(
+                parent, f"<< /FT /Sig /T (dummy_present) /Kids [{widget.xref} 0 R] /V {value} >>"
+            )
             doc.xref_set_key(widget.xref, "V", "null")
             doc.xref_set_key(widget.xref, "T", "null")
             doc.xref_set_key(widget.xref, "Parent", f"{parent} 0 R")
@@ -243,24 +274,38 @@ class DocumentOperationTests(unittest.TestCase):
         path = self.root / "constrained-fields.pdf"
         with pymupdf.open() as doc:
             page = doc.new_page()
-            for name, kind, rect in [("radio", pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON, (40, 40, 60, 60)),
-                                     ("short", pymupdf.PDF_WIDGET_TYPE_TEXT, (40, 80, 160, 105))]:
+            for name, kind, rect in [
+                ("radio", pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON, (40, 40, 60, 60)),
+                ("short", pymupdf.PDF_WIDGET_TYPE_TEXT, (40, 80, 160, 105)),
+            ]:
                 widget = pymupdf.Widget()
                 # This PyMuPDF version cannot create radio groups directly; create
                 # a checkbox appearance, then set the standard PDF radio flag.
-                initial_kind = pymupdf.PDF_WIDGET_TYPE_CHECKBOX if kind == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON else kind
-                widget.field_name, widget.field_type, widget.rect = name, initial_kind, pymupdf.Rect(rect)
+                initial_kind = (
+                    pymupdf.PDF_WIDGET_TYPE_CHECKBOX
+                    if kind == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON
+                    else kind
+                )
+                widget.field_name, widget.field_type, widget.rect = (
+                    name,
+                    initial_kind,
+                    pymupdf.Rect(rect),
+                )
                 if name == "short":
                     widget.text_maxlen = 3
                 created = page.add_widget(widget)
                 if kind == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
                     doc.xref_set_key(created.xref, "Ff", "32768")
             doc.save(path)
-        self.assert_failed_cleanly(self.job("forms", path, {"fields": {"radio": True}}), "Radio group")
-        self.assert_failed_cleanly(self.job("forms", path, {"fields": {"short": "123456789"}}), "maximum length")
+        self.assert_failed_cleanly(
+            self.job("forms", path, {"fields": {"radio": True}}), "Radio group"
+        )
+        self.assert_failed_cleanly(
+            self.job("forms", path, {"fields": {"short": "123456789"}}), "maximum length"
+        )
 
     def test_protect_aes256_then_unlock_roundtrip(self):
-        password = "New-secret-64820791"
+        password = "New-secret-64820791"  # noqa: S105 -- synthetic regression fixture
         protect = self.job("protect", options={"new_password": password})
         protected = self.output(protect)
         with pymupdf.open(protected) as doc:
@@ -279,12 +324,16 @@ class DocumentOperationTests(unittest.TestCase):
     def test_protect_rejects_invalid_password_boundaries(self):
         for value in (None, "short", "a" * 128, "é" * 64, 123):
             with self.subTest(value_type=type(value).__name__, length=len(str(value))):
-                self.assert_failed_cleanly(self.job("protect", options={"new_password": value}), "8-127")
+                self.assert_failed_cleanly(
+                    self.job("protect", options={"new_password": value}), "8-127"
+                )
 
     def test_input_password_type_and_length_rejected(self):
         for value in (123, ["private-value"], "a" * 128, "é" * 64):
             with self.subTest(value_type=type(value).__name__):
-                self.assert_failed_cleanly(self.job("clean", options={"password": value}), "Invalid document password")
+                self.assert_failed_cleanly(
+                    self.job("clean", options={"password": value}), "Invalid document password"
+                )
 
     def test_forms_enumeration_keeps_signatures_separate(self):
         job = self.job("forms", self.forms_fixture())
@@ -293,7 +342,9 @@ class DocumentOperationTests(unittest.TestCase):
         self.assertEqual(set(fields), {"full_name", "consent", "choice", "locked"})
         self.assertEqual(fields["full_name"]["type"], "Text")
         self.assertTrue(fields["locked"]["readonly"])
-        self.assertEqual({s["name"] for s in report["signature_fields"]}, {"unsigned", "dummy_present"})
+        self.assertEqual(
+            {s["name"] for s in report["signature_fields"]}, {"unsigned", "dummy_present"}
+        )
 
     def test_forms_fill_reopen_values_and_visible_appearance(self):
         path = self.forms_fixture()
@@ -329,14 +380,17 @@ class DocumentOperationTests(unittest.TestCase):
 
     def test_forms_reject_invalid_fields_without_partial_output(self):
         path = self.forms_fixture()
-        cases = [({}, "nonempty"), ([], "nonempty"),
-                 ({"unknown": "value"}, "Unknown"),
-                 ({"full_name": "would be filled", "unknown": "value"}, "Unknown"),
-                 ({"locked": "change"}, "read-only"),
-                 ({"unsigned": "not a signature"}, "Signature"),
-                 ({"consent": "yes"}, "true or false"),
-                 ({"choice": "Not in choices"}, "allowed choices"),
-                 ({"full_name": 13}, "bounded string")]
+        cases = [
+            ({}, "nonempty"),
+            ([], "nonempty"),
+            ({"unknown": "value"}, "Unknown"),
+            ({"full_name": "would be filled", "unknown": "value"}, "Unknown"),
+            ({"locked": "change"}, "read-only"),
+            ({"unsigned": "not a signature"}, "Signature"),
+            ({"consent": "yes"}, "true or false"),
+            ({"choice": "Not in choices"}, "allowed choices"),
+            ({"full_name": 13}, "bounded string"),
+        ]
         for fields, message in cases:
             with self.subTest(fields=fields):
                 self.assert_failed_cleanly(self.job("forms", path, {"fields": fields}), message)
@@ -347,13 +401,17 @@ class DocumentOperationTests(unittest.TestCase):
         signatures = {s["name"]: s for s in report["signature_fields"]}
         self.assertFalse(signatures["unsigned"]["value_present"])
         self.assertTrue(signatures["dummy_present"]["value_present"])
-        self.assertTrue(all(s["cryptographic_validity"] == "not_verified" for s in signatures.values()))
+        self.assertTrue(
+            all(s["cryptographic_validity"] == "not_verified" for s in signatures.values())
+        )
         self.assertIn("not cryptographic verification", report["signature_warning"])
-        self.assertTrue(any("verification and digital signing are not implemented" in w for w in job.warnings))
+        self.assertTrue(
+            any("verification and digital signing are not implemented" in w for w in job.warnings)
+        )
 
     def redaction_fixture(self):
         path = self.root / "redaction.pdf"
-        secret = "REMOVE_SECRET_628491"
+        secret = "REMOVE_SECRET_628491"  # noqa: S105 -- synthetic regression fixture
         with pymupdf.open() as doc:
             page = doc.new_page(width=400, height=400)
             page.insert_text((36, 50), secret)
@@ -367,8 +425,13 @@ class DocumentOperationTests(unittest.TestCase):
             doc.embfile_add("secret.txt", secret.encode(), filename="secret.txt")
             page.add_file_annot((340, 300), secret.encode(), "annotation-secret.txt")
             page.add_text_annot((300, 330), secret)
-            page.insert_link({"kind": pymupdf.LINK_URI, "from": pymupdf.Rect(40, 110, 160, 125),
-                              "uri": "https://example.invalid/" + secret})
+            page.insert_link(
+                {
+                    "kind": pymupdf.LINK_URI,
+                    "from": pymupdf.Rect(40, 110, 160, 125),
+                    "uri": "https://example.invalid/" + secret,
+                }
+            )
             widget = pymupdf.Widget()
             widget.field_name, widget.field_type = "secret_field", pymupdf.PDF_WIDGET_TYPE_TEXT
             widget.rect, widget.field_value = pymupdf.Rect(40, 130, 160, 160), secret
@@ -379,8 +442,11 @@ class DocumentOperationTests(unittest.TestCase):
 
     def test_redaction_removes_text_reservoirs_and_underlying_image_pixels(self):
         path, secret = self.redaction_fixture()
-        job = self.job("redact", path, {"redact_text": secret,
-                        "redact_boxes": [{"page": 1, "rect": [180, 180, 260, 260]}]})
+        job = self.job(
+            "redact",
+            path,
+            {"redact_text": secret, "redact_boxes": [{"page": 1, "rect": [180, 180, 260, 260]}]},
+        )
         output = self.output(job)
         with pymupdf.open(output) as doc:
             page = doc[0]
@@ -400,8 +466,11 @@ class DocumentOperationTests(unittest.TestCase):
             images = page.get_images(full=True)
             self.assertEqual(len(images), 1)
             image = pymupdf.Pixmap(doc, images[0][0])
-            self.assertEqual(image.pixel(20, 20), (255, 255, 255),
-                             "Underlying image retained pixels under the black overlay")
+            self.assertEqual(
+                image.pixel(20, 20),
+                (255, 255, 255),
+                "Underlying image retained pixels under the black overlay",
+            )
             self.assertEqual(image.pixel(60, 20), (0, 255, 0))
             for xref in range(1, doc.xref_length()):
                 self.assertNotIn(secret, doc.xref_object(xref), f"Object {xref}")
@@ -410,7 +479,9 @@ class DocumentOperationTests(unittest.TestCase):
                     self.assertNotIn(secret.encode(), stream, f"Stream {xref}")
                     self.assertNotIn(secret.encode().hex().encode(), stream, f"Hex stream {xref}")
         self.assertNotIn(secret.encode(), output.read_bytes())
-        self.assertTrue(any("text matching alone cannot find" in warning for warning in job.warnings))
+        self.assertTrue(
+            any("text matching alone cannot find" in warning for warning in job.warnings)
+        )
 
     def test_redaction_selected_pages_preserves_unselected_native_text(self):
         job = self.job("redact", options={"redact_text": "Preserved native text", "pages": "1"})
@@ -419,42 +490,67 @@ class DocumentOperationTests(unittest.TestCase):
             self.assertIn("Preserved native text", doc[1].get_text())
 
     def test_redaction_rejects_nonfinite_coordinates_and_unselected_boxes(self):
-        for rect in ([0, 0, float("nan"), 50], [0, 0, float("inf"), 50],
-                     [0, 0, True, 50], [0, 0, "50", 50], [0, 0, 50]):
+        for rect in (
+            [0, 0, float("nan"), 50],
+            [0, 0, float("inf"), 50],
+            [0, 0, True, 50],
+            [0, 0, "50", 50],
+            [0, 0, 50],
+        ):
             with self.subTest(rect=rect):
-                self.assert_failed_cleanly(self.job("redact", options={
-                    "redact_boxes": [{"page": 1, "rect": rect}]}))
-        self.assert_failed_cleanly(self.job("redact", options={"pages": "1",
-            "redact_text": "Preserved native text",
-            "redact_boxes": [{"page": 2, "rect": [10, 10, 30, 30]}]}))
+                self.assert_failed_cleanly(
+                    self.job("redact", options={"redact_boxes": [{"page": 1, "rect": rect}]})
+                )
+        self.assert_failed_cleanly(
+            self.job(
+                "redact",
+                options={
+                    "pages": "1",
+                    "redact_text": "Preserved native text",
+                    "redact_boxes": [{"page": 2, "rect": [10, 10, 30, 30]}],
+                },
+            )
+        )
 
     def test_redaction_no_match_fails_without_output(self):
-        self.assert_failed_cleanly(self.job("redact", options={"redact_text": "NEVER PRESENT 734842"}),
-                                   "No redaction targets")
+        self.assert_failed_cleanly(
+            self.job("redact", options={"redact_text": "NEVER PRESENT 734842"}),
+            "No redaction targets",
+        )
 
     def test_redaction_rejects_missing_and_malformed_specs(self):
-        for options in ({}, {"redact_text": 123}, {"redact_boxes": "bad"},
-                        {"redact_boxes": [{"page": 1}]},
-                        {"redact_boxes": [{"page": 1, "rect": [0, 0, 500, 500]}]},
-                        {"redact_boxes": [{"page": 1, "rect": [5, 5, 5, 5]}]}):
+        for options in (
+            {},
+            {"redact_text": 123},
+            {"redact_boxes": "bad"},
+            {"redact_boxes": [{"page": 1}]},
+            {"redact_boxes": [{"page": 1, "rect": [0, 0, 500, 500]}]},
+            {"redact_boxes": [{"page": 1, "rect": [5, 5, 5, 5]}]},
+        ):
             with self.subTest(options=options):
                 self.assert_failed_cleanly(self.job("redact", options=options))
 
     def test_redaction_invalid_box_page_cannot_silently_succeed(self):
         for page in (0, 99, True):
             with self.subTest(page=page):
-                job = self.job("redact", options={"redact_text": "Preserved native text",
-                               "redact_boxes": [{"page": page, "rect": [180, 180, 260, 260]}]})
+                job = self.job(
+                    "redact",
+                    options={
+                        "redact_text": "Preserved native text",
+                        "redact_boxes": [{"page": page, "rect": [180, 180, 260, 260]}],
+                    },
+                )
                 self.assert_failed_cleanly(job)
 
     def test_clean_preserves_native_text_and_page_rendering(self):
         job = self.job("clean")
         with pymupdf.open(self.output(job)) as doc, pymupdf.open(self.plain) as source:
             self.assertEqual(len(doc), len(source))
-            for actual, expected in zip(doc, source):
+            for actual, expected in zip(doc, source, strict=True):
                 self.assertEqual(actual.get_text(), expected.get_text())
-                self.assertEqual(actual.get_pixmap(alpha=False).samples,
-                                 expected.get_pixmap(alpha=False).samples)
+                self.assertEqual(
+                    actual.get_pixmap(alpha=False).samples, expected.get_pixmap(alpha=False).samples
+                )
         changes = json.loads(self.output(job, filename="changes.json").read_text())
         self.assertIn("deskew", changes["not_performed"])
 
@@ -473,9 +569,16 @@ class DocumentOperationTests(unittest.TestCase):
     def test_malformed_inputs_fail_atomically_for_document_operations(self):
         path = self.root / "malformed.pdf"
         path.write_bytes(b"%PDF-1.7\nnot a real PDF")
-        for operation, options in (("identify", {}), ("pdfhtml", {}), ("clean", {}),
-                                   ("forms", {}), ("signatures", {}), ("redact", {"redact_text": "x"}),
-                                   ("unlock", {}), ("protect", {"new_password": "Valid-new-password"})):
+        for operation, options in (
+            ("identify", {}),
+            ("pdfhtml", {}),
+            ("clean", {}),
+            ("forms", {}),
+            ("signatures", {}),
+            ("redact", {"redact_text": "x"}),
+            ("unlock", {}),
+            ("protect", {"new_password": "Valid-new-password"}),
+        ):
             with self.subTest(operation=operation):
                 self.assert_failed_cleanly(self.job(operation, path, options))
 
