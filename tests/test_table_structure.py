@@ -4,6 +4,8 @@ import csv
 import hashlib
 import io
 import json
+import re
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -238,6 +240,44 @@ def test_merged_cells_are_rejected_instead_of_splitting_or_dropping_text(tmp_pat
     )
     observed = export_body(tmp_path, "html").split()
     assert sorted(observed) == sorted(["Merged", "Right", "11", "12", "13", "21", "22", "23"])
+
+
+@pytest.mark.parametrize(
+    "kind,include_images",
+    [("html", True), ("html", False), ("md", True), ("md", False), ("txt", False)],
+)
+def test_image_overlap_blocks_projection_even_when_image_export_is_disabled(
+    tmp_path, kind, include_images
+):
+    original = CORPUS / "fixtures/numeric_ruled_rows.pdf"
+    source = tmp_path / "overlap.pdf"
+    with pymupdf.open(original) as doc:
+        # Add a real image occurrence inside the authored table rectangle.
+        # Its geometry must remain relevant when image bytes are excluded.
+        bounds = CONTRACTS["numeric_ruled_rows"]
+        x, y = bounds["authored_column_bounds"][0], bounds["authored_row_bounds"][0]
+        pix = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 2, 2))
+        pix.clear_with(180)
+        doc[0].insert_image((x + 1, y + 1, x + 3, y + 3), pixmap=pix)
+        doc.save(source)
+    output = tmp_path / ("export." + kind)
+    options = {"include_images": include_images} if kind != "txt" else {}
+    with pymupdf.open(source) as doc:
+        result = EXPORTS[kind](doc, output, source.name, options)
+    assert result["tables_exported"] == 0
+    assert any(
+        "overlaps an image" in rejection["reason"]
+        for page in result["table_structure"]
+        for rejection in page["rejected"]
+    )
+    # The frozen text-only Markdown scorer deliberately rejects image syntax.
+    # This boundary check reads the new image-bearing output without changing it.
+    observed = (
+        unescape(re.sub(r"\\(.)", r"\1", output.read_text()))
+        if kind == "md"
+        else export_body(tmp_path, kind)
+    )
+    assert all(value in observed for value in ("0007", "1,234.50", "-90.00", "100%"))
 
 
 @pytest.mark.parametrize("kind", list(EXPORTS))

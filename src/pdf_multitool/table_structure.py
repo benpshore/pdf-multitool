@@ -202,6 +202,10 @@ def project_tables(page, blocks, policy, line_text=_text, allow_projection=True,
         return blocks, report
     consumed, replacements, ruled_bounds = set(), [], []
     try:
+        # Image geometry matters even when an export omits image payloads.
+        image_bounds = [
+            _box(item["bbox"]) for item in page.get_image_info(hashes=False, xrefs=False)
+        ]
         paths = page.get_drawings()
         if len(paths) > MAX_PATHS:
             report["skipped"] = "drawing-path budget exceeded"
@@ -219,9 +223,7 @@ def project_tables(page, blocks, policy, line_text=_text, allow_projection=True,
                     continue
                 try:
                     item = _candidate(native, source, strategy, line_text)
-                    if any(
-                        _intersects(item["bbox"], b["bbox"]) for b in blocks if b.get("type") == 1
-                    ):
+                    if any(_intersects(item["bbox"], box) for box in image_bounds):
                         raise ValueError("candidate overlaps an image occurrence")
                     if consumed.intersection(item["source_line_ids"]):
                         raise ValueError("candidate overlaps an already assigned source occurrence")
