@@ -40,6 +40,7 @@ class BrowserTests(unittest.TestCase):
                 context = browser.new_context(
                     accept_downloads=True, viewport={"width": 390, "height": 844}
                 )
+                context.grant_permissions(["clipboard-read", "clipboard-write"])
                 page = context.new_page()
                 errors = []
                 page.on("pageerror", lambda error: errors.append(str(error)))
@@ -170,31 +171,54 @@ class BrowserTests(unittest.TestCase):
                 expect(page.locator("#run-button")).to_be_enabled(timeout=15000)
                 self.assertEqual(running.state, "cancelled")
                 self.assertEqual(running.results, [])
+                self.assertFalse((running.directory / "part-0001").exists())
                 self.assertEqual(many.read_bytes(), many_bytes)
                 page.select_option("#operation", "rotate")
                 page.locator("#pages").fill("1")
                 page.locator("#run-button").click()
                 expect(page.locator("#results button")).to_have_count(1, timeout=15000)
-                # A completed automatic text download must not repeat when restored.
-                page.select_option("#operation", "text")
-                page.select_option("#text-export", "download")
+                # Test each saved mode against real browser clipboard/download side effects.
                 downloads = []
                 page.on("download", lambda download: downloads.append(download))
-                with page.expect_download() as text_event:
-                    page.locator("#run-button").click()
-                text_download = text_event.value
-                text_bytes = Path(text_download.path()).read_bytes()
-                text_job = list(app.jobs.values())[-1]
-                expect(page.locator("#run-button")).to_be_enabled()
-                page.reload()
-                expect(page.locator("#text-result")).to_be_visible(timeout=15000)
-                expect(page.locator("#run-button")).to_be_enabled()
-                self.assertEqual(page.locator("#extracted-text").input_value(), text_bytes.decode())
-                self.assertEqual(len(downloads), 1)
-                self.assertEqual(
-                    page.evaluate("JSON.parse(sessionStorage.getItem('pdf-workbench-job')).id"),
-                    text_job.id,
-                )
+                for mode in ("clipboard", "download", "view"):
+                    with self.subTest(restored_mode=mode):
+                        page.select_option("#operation", "text")
+                        page.select_option("#text-export", mode)
+                        if mode == "download":
+                            with page.expect_download() as text_event:
+                                page.locator("#run-button").click()
+                            text_bytes = Path(text_event.value.path()).read_bytes()
+                        else:
+                            page.locator("#run-button").click()
+                        expect(page.locator("#text-result")).to_be_visible(timeout=15000)
+                        expect(page.locator("#run-button")).to_be_enabled()
+                        text_job = list(app.jobs.values())[-1]
+                        text = page.locator("#extracted-text").input_value()
+                        if mode == "download":
+                            self.assertEqual(text_bytes.decode(), text)
+                        if mode == "clipboard":
+                            self.assertEqual(page.evaluate("navigator.clipboard.readText()"), text)
+                        download_count = len(downloads)
+                        sentinel = f"Keep clipboard when restoring {mode}"
+                        page.evaluate("text => navigator.clipboard.writeText(text)", sentinel)
+                        self.assertEqual(
+                            page.evaluate(
+                                "JSON.parse(sessionStorage.getItem('pdf-workbench-job')).textMode"
+                            ),
+                            mode,
+                        )
+                        page.reload()
+                        expect(page.locator("#text-result")).to_be_visible(timeout=15000)
+                        expect(page.locator("#run-button")).to_be_enabled()
+                        self.assertEqual(page.locator("#extracted-text").input_value(), text)
+                        self.assertEqual(len(downloads), download_count)
+                        self.assertEqual(page.evaluate("navigator.clipboard.readText()"), sentinel)
+                        self.assertEqual(
+                            page.evaluate(
+                                "JSON.parse(sessionStorage.getItem('pdf-workbench-job')).id"
+                            ),
+                            text_job.id,
+                        )
                 # A stale job response clears recovery metadata and permits new work.
                 page.route(
                     f"**/api/jobs/{text_job.id}",
