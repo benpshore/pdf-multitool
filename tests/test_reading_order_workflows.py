@@ -64,5 +64,16 @@ def test_real_gui_policy_and_unchanged_default_evidence(tmp_path, monkeypatch):
     report = json.loads((output / "report.json").read_text())
     assert len(report["scenarios"]) == 21
     assert report["default_table_failure_reproduced"]
-    assert all(row["matches_selected_policy"] for row in report["scenarios"])
+    assert all(
+        row["matches_selected_policy"] is True
+        for row in report["scenarios"]
+        if row["mode"] != "auto"
+    )
+    assert all(
+        row["matches_selected_policy"] is None
+        and row["known_default_semantic_failure"]
+        and row["matches_original_table_oracle"] is False
+        for row in report["scenarios"]
+        if row["mode"] == "auto"
+    )
     assert all(row["ada_review"] == "not_reviewed" for row in report["scenarios"])

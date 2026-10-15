@@ -56,7 +56,7 @@ def main():
             "columns",
             new_expected["ambiguous_grid_rows"]["column_text"],
         ),
-        (originals, "table_column_operators", "auto", "A1 A2 A3 B1 B2 B3"),
+        (originals, "table_column_operators", "auto", old_expected["table_column_operators"]),
     ]
     fixture_hashes = {}
     for corpus, name, _, _ in cases:
@@ -139,8 +139,9 @@ def main():
                         )
                         target.write_bytes(data)
                     observed = export_body(out, suffix)
+                    historical_default = "A1 A2 A3 B1 B2 B3" if mode == "auto" else None
                     require(
-                        observed == expected,
+                        observed == (historical_default if mode == "auto" else expected),
                         {
                             "case": name,
                             "mode": mode,
@@ -165,7 +166,14 @@ def main():
                             "operation": operation,
                             "expected": expected,
                             "observed": observed,
-                            "matches_selected_policy": True,
+                            "matches_selected_policy": observed == expected
+                            if mode != "auto"
+                            else None,
+                            "matches_preserved_default_behavior": observed == historical_default
+                            if mode == "auto"
+                            else None,
+                            "known_default_semantic_failure": mode == "auto"
+                            and observed != expected,
                             "matches_original_table_oracle": observed == old_expected.get(name)
                             if name in old_expected
                             else None,
