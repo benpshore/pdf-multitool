@@ -1,0 +1,433 @@
+{
+  "engine": [
+    "1.26.7",
+    "1.26.12",
+    null
+  ],
+  "cases": {
+    "positive_reverse": {
+      "policy": "spatial_pair",
+      "raw": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local": [
+        [
+          "ALPHA",
+          "BETA"
+        ]
+      ],
+      "final": [
+        [
+          "ALPHA",
+          "BETA"
+        ]
+      ],
+      "local_changed": true,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    "mixed_directions": {
+      "policy": "retain",
+      "raw": [
+        [
+          "דגבאALPHA"
+        ]
+      ],
+      "local": [
+        [
+          "דגבאALPHA"
+        ]
+      ],
+      "final": [
+        [
+          "דגבאALPHA"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    "mixed_within_word": {
+      "policy": "retain",
+      "raw": [
+        [
+          "BEבאTA",
+          "ALPHA"
+        ]
+      ],
+      "local": [
+        [
+          "BEבאTA",
+          "ALPHA"
+        ]
+      ],
+      "final": [
+        [
+          "BEבאTA",
+          "ALPHA"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    "rotated_90": {
+      "policy": "retain",
+      "raw": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "final": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          0.0,
+          -1.0
+        ],
+        [
+          0.0,
+          -1.0
+        ]
+      ]
+    },
+    "rotated_180": {
+      "policy": "retain",
+      "raw": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "final": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          -1.0,
+          0.0
+        ],
+        [
+          -1.0,
+          0.0
+        ]
+      ]
+    },
+    "rotated_270": {
+      "policy": "retain",
+      "raw": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "final": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "superscript": {
+      "policy": "retain",
+      "raw": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "final": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    "baseline_offset": {
+      "policy": "retain",
+      "raw": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "final": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    "overlap": {
+      "policy": "retain",
+      "raw": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "final": [
+        [
+          "BETA",
+          "ALPHA"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    "paired_alphanumeric": {
+      "policy": "retain",
+      "raw": [
+        [
+          "B1",
+          "A1"
+        ]
+      ],
+      "local": [
+        [
+          "B1",
+          "A1"
+        ]
+      ],
+      "final": [
+        [
+          "B1",
+          "A1"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    "paired_alphabetic_near": {
+      "policy": "spatial_pair",
+      "raw": [
+        [
+          "VALUE",
+          "NAME"
+        ]
+      ],
+      "local": [
+        [
+          "NAME",
+          "VALUE"
+        ]
+      ],
+      "final": [
+        [
+          "NAME",
+          "VALUE"
+        ]
+      ],
+      "local_changed": true,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    "paired_alphabetic_wider": {
+      "policy": "retain",
+      "raw": [
+        [
+          "VALUE",
+          "NAME"
+        ]
+      ],
+      "local": [
+        [
+          "VALUE",
+          "NAME"
+        ]
+      ],
+      "final": [
+        [
+          "VALUE",
+          "NAME"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    "paired_alphabetic_columns": {
+      "policy": "retain",
+      "raw": [
+        [
+          "VALUE",
+          "NAME"
+        ]
+      ],
+      "local": [
+        [
+          "VALUE",
+          "NAME"
+        ]
+      ],
+      "final": [
+        [
+          "NAME"
+        ],
+        [
+          "VALUE"
+        ]
+      ],
+      "local_changed": false,
+      "native_rotation": 0,
+      "directions": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    }
+  }
+}

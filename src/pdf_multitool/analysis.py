@@ -495,6 +495,10 @@ def _order_baseline_pair(block):
     if block.get("type") != 0 or len(lines) != 2:
         return block
     try:
+        if "bbox" in block and (
+            len(block["bbox"]) != 4 or not all(math.isfinite(v) for v in block["bbox"])
+        ):
+            return block
         spans = []
         for line in lines:
             if tuple(line["dir"]) != (1, 0) or line["wmode"] != 0 or len(line["spans"]) != 1:
