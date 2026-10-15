@@ -92,6 +92,69 @@ class HTMLIntegrationTests(unittest.TestCase):
             self.assertEqual(document[0].get_images(), [])
         self.assertEqual(source.read_bytes(), original)
 
+    def test_renderer_denies_existing_local_css_font_and_attachments(self):
+        from dataclasses import asdict
+
+        from pdf_multitool.core import Limits
+        from pdf_multitool.worker import process
+
+        sentinel = self.root / "sentinel.txt"
+        sentinel.write_text("PRIVATE_ATTACHMENT_SENTINEL")
+        css = self.root / "sentinel.css"
+        css.write_text('h1::after { content: "PRIVATE_CSS_SENTINEL"; }')
+        # A valid font ensures failure cannot be explained by malformed font bytes.
+        font = self.root / "sentinel.ttf"
+        font.write_bytes(pymupdf.Font("helv").buffer)
+        source = self.root / "input.html"
+        source.write_text(
+            f'<link rel="stylesheet" href="{css.as_uri()}">'
+            f'<style>@import url("{css.as_uri()}");'
+            f'@font-face {{font-family: Private; src: url("{font.as_uri()}");}}'
+            "h1 {font-family: Private}</style>"
+            f'<link rel="attachment" href="{sentinel.as_uri()}" title="private">'
+            f'<h1>Public heading</h1><a rel="attachment" href="{sentinel.as_uri()}">'
+            "Attachment</a>"
+        )
+        original = source.read_bytes()
+        out = self.root / "render"
+        out.mkdir()
+        from pdf_multitool.html_resources import DenyAllFetcher
+
+        attempted = []
+        deny = DenyAllFetcher.fetch
+
+        def record(fetcher, url, headers=None):
+            attempted.append(url)
+            return deny(fetcher, url, headers)
+
+        # Exercise the complete production renderer, including write_pdf attachments.
+        with (
+            patch.object(DenyAllFetcher, "fetch", record),
+            patch(
+                "urllib.request.OpenerDirector.open", side_effect=AssertionError("transport")
+            ) as transport,
+        ):
+            result = process(
+                {
+                    "operation": "html",
+                    "inputs": [str(source)],
+                    "names": [source.name],
+                    "options": {},
+                    "workdir": str(out),
+                    "limits": asdict(Limits()),
+                }
+            )
+        transport.assert_not_called()
+        self.assertTrue({css.as_uri(), font.as_uri(), sentinel.as_uri()} <= set(attempted))
+        self.assertTrue(result["warnings"])
+        with pymupdf.open(out / "document.pdf") as pdf:
+            text = "".join(page.get_text() for page in pdf)
+            self.assertIn("Public heading", text)
+            self.assertNotIn("PRIVATE_", text)
+            self.assertEqual(pdf.embfile_count(), 0)
+            self.assertFalse(any(list(page.annots() or []) for page in pdf))
+        self.assertEqual(source.read_bytes(), original)
+
     def test_repagination_renders_generated_image_and_preserves_original(self):
         source = self.root / "source.pdf"
         pixmap = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 12, 12))

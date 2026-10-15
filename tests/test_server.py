@@ -6,6 +6,7 @@ import time
 import unittest
 import urllib.parse
 from pathlib import Path
+from unittest.mock import patch
 
 from pdf_multitool.server import BoundedHTTPServer, Workbench, make_handler
 from tests.fixtures import document
@@ -86,6 +87,34 @@ class RealHTTPTests(unittest.TestCase):
         _, _, original = self.request("GET", f"/api/files/{item['id']}/original")
         self.assertEqual(original, self.pdf)
         self.assertNotIn("path", job["results"][0])
+
+    def test_download_headers_do_not_echo_controls_or_host_mime_types(self):
+        filename = "report\r\nX-Injected: yes\r\n.pdf"
+        status, _, body = self.request(
+            "POST",
+            "/api/files",
+            self.pdf,
+            headers={"X-Filename": urllib.parse.quote(filename)},
+        )
+        self.assertEqual(status, 201)
+        item = json.loads(body)
+        with patch(
+            "mimetypes.guess_type", return_value=("application/pdf\r\nX-Injected: yes", None)
+        ):
+            status, headers, original = self.request("GET", f"/api/files/{item['id']}/original")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "application/pdf")
+        self.assertNotIn("X-Injected", headers)
+        self.assertNotIn("\r", headers["Content-Disposition"])
+        self.assertNotIn("\n", headers["Content-Disposition"])
+        self.assertEqual(original, self.pdf)
+        for path, expected in [
+            ("/", "text/html"),
+            ("/static/app.css", "text/css"),
+            ("/static/app.js", "text/javascript"),
+        ]:
+            with self.subTest(path=path):
+                self.assertEqual(self.request("GET", path, auth=False)[1]["Content-Type"], expected)
 
     def test_delete_and_unknown_routes(self):
         item = self.upload()

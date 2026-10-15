@@ -197,21 +197,67 @@ class RealEngineTests(unittest.TestCase):
         self.assertEqual(job.results, [])
 
     def test_cancel_running_engine(self):
-        many = document(self.root / "many.pdf", 100)
+        import subprocess
+        import sys
+
+        ready = self.root / "engine-started"
+        original = self.a.read_bytes()
         job = Job(
-            "render",
-            [{"id": "1", "name": many.name, "path": str(many)}],
-            {"dpi": 300},
+            "rotate",
+            [{"id": "1", "name": self.a.name, "path": str(self.a)}],
+            {},
             self.root / "out",
         )
-        thread = threading.Thread(target=job.run)
-        thread.start()
-        time.sleep(0.15)
-        job.cancel_event.set()
-        thread.join(timeout=5)
+        # A real child produces an actual PDF before signaling readiness and blocking.
+        # The output is still unpublished: worker.main has not written result.json.
+        script = (
+            "import threading; from pathlib import Path; "
+            "from pdf_multitool import worker; "
+            "original = worker.process; "
+            f"ready = Path({str(ready)!r}); "
+            "worker.process = lambda request: "
+            "(original(request), ready.write_text('started'), threading.Event().wait(30))[0]; "
+            "worker.main()"
+        )
+        spawn = subprocess.Popen
+        children = []
+
+        def controlled_spawn(args, **kwargs):
+            child = spawn([sys.executable, "-c", script], **kwargs)
+            children.append(child)
+            return child
+
+        with patch("pdf_multitool.core.subprocess.Popen", controlled_spawn):
+            thread = threading.Thread(target=job.run)
+            thread.start()
+            try:
+                deadline = time.monotonic() + 10
+                while not ready.exists() and thread.is_alive() and time.monotonic() < deadline:
+                    threading.Event().wait(0.01)
+                self.assertTrue(ready.exists(), "Engine did not signal startup")
+                self.assertEqual(job.state, "running")
+                part = job.directory / "part-0001"
+                outputs = list(part.glob("*.pdf"))
+                self.assertEqual(
+                    len(outputs), 1, "Real engine output must exist before cancellation"
+                )
+                with pymupdf.open(outputs[0]) as partial:
+                    self.assertGreater(len(partial), 0)
+                    self.assertIn("Synthetic title", partial[0].get_text())
+                self.assertFalse((part / "result.json").exists())
+                self.assertEqual(job.results, [])
+            finally:
+                job.cancel_event.set()
+                thread.join(timeout=8)
         self.assertFalse(thread.is_alive(), "Engine process failed to terminate")
         self.assertEqual(job.state, "cancelled")
         self.assertEqual(job.results, [])
+        self.assertEqual(len(children), 1)
+        self.assertIsNotNone(children[0].poll(), "Cancelled child was not reaped")
+        self.assertFalse((job.directory / "part-0001").exists())
+        self.assertEqual(self.a.read_bytes(), original)
+        retry = self.job("rotate", [self.a])
+        self.assertEqual(retry.state, "completed", retry.errors)
 
     def test_supervisor_timeout(self):
         many = document(self.root / "many.pdf", 100)
