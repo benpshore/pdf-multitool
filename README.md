@@ -25,14 +25,23 @@ passing synthetic checks does not establish full product acceptance.
 - Form inspection, supported field creation/filling and flattening
 - Native text/rectangle redaction with post-save checks
 - Local multi-file browser interface, job cancellation and result downloads
+- Unicode text PDF creation, page headers/footers and exact object deduplication
+- pdfplumber text/geometry and candidate-table exports; pikepdf stream optimization
+- Embedded attachment inventory/extraction, Tesseract OCR and bounded planar deskew
+- Additional MuPDF/Ghostscript rendering and shared API/GUI option contracts
 
 Signature-field inspection does not verify or create cryptographic signatures.
-OCR/Docling remains unavailable without a separately verified model set.
+Docling OCR remains unavailable without a separately verified model set. Tesseract
+OCR uses separately installed system language data and is available through its
+own explicitly acknowledged rasterization workflow.
 Optional WeasyPrint conversion has synthetic Linux integration coverage with
 resource loading disabled; it does not promise layout fidelity. Read the limits for
 [forms](docs/FORMS.md), [images](docs/IMAGES.md),
 [archives and exports](docs/ARCHIVES_AND_EXPORTS.md), and
 [local security](docs/SECURITY.md).
+The [toolkit feature matrix](docs/TOOLKIT_FEATURE_MATRIX.md) records implemented,
+partial, unsupported and unqualified scope. The [API reference](docs/API.md)
+describes the actual loopback routes and operation options.
 
 ## Running locally
 

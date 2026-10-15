@@ -27,6 +27,63 @@
     textlayout: { label: 'Export structured text', description: 'Extract text in conservative geometric reading order, with source page boundaries and paragraph joins. No missing symbols are invented.', engine: 'pymupdf', pages: false },
     bundle: { label: 'Package results', description: 'Package completed result files, preserving companion-image paths.', engine: 'pymupdf', pages: false }
   };
+  const additional = {};
+  const advancedControls = new Map();
+
+  function installCapabilities(catalog) {
+    for (const [name, spec] of Object.entries(catalog?.operations || {})) {
+      additional[name] = spec;
+      operations[name] = spec;
+      const option = node('option', '', spec.label);
+      option.value = name;
+      $('operation').append(option);
+    }
+    $('capability-gaps').replaceChildren();
+    for (const gap of catalog?.gaps || []) {
+      $('capability-gaps').append(node('li', '', `${gap.feature}: ${gap.status}. ${gap.reason}`));
+    }
+  }
+
+  function renderAdvancedOptions(op) {
+    const container = $('advanced-options');
+    container.replaceChildren();
+    advancedControls.clear();
+    for (const [name, spec] of Object.entries(additional[op]?.options || {})) {
+      const field = node('div', 'field');
+      const label = node('label', spec.type === 'boolean' ? 'check-label' : 'field-label', spec.label);
+      const input = node(spec.enum ? 'select' : spec.multiline ? 'textarea' : 'input');
+      input.id = `option-${name}`;
+      label.setAttribute('for', input.id);
+      if (spec.enum) {
+        for (const value of spec.enum) {
+          const option = node('option', '', value);
+          option.value = value;
+          input.append(option);
+        }
+      } else if (spec.type === 'boolean') {
+        input.type = 'checkbox';
+        input.checked = spec.default;
+      } else if (spec.type === 'number' || spec.type === 'integer') {
+        input.type = 'number';
+        input.min = spec.minimum ?? '';
+        input.max = spec.maximum ?? '';
+        input.step = spec.type === 'integer' ? '1' : 'any';
+      } else {
+        if (!spec.multiline) input.type = 'text';
+        if (spec.maxLength) input.maxLength = spec.maxLength;
+        if (spec.multiline) input.rows = 8;
+      }
+      input.value = String(spec.default);
+      input.addEventListener('change', refreshControls);
+      if (spec.type === 'boolean') {
+        label.textContent = '';
+        label.append(input, node('span', '', spec.label));
+        field.append(label);
+      } else field.append(label, input);
+      container.append(field);
+      advancedControls.set(name, { input, spec });
+    }
+  }
   let token = '';
   try {
     const fragmentToken = new URLSearchParams(window.location.hash.slice(1)).get('token');
@@ -102,6 +159,7 @@
     return Boolean(value && (value.available === true || value.enabled === true));
   }
   function operationAvailable(op) {
+    if (op === 'render_native' && advancedControls.has('renderer')) return engineAvailable(advancedControls.get('renderer').input.value);
     if (op === 'imagepdf') return engineAvailable('pymupdf') && engineAvailable('pillow');
     if (Object.prototype.hasOwnProperty.call(state.engines, op)) return engineAvailable(op);
     return engineAvailable(operations[op].engine);
@@ -126,12 +184,16 @@
     $('drop-zone').setAttribute('aria-disabled', String($('choose-files').disabled));
     $('operation').disabled = blocked();
     for (const input of $('operation-options').querySelectorAll('input,select,textarea')) input.disabled = blocked();
-    $('run-button').disabled = !state.ready || blocked() || !count || unavailable || (op === 'merge' && count < 2) || (op === 'compress' && !$('allow-lossy').checked);
+    const requiresFiles = additional[op]?.inputs !== 0;
+    const rasterAccepted = !advancedControls.has('allow_rasterize') || advancedControls.get('allow_rasterize').input.checked;
+    $('run-button').disabled = !state.ready || blocked() || (requiresFiles && !count) || unavailable || !rasterAccepted || (op === 'merge' && count < 2) || (op === 'compress' && !$('allow-lossy').checked);
     let hint = `${count} selected file${count === 1 ? '' : 's'} · New files only`;
     if (!state.ready) hint = 'Connecting to the local workspace…';
     else if (state.uploading) hint = 'Adding files to the workspace…';
     else if (state.busy) hint = 'Working locally. You can cancel below.';
     else if (unavailable) hint = 'This engine is unavailable. See About & engines below.';
+    else if (!rasterAccepted) hint = 'Confirm rasterization and possible content loss to continue.';
+    else if (!requiresFiles) hint = 'Create a new document from the text above.';
     else if (!count) hint = 'Add and select files to begin.';
     else if (op === 'merge' && count < 2) hint = 'Select at least two PDFs or images to merge.';
     else if (op === 'compress' && !$('allow-lossy').checked) hint = 'Confirm PDF rewriting and possible quality loss to continue.';
@@ -140,6 +202,7 @@
   function refreshOperation() {
     const op = $('operation').value;
     const effective = effectiveOperation();
+    renderAdvancedOptions(op);
     $('operation-description').textContent = operations[effective].description + (effective !== op ? ' Exports the whole document.' : '');
     $('run-label').textContent = effective === 'text' && $('text-export').value !== 'clipboard' ? 'Extract text' : operations[effective].label;
     $('pages-field').hidden = !operations[effective].pages;
@@ -148,7 +211,7 @@
     $('compression-field').hidden = op !== 'compress';
     $('ocr-field').hidden = op !== 'docling';
     $('text-export-field').hidden = op !== 'text';
-    $('password-field').hidden = ['html', 'imagepdf'].includes(op);
+    $('password-field').hidden = ['html', 'imagepdf', 'create'].includes(op);
     $('new-password-field').hidden = op !== 'protect';
     $('forms-field').hidden = op !== 'forms';
     $('redaction-field').hidden = op !== 'redact';
@@ -382,11 +445,14 @@
     notice(''); renderFiles();
     $('output-panel').hidden = false; $('results').replaceChildren(); $('job-warnings').replaceChildren(); $('job-errors').replaceChildren(); $('job-warnings').hidden = true; $('job-errors').hidden = true; $('text-result').hidden = true; $('extracted-text').value = '';
     $('job-status').classList.remove('is-error'); $('job-message').textContent = 'Starting…'; $('job-percent').textContent = ''; $('job-progress').value = 0; $('cancel-job').hidden = true;
-    const options = { pages, rotation: Number($('rotation').value), dpi: Number($('dpi').value), compress_profile: $('compress-profile').value, allow_lossy: $('allow-lossy').checked, ocr: $('ocr').checked };
+    const options = additional[operation] ? (operations[operation].pages ? { pages } : {}) : { pages, rotation: Number($('rotation').value), dpi: Number($('dpi').value), compress_profile: $('compress-profile').value, allow_lossy: $('allow-lossy').checked, ocr: $('ocr').checked };
+    for (const [name, { input, spec }] of advancedControls) {
+      options[name] = spec.type === 'boolean' ? input.checked : ['integer', 'number'].includes(spec.type) ? Number(input.value) : input.value;
+    }
     if (['markdown', 'textlayout'].includes(operation)) options.skip_repeated_margins = $('skip-margins').checked;
     let rawForm = null;
     try {
-      if ($('document-password').value) options.password = $('document-password').value;
+      if (operation !== 'create' && $('document-password').value) options.password = $('document-password').value;
       if (operation === 'protect') {
         options.new_password = $('new-password').value;
         if (new TextEncoder().encode(options.new_password).length < 8) throw new Error('Use a new password of at least 8 UTF-8 bytes.');
@@ -405,7 +471,7 @@
       // rather than silently collapsing them in the browser first.
       const encodedOptions = JSON.stringify(options);
       const optionsBody = rawForm ? encodedOptions.slice(0, -1) + ',' + JSON.stringify(rawForm.key) + ':' + rawForm.source + '}' : encodedOptions;
-      const body = '{"operation":' + JSON.stringify(operation) + ',"files":' + JSON.stringify(selectedFiles().map(file => file.id)) + ',"options":' + optionsBody + '}';
+      const body = '{"operation":' + JSON.stringify(operation) + ',"files":' + JSON.stringify(additional[operation]?.inputs === 0 ? [] : selectedFiles().map(file => file.id)) + ',"options":' + optionsBody + '}';
       state.job = await json('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
       $('document-password').value = ''; $('new-password').value = '';
       if (operation === 'forms') $('form-values').value = '';
@@ -581,6 +647,7 @@
     try {
       const [status, files] = await Promise.all([json('/api/status'), json('/api/files')]);
       state.engines = status.engines || {};
+      installCapabilities(status.capabilities);
       const limits = status.limits || {};
       const fileLimit = Number(limits.max_files || limits.files || 200);
       state.maxFiles = Number.isFinite(fileLimit) && fileLimit > 0 ? Math.min(200, Math.floor(fileLimit)) : 200;

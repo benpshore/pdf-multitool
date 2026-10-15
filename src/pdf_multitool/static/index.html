@@ -43,6 +43,7 @@
           </select>
           <p id="operation-description" class="operation-description">Combine selected PDFs and supported images in the order shown.</p>
           <div id="operation-options" class="operation-options">
+            <div id="advanced-options"></div>
             <div id="password-field" class="field"><label class="field-label" for="document-password">Document password <span>if required</span></label><input id="document-password" type="password" autocomplete="off"><p class="field-help">One password applies to all selected PDFs; different passwords in one job are not supported. Kept in memory for this operation only. Outputs are unencrypted unless you use Protect PDF.</p></div>
             <div id="new-password-field" class="field" hidden><label class="field-label" for="new-password">New PDF password</label><input id="new-password" type="password" autocomplete="new-password" minlength="8"><p class="field-help">AES-256. Use 8–127 UTF-8 bytes. Keep this password yourself.</p></div>
             <div id="forms-field" class="field" hidden>
@@ -62,6 +63,7 @@
           </div>
           <div class="run-area"><button id="run-button" class="button primary" type="button" disabled><span id="run-label">Merge PDFs</span><span aria-hidden="true">↗</span></button><p id="run-hint" class="run-hint">Add and select files to begin.</p></div>
           <details class="engine-details"><summary><span class="status-dot" aria-hidden="true"></span>About &amp; engines<span id="engine-summary" class="subtle">Checking…</span></summary><ul id="engine-list" class="engine-list"></ul></details>
+          <details class="engine-details"><summary>Feature availability &amp; limits</summary><ul id="capability-gaps" class="engine-list"></ul></details>
         </section>
       </div>
 

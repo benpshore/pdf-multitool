@@ -129,6 +129,25 @@ def parser() -> argparse.ArgumentParser:
             )
         if operation == "docling":
             cmd.add_argument("--no-ocr", dest="ocr", action="store_false")
+    from .catalog import OPERATIONS
+
+    for operation, contract in OPERATIONS.items():
+        cmd = commands.add_parser(operation, help=contract["label"])
+        cmd.add_argument("inputs", nargs="+" if contract["inputs"] else "*", type=Path)
+        cmd.add_argument("-o", "--output", type=Path, default=Path("output"))
+        if contract["inputs"]:
+            cmd.add_argument("--ask-password", action="store_true")
+        if contract["pages"]:
+            cmd.add_argument("--pages", default="")
+        for key, spec in contract["options"].items():
+            kwargs = {"default": spec["default"], "help": spec["label"]}
+            if spec["type"] == "boolean":
+                kwargs["action"] = "store_true"
+            else:
+                kwargs["type"] = {"number": float, "integer": int}.get(spec["type"], str)
+                if "enum" in spec:
+                    kwargs["choices"] = spec["enum"]
+            cmd.add_argument("--" + key.replace("_", "-"), **kwargs)
     return root
 
 
@@ -187,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
                                 raise JobError("Folder intake exceeds the file-count limit")
             else:
                 candidates.append(candidate)
-        paths = validate_inputs(candidates)
+        paths = [] if args.command == "create" and not candidates else validate_inputs(candidates)
         args.output.mkdir(parents=True, exist_ok=True)
         files = [
             {"id": str(i), "name": path.name, "path": str(path)} for i, path in enumerate(paths)

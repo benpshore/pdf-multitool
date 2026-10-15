@@ -12,6 +12,34 @@ from pathlib import Path
 from .core import JobError, parse_pages, safe_name
 
 
+def _uid_task_count() -> int:
+    """RLIMIT_NPROC counts all threads of a UID, including the user's browser.
+
+    Reserve a finite amount of additional headroom from this snapshot. Other
+    same-UID programs can consume it; exhausted capacity still fails closed.
+    This is a per-UID ceiling in a worker, not a per-job cgroup claim.
+    """
+    if sys.platform != "linux":
+        return 0
+    total = 0
+    for directory in Path("/proc").iterdir():
+        if not directory.name.isdigit():
+            continue
+        try:
+            if directory.stat().st_uid != os.getuid():
+                continue
+            with (directory / "status").open() as file:
+                status = file.read(8192)
+            for line in status.splitlines():
+                if line.startswith("Threads:"):
+                    total += int(line.split()[1])
+        except FileNotFoundError, ProcessLookupError:
+            continue
+        if total > 4096:
+            raise JobError("Too many existing user tasks to reserve worker process capacity")
+    return total
+
+
 def _limits(config: dict, operation: str) -> None:
     if os.name != "posix":
         return  # Parent still provides time/output/cancellation bounds.
@@ -27,6 +55,7 @@ def _limits(config: dict, operation: str) -> None:
         (resource.RLIMIT_FSIZE, config["max_output_bytes"]),
         (resource.RLIMIT_NOFILE, 512),
         (resource.RLIMIT_CORE, 0),
+        (resource.RLIMIT_NPROC, _uid_task_count() + config["max_processes"]),
     ]:
         _, hard = resource.getrlimit(kind)
         cap = value if hard == resource.RLIM_INFINITY else min(value, hard)
@@ -272,6 +301,12 @@ def _insert_selected_pdf(destination, source, selected: list[int]) -> list[str]:
 
 
 def process(request: dict) -> dict:
+    from .catalog import OPERATIONS
+
+    if request["operation"] in OPERATIONS:
+        from .extended import process as process_extended
+
+        return process_extended(request)
     operation, options = request["operation"], request["options"]
     paths = [Path(p).resolve(strict=True) for p in request["inputs"]]
     names = request["names"]
@@ -758,6 +793,9 @@ def process(request: dict) -> dict:
                 max_num_pages=max_pages,
                 max_file_size=request["limits"]["max_file_bytes"],
             )
+            status = str(getattr(result.status, "value", result.status)).lower()
+            if status != "success":
+                raise JobError(f"Docling conversion did not complete: {status}")
             out = workdir / "document.json"
             out.write_text(
                 json.dumps(result.document.export_to_dict(), ensure_ascii=False, indent=2),
@@ -785,8 +823,12 @@ def main() -> None:
     workdir = Path(request["workdir"])
     try:
         _limits(request["limits"], request["operation"])
+        from .isolation import install
+
+        isolation = install()
         sys.addaudithook(_deny_network)
         result = process(request)
+        result["isolation"] = isolation
     except Exception as exc:
         result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:2000]}
     (workdir / "result.json").write_text(json.dumps(result), encoding="utf-8")

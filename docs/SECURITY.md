@@ -59,9 +59,33 @@ machine with no valuable data and no network.
 ## Important limits
 
 The Python audit hook rejects Python socket connection/name-resolution calls.
-It is **not OS-level network isolation**: native libraries and subprocesses can
-bypass Python audit hooks. No native network namespace/seccomp sandbox was proven.
+Linux workers now also require libseccomp and install native syscall filters before
+document parsing. Socket creation/connection, socketcall, io_uring setup and
+process-group escape syscalls are denied; filters survive helper exec. The
+worker receives no socket descriptors. Bounded probes test libc socket denial,
+helper inheritance and setsid denial. This is a syscall restriction, **not a
+complete sandbox**. Filesystem access by native libraries is not isolated.
+The cloud host denied Bubblewrap namespace setup and returned ENOSYS for
+Landlock. No native filesystem isolation or namespace protection is claimed.
 Docling remains disabled without a verified model set; do not relax that gate.
+
+Linux RLIMIT_NPROC counts all threads sharing a UID, including a local browser.
+Each worker snapshots that count (refusing counts above 4,096) and sets a hard
+ceiling at the snapshot plus 64 additional tasks, capped by inherited limits.
+This bounds forks/threads for an unprivileged worker without rejecting an already
+running browser. It is not a per-job cgroup: other user processes can consume the
+headroom, causing a controlled failure. Root can bypass RLIMIT_NPROC; root
+execution is not qualified. Tests use a zero-child ceiling and one attempted
+fork, not a fork bomb. No unbounded host attack is used.
+
+Supervisor deadlines now cover nonblocking stdin delivery as well as engine
+execution. Version queries have bounded time and diagnostic capture. Worker
+results use bounded strict JSON, and symlink outputs are rejected before path
+resolution. New tool workflows share the existing atomic per-input publication,
+cancellation and quota guards. Embedded attachments have generated `.bin` output
+names and are never executed. CSV formula prefixes are escaped while the JSON
+table export retains original cells. Tesseract receives allowlisted scalar
+arguments and language-code syntax, never user-supplied config paths or shell code.
 
 The model manifest format is an operator-supplied record. Matching entries and
 local SHA-256 checks do not themselves authenticate an upstream publisher or

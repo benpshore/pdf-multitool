@@ -300,12 +300,15 @@ def make_handler(app: Workbench):
                 if path == "/api/status":
                     from dataclasses import asdict
 
+                    from .catalog import capabilities
+
                     self.send_json(
                         {
                             "engines": app.engine_status,
                             "limits": asdict(app.limits),
                             "mode": "local-development",
                             "storage": "temporary-session",
+                            "capabilities": capabilities(app.engine_status),
                         }
                     )
                 elif path == "/api/files":
@@ -499,7 +502,9 @@ def make_handler(app: Workbench):
                     if (
                         not isinstance(ids, list)
                         or not all(isinstance(v, str) for v in ids)
-                        or not 1 <= len(ids) <= app.limits.max_files
+                        or not (0 if data.get("operation") == "create" else 1)
+                        <= len(ids)
+                        <= app.limits.max_files
                         or len(set(ids)) != len(ids)
                     ):
                         raise JobError("Choose distinct files for this job")
