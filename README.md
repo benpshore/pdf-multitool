@@ -1,10 +1,68 @@
-# pdf-multitool
+# PDF Multitool
 
-pdf-multitool
+A local Python PDF workbench with a browser UI and scriptable CLI. Processing runs
+on the machine hosting Python. This is a development prototype, not an
+internet-hosted service or browser-local WASM build.
 
-## Checks
+## Draft import status
 
-Run these before opening a PR. CI runs the same ones.
+This imports the Python reference source into the repository's `src/` layout.
+The declared dependencies now have a resolved lock. Python 3.14 qualification,
+artifact provenance, check results and remaining limits are recorded in
+[the qualification report](docs/PYTHON314_QUALIFICATION.md) and
+[source and runtime provenance](docs/provenance.md). This remains a draft;
+passing synthetic checks does not establish full product acceptance.
+
+## Capabilities
+
+- Batch PDF merge, split, extract and rotate
+- Bounded JPEG, PNG and JPEG2000 analysis and image-to-PDF conversion
+- PDF page, text, font, form and signature-field inspection
+- Poppler rendering/text extraction and explicitly acknowledged Ghostscript rewrite
+- HTML, Markdown and structured text export
+- ZIP/TAR/gzip intake and ZIP/TAR.GZ result packaging
+- Password authentication, AES-256 protection and unlocking
+- Form inspection, supported field creation/filling and flattening
+- Native text/rectangle redaction with post-save checks
+- Local multi-file browser interface, job cancellation and result downloads
+
+Signature-field inspection does not verify or create cryptographic signatures.
+OCR/Docling remains unavailable without a separately verified model set.
+Optional WeasyPrint conversion has synthetic Linux integration coverage with
+resource loading disabled; it does not promise layout fidelity. Read the limits for
+[forms](docs/FORMS.md), [images](docs/IMAGES.md),
+[archives and exports](docs/ARCHIVES_AND_EXPORTS.md), and
+[local security](docs/SECURITY.md).
+
+## Running locally
+
+The CLI entry point is `pdf-multitool`; `python -m pdf_multitool` is equivalent
+inside a correctly provisioned Python >=3.14 environment. Install the locked
+environment, then inspect engine availability:
+
+```sh
+uv sync --locked
+uv run --locked pdf-multitool doctor
+uv run --locked pdf-multitool gui
+uv run --locked pdf-multitool merge first.pdf second.pdf -o output
+uv run --locked pdf-multitool split document.pdf --pages '1-3;4;5-7'
+```
+
+Poppler's `pdftotext` and `pdftoppm` provide text extraction and rendering;
+Ghostscript provides the explicitly acknowledged compression operation. These
+are separate system tools. Image support uses the `images` extra. HTML-to-PDF
+and repagination use `uv sync --locked --extra html` and system Pango libraries.
+CI provisions these dependencies on Ubuntu; other platforms remain unqualified.
+Installing the `ocr` extra alone does not enable model downloads or satisfy the
+Docling model verification gate.
+
+Open the printed loopback URL on the same machine. The server is single-user;
+never expose it through a public tunnel or reverse proxy. Download temporary GUI
+results before closing the server. Originals on disk are not overwritten.
+
+## Repository checks and release policy
+
+Run these before opening a merge-ready PR. CI runs the same checks:
 
 ```sh
 uv run ruff format && uv run ruff check && uv run pytest && uv audit --preview-features audit-command
@@ -13,6 +71,7 @@ shellcheck scripts/*.sh
 npm run typecheck && npm run test:ts
 ```
 
-The owner (`benpshore`) may push their own work directly to `main` without a PR or passing CI. CI still runs after a push; releases retain their CI gates. Force-push, deletion, and merge commits remain blocked for everyone.
-
-Other accounts must use a squash PR with passing, up-to-date `ci`. Agents must use PRs and CI even when authenticated as the owner (see `AGENTS.md`). GitHub checks the pushing account, so enforcing a human/agent boundary requires separate credentials.
+Agents must use a branch and PR with passing required `ci`, including when
+authenticated as the owner. Main is protected. Every merge to main automatically
+releases under the existing workflows; this draft must not be merged until all
+integration and release gates have been reviewed. Versions come from git tags.

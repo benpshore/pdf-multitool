@@ -156,3 +156,8 @@ pgdata/
 postgres-data/
 *.pgdump
 .docker/
+
+# PDF development runtime and generated outputs
+.runtime/
+.verified/
+test-artifacts/
