@@ -1,0 +1,19 @@
+{
+  "contract": "Chosen horizontal LTR spatial-reading policy, not universal semantic ground truth. For retain cases, the local pair repair must preserve raw parser line order. Existing global ordering is recorded separately.",
+  "cases": {
+    "positive_reverse": {"policy": "spatial_pair", "semantic_status": "Author-chosen ALPHA then BETA; stream emits BETA first; no tags"},
+    "mixed_directions": {"font": "BoundaryDejaVu", "words": ["ALPHA", "אבגד"], "policy": "retain", "semantic_status": "Unshaped mixed Latin/Hebrew glyphs; no linguistically authoritative bidi reading oracle"},
+    "mixed_within_word": {"font": "BoundaryDejaVu", "words": ["ALPHA", "BEאבTA"], "policy": "retain", "semantic_status": "Mixed strong bidi classes; deliberately no semantic reading oracle"},
+    "rotated_90": {"rotation": 90, "policy": "retain"},
+    "rotated_180": {"rotation": 180, "policy": "retain"},
+    "rotated_270": {"rotation": 270, "policy": "retain"},
+    "superscript": {"right_size": 7, "offset": 4, "policy": "retain", "semantic_status": "Raised smaller BETA, not ordinary baseline word pair"},
+    "baseline_offset": {"offset": 1, "policy": "retain"},
+    "overlap": {"gap": -6, "policy": "retain"},
+    "paired_alphanumeric": {"words": ["A1", "B1"], "policy": "retain", "semantic_status": "Author-declared paired cell labels"},
+    "paired_alphabetic_near": {"words": ["NAME", "VALUE"], "policy": "spatial_pair", "semantic_status": "Author-declared paired labels meet the spatial contract but remain semantically ambiguous; acceptance does not prove prose"},
+    "paired_alphabetic_wider": {"words": ["NAME", "VALUE"], "gap": 8, "policy": "retain", "semantic_status": "Author-declared labels just outside the maximum word-gap gate"},
+    "paired_alphabetic_columns": {"words": ["NAME", "VALUE"], "gap": 60, "policy": "retain", "semantic_status": "Wide paired labels; existing global column rules may reorder, which is distinct from the new local repair"}
+  },
+  "unit_contract": "Inject NaN and both infinities into every component of block/line/span bbox and span origin on otherwise qualifying reversed pairs. Local repair must return the original block without reordering. These synthetic dictionary probes do not claim that such coordinates occur in a real parser output."
+}

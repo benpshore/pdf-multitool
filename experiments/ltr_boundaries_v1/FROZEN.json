@@ -1,0 +1,21 @@
+{
+  "base": "1bfbe98740e75b534ce6c9ef87a88aefbf39742d",
+  "font_sha256": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e",
+  "contracts_sha256": "b210c5be6ea652c35e8ef1893386b26eeb96b2cb4e29b5273037ff3b9b983b5a",
+  "builder_sha256": "341d12a4a4c915a71908a70f611cecce470852d601670722bebab873067bcab8",
+  "pdf_sha256": {
+    "positive_reverse": "d5fecd8b6ed6838a178c26884c63f0c0dd83a9c310e1604382daab0673e9816b",
+    "mixed_directions": "0a1dd2da9a60f1d41b31c34ce55311fac234c206ad304125591687a7acd0d3d8",
+    "mixed_within_word": "eab1cd98e2bfca7f95449bf0c07c9400c5318853cf47eab5c6defd353b2870ea",
+    "rotated_90": "977e3b74a0147f77dd256d4444fa79bfcc7b838d117504cb788ef1afdac409c5",
+    "rotated_180": "358c8f1599bf8b76fe5a782bfcb76aa199b53db1f48a9e91c00651ea03dfc7b7",
+    "rotated_270": "5970f5f5d4d2c6e3a9014e8c0e6512a4e302a813f7da71cb63ebe38e43e1ee6b",
+    "superscript": "0289f539486ffa26146de4376643b860a2d39d679c6d87bd569bf80fa2f2cfc2",
+    "baseline_offset": "a539ec9714c8be33c5cd8e9a2cf34c65e14cf606179c1c4618e9af271a84ecd8",
+    "overlap": "30df0b1d03aa844d9e429304030cdc28edb99b433c4686d8f6636c285a983eb3",
+    "paired_alphanumeric": "3121ef5e06b3a7037ffc367eecec8d8dd35ad930139cf25ab6aa90de3095ba77",
+    "paired_alphabetic_near": "899dd6f17a503740ec15134b9141dd8fb1cc4383d2b353301f07910fbff24f6f",
+    "paired_alphabetic_wider": "03518b34e72b72c473e075e5b6033d186640d2a3fec71ae237be5aa952d09a3b",
+    "paired_alphabetic_columns": "5753a10f80622827b0afc5720a18eda020d731adb2ec9858cdc5a6f76b2beea0"
+  }
+}
