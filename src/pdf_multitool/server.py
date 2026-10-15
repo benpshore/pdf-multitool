@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hmac
 import json
-import mimetypes
 import os
 import secrets
 import shutil
@@ -260,8 +259,28 @@ def make_handler(app: Workbench):
         def send_file(self, path: Path, name: str | None = None):
             size = path.stat().st_size
             self.send_response(200)
+            # Only fixed header values; never consult host MIME registrations or echo filenames.
             self.send_header(
-                "Content-Type", mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+                "Content-Type",
+                {
+                    ".pdf": "application/pdf",
+                    ".html": "text/html",
+                    ".htm": "text/html",
+                    ".css": "text/css",
+                    ".js": "text/javascript",
+                    ".json": "application/json",
+                    ".txt": "text/plain",
+                    ".md": "text/markdown",
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".jp2": "image/jp2",
+                    ".jpx": "image/jpx",
+                    ".zip": "application/zip",
+                    ".tar": "application/x-tar",
+                    ".gz": "application/gzip",
+                    ".tgz": "application/gzip",
+                }.get(path.suffix.lower(), "application/octet-stream"),
             )
             self.send_header("Content-Length", str(size))
             if name:
