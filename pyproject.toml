@@ -12,7 +12,7 @@ dependencies = [
 [project.optional-dependencies]
 images = ["Pillow==12.3.0"]
 html = ["weasyprint==70.0"]
-ocr = ["docling==2.138.0"]
+ocr = ["docling[easyocr]==2.138.0"]
 
 [project.scripts]
 pdf-multitool = "pdf_multitool.cli:main"

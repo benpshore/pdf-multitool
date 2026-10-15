@@ -1,10 +1,10 @@
 """Fail-closed model provenance gate; never fetches models at runtime."""
 
 import hashlib
-import json
+import re
 from pathlib import Path
 
-from .core import JobError
+from .core import JobError, strict_json_loads
 
 
 def validate_model_manifest(manifest_path: str | None) -> Path:
@@ -14,26 +14,42 @@ def validate_model_manifest(manifest_path: str | None) -> Path:
             "downloaded automatically."
         )
     manifest = Path(manifest_path).resolve(strict=True)
-    data = json.loads(manifest.read_text(encoding="utf-8"))
+    # A malformed operator-supplied manifest must disable Docling, not crash
+    # workbench startup before the other supported engines can be used.
+    with manifest.open("rb") as stream:
+        encoded = stream.read(1024 * 1024 + 1)
+    if len(encoded) > 1024 * 1024:
+        raise JobError("Model manifest exceeds its 1 MiB limit")
+    data = strict_json_loads(encoded)
+    if not isinstance(data, dict):
+        raise JobError("Model manifest must be a JSON object")
+    if not isinstance(data.get("artifacts_path"), str) or not data["artifacts_path"]:
+        raise JobError("Model manifest needs an artifacts_path string")
+    if not isinstance(data.get("files"), list) or not data["files"]:
+        raise JobError("Model manifest must list every model file")
     root = (manifest.parent / data["artifacts_path"]).resolve(strict=True)
     if not root.is_dir() or not data.get("files"):
         raise JobError("Model manifest must list every model file")
     expected_paths = set()
     for item in data["files"]:
+        if not isinstance(item, dict) or not isinstance(item.get("path"), str) or not item["path"]:
+            raise JobError("Model manifest entries need a file path string")
+        digest = item.get("sha256")
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise JobError("Invalid model SHA-256")
         file = (root / item["path"]).resolve(strict=True)
         if not file.is_relative_to(root) or not file.is_file():
             raise JobError("Model manifest escapes its artifact directory")
         expected_paths.add(file)
-        digest = item["sha256"]
         # Two matching pre-download publications must be recorded by the setup verifier.
         if (
             digest != item.get("upstream_sha256")
-            or not item.get("source_url", "").startswith("https://")
-            or not item.get("checksum_url", "").startswith("https://")
+            or not isinstance(item.get("source_url"), str)
+            or not item["source_url"].startswith("https://")
+            or not isinstance(item.get("checksum_url"), str)
+            or not item["checksum_url"].startswith("https://")
         ):
             raise JobError("Model manifest lacks matching authoritative SHA-256 evidence")
-        if len(digest) != 64:
-            raise JobError("Invalid model SHA-256")
         with file.open("rb") as stream:
             actual = hashlib.file_digest(stream, "sha256").hexdigest()
         if actual != digest:

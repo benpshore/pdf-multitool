@@ -98,12 +98,35 @@ class BrowserTests(unittest.TestCase):
 
                 self.assertIn(source.name, unquote(response.headers["content-disposition"]))
                 popup_event.value.close()
-                # Navigate away/back and reload: retained results remain downloadable.
-                page.goto("about:blank")
-                page.go_back()
-                expect(page.locator("#results button")).to_have_count(1, timeout=15000)
-                page.reload()
-                expect(page.locator("#results button")).to_have_count(1, timeout=15000)
+                # Each restoration must point to the same job/result and download the same bytes.
+                result_name = job.results[0]["name"]
+                result_bytes = Path(job.results[0]["path"]).read_bytes()
+                for navigation in ("back", "reload"):
+                    if navigation == "back":
+                        page.goto("about:blank")
+                        page.go_back()
+                    else:
+                        page.reload()
+                    restored = page.get_by_role(
+                        "button", name=f"Download {result_name}", exact=True
+                    )
+                    expect(restored).to_be_visible(timeout=15000)
+                    self.assertEqual(
+                        page.evaluate("JSON.parse(sessionStorage.getItem('pdf-workbench-job')).id"),
+                        job.id,
+                    )
+                    self.assertEqual(len(app.jobs), 1)
+                    with (
+                        page.expect_download() as restored_event,
+                        page.expect_response(
+                            lambda r: r.url.endswith(job.results[0]["url"])
+                        ) as restored_response,
+                    ):
+                        restored.click()
+                    self.assertEqual(restored_response.value.status, 200)
+                    restored_download = restored_event.value
+                    self.assertEqual(restored_download.suggested_filename, result_name)
+                    self.assertEqual(Path(restored_download.path()).read_bytes(), result_bytes)
                 # Transport failure surfaces an error and allows a real retry.
                 page.route("**/api/jobs", lambda route: route.abort())
                 page.locator("#run-button").click()
@@ -148,6 +171,42 @@ class BrowserTests(unittest.TestCase):
                 self.assertEqual(running.state, "cancelled")
                 self.assertEqual(running.results, [])
                 self.assertEqual(many.read_bytes(), many_bytes)
+                page.select_option("#operation", "rotate")
+                page.locator("#pages").fill("1")
+                page.locator("#run-button").click()
+                expect(page.locator("#results button")).to_have_count(1, timeout=15000)
+                # A completed automatic text download must not repeat when restored.
+                page.select_option("#operation", "text")
+                page.select_option("#text-export", "download")
+                downloads = []
+                page.on("download", lambda download: downloads.append(download))
+                with page.expect_download() as text_event:
+                    page.locator("#run-button").click()
+                text_download = text_event.value
+                text_bytes = Path(text_download.path()).read_bytes()
+                text_job = list(app.jobs.values())[-1]
+                expect(page.locator("#run-button")).to_be_enabled()
+                page.reload()
+                expect(page.locator("#text-result")).to_be_visible(timeout=15000)
+                expect(page.locator("#run-button")).to_be_enabled()
+                self.assertEqual(page.locator("#extracted-text").input_value(), text_bytes.decode())
+                self.assertEqual(len(downloads), 1)
+                self.assertEqual(
+                    page.evaluate("JSON.parse(sessionStorage.getItem('pdf-workbench-job')).id"),
+                    text_job.id,
+                )
+                # A stale job response clears recovery metadata and permits new work.
+                page.route(
+                    f"**/api/jobs/{text_job.id}",
+                    lambda route: route.fulfill(
+                        status=404, content_type="application/json", body='{"error":"Not found"}'
+                    ),
+                )
+                page.reload()
+                expect(page.locator("#job-message")).to_contain_text("no longer available")
+                self.assertIsNone(page.evaluate("sessionStorage.getItem('pdf-workbench-job')"))
+                expect(page.locator("#run-button")).to_be_enabled()
+                page.unroute(f"**/api/jobs/{text_job.id}")
                 page.select_option("#operation", "rotate")
                 page.locator("#pages").fill("1")
                 page.locator("#run-button").click()
