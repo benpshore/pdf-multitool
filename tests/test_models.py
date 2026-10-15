@@ -3,6 +3,9 @@
 import copy
 import hashlib
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -102,8 +105,49 @@ class ModelManifestTests(unittest.TestCase):
         with self.assertRaisesRegex(JobError, "Duplicate"):
             validate_model_manifest(str(self.manifest))
         self.manifest.write_bytes(b" " * (1024 * 1024 + 1))
-        with self.assertRaisesRegex(JobError, "1 MiB"):
+        with self.assertRaisesRegex(JobError, "too large"):
             validate_model_manifest(str(self.manifest))
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "FIFO regression requires POSIX")
+    def test_fifo_manifest_cannot_block_workbench_startup(self):
+        fifo = self.root / "manifest.fifo"
+        os.mkfifo(fifo)
+        alias = self.root / "manifest-link"
+        alias.symlink_to(fifo)
+        code = """
+import os, sys
+from pathlib import Path
+from unittest.mock import patch
+from pdf_multitool.server import Workbench
+os.environ['PDF_MULTITOOL_MODELS'] = sys.argv[1]
+root = Path(sys.argv[2]); root.mkdir()
+with patch('pdf_multitool.core._package', side_effect=lambda _: {'available': True}):
+    app = Workbench(root)
+try:
+    assert not app.engine_status['docling']['available']
+    assert 'regular local file' in app.engine_status['docling']['reason']
+    assert app.engine_status['pymupdf']['available']
+finally:
+    app.close()
+"""
+        for index, path in enumerate((fifo, alias)):
+            with self.subTest(path=path):
+                # A regression blocks only this disposable child; timeout kills/reaps it.
+                result = subprocess.run(  # noqa: S603 -- fixed code and synthetic fixture paths
+                    [sys.executable, "-c", code, str(path), str(self.root / f"session-{index}")],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    @unittest.skipUnless(os.name == "posix", "Symlink setup requires POSIX")
+    def test_manifest_symlink_to_regular_file_retains_existing_policy(self):
+        self.write(self.data)
+        alias = self.root / "manifest-link"
+        alias.symlink_to(self.manifest)
+        self.assertEqual(validate_model_manifest(str(alias)), self.artifacts)
 
     def test_real_worker_rejects_bad_manifest_and_other_engine_still_runs(self):
         source = document(self.root / "synthetic.pdf", 1)

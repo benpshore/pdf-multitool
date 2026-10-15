@@ -4,7 +4,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from .core import JobError, strict_json_loads
+from .core import JobError, read_local_json
 
 
 def validate_model_manifest(manifest_path: str | None) -> Path:
@@ -16,11 +16,9 @@ def validate_model_manifest(manifest_path: str | None) -> Path:
     manifest = Path(manifest_path).resolve(strict=True)
     # A malformed operator-supplied manifest must disable Docling, not crash
     # workbench startup before the other supported engines can be used.
-    with manifest.open("rb") as stream:
-        encoded = stream.read(1024 * 1024 + 1)
-    if len(encoded) > 1024 * 1024:
-        raise JobError("Model manifest exceeds its 1 MiB limit")
-    data = strict_json_loads(encoded)
+    # Resolve the configured alias as before, then reject FIFOs/devices and
+    # last-component symlink swaps with the shared nonblocking regular-file reader.
+    data = read_local_json(manifest, maximum=1024 * 1024)
     if not isinstance(data, dict):
         raise JobError("Model manifest must be a JSON object")
     if not isinstance(data.get("artifacts_path"), str) or not data["artifacts_path"]:

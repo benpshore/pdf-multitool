@@ -208,15 +208,15 @@ class RealEngineTests(unittest.TestCase):
             {},
             self.root / "out",
         )
-        # A real child enters worker.process and signals readiness before blocking.
-        # This tests cancellation/reaping without racing machine-dependent render speed.
+        # A real child produces an actual PDF before signaling readiness and blocking.
+        # The output is still unpublished: worker.main has not written result.json.
         script = (
             "import threading; from pathlib import Path; "
             "from pdf_multitool import worker; "
             "original = worker.process; "
             f"ready = Path({str(ready)!r}); "
             "worker.process = lambda request: "
-            "(ready.write_text('started'), threading.Event().wait(30), original(request))[-1]; "
+            "(original(request), ready.write_text('started'), threading.Event().wait(30))[0]; "
             "worker.main()"
         )
         spawn = subprocess.Popen
@@ -236,6 +236,16 @@ class RealEngineTests(unittest.TestCase):
                     threading.Event().wait(0.01)
                 self.assertTrue(ready.exists(), "Engine did not signal startup")
                 self.assertEqual(job.state, "running")
+                part = job.directory / "part-0001"
+                outputs = list(part.glob("*.pdf"))
+                self.assertEqual(
+                    len(outputs), 1, "Real engine output must exist before cancellation"
+                )
+                with pymupdf.open(outputs[0]) as partial:
+                    self.assertGreater(len(partial), 0)
+                    self.assertIn("Synthetic title", partial[0].get_text())
+                self.assertFalse((part / "result.json").exists())
+                self.assertEqual(job.results, [])
             finally:
                 job.cancel_event.set()
                 thread.join(timeout=8)

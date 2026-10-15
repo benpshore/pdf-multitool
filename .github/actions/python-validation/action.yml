@@ -1,0 +1,40 @@
+name: Validate Python artifacts
+description: Shared native, HTML and OCR configuration validation for CI and releases; never publishes.
+runs:
+  using: composite
+  steps:
+    - name: Install native integration test tools
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --no-install-recommends -y poppler-utils ghostscript pandoc libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core
+    - name: Install locked HTML and OCR dependencies
+      shell: bash
+      run: uv sync --locked --extra html --extra ocr
+    - name: Python formatting and lint
+      shell: bash
+      run: |
+        uv run --locked --extra html --extra ocr ruff format --check
+        uv run --locked --extra html --extra ocr ruff check --output-format=github
+    - name: Python integration tests
+      shell: bash
+      run: uv run --locked --extra html --extra ocr pytest
+    - name: Offline OCR configuration smoke (no model inference)
+      shell: bash
+      run: uv run --locked --extra html --extra ocr python scripts/smoke_docling_configuration.py
+    - name: Audit the complete locked dependency set
+      shell: bash
+      run: uv audit --locked --preview-features audit-command
+    - name: Build wheel and source distribution
+      shell: bash
+      run: uv build
+    - name: Exercise installed wheel HTML and OCR extras
+      shell: bash
+      run: |
+        set -euo pipefail
+        wheel=$(realpath dist/*.whl)
+        locked_requirements=$(mktemp)
+        trap 'rm -f "$locked_requirements"' EXIT
+        uv export --locked --extra html --extra ocr --no-dev --no-emit-project --format requirements-txt > "$locked_requirements"
+        uv run --isolated --no-project --python .venv/bin/python --with-requirements "$locked_requirements" --with "pdf-multitool[html,ocr] @ file://$wheel" python scripts/smoke_installed.py --html
+        uv run --isolated --no-project --python .venv/bin/python --with-requirements "$locked_requirements" --with "pdf-multitool[html,ocr] @ file://$wheel" python scripts/smoke_docling_configuration.py
