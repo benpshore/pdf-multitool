@@ -10,6 +10,7 @@ import threading
 from dataclasses import asdict
 from pathlib import Path
 
+from .catalog import READING_ORDER_OPERATIONS, READING_ORDERS
 from .core import Job, JobError, Limits, engines, read_local_json, run_worker, validate_inputs
 
 
@@ -68,6 +69,16 @@ def parser() -> argparse.ArgumentParser:
             )
         if operation == "bundle":
             cmd.add_argument("--format", choices=("zip", "tar.gz"), default="zip")
+        if operation in READING_ORDER_OPERATIONS:
+            cmd.add_argument(
+                "--reading-order",
+                choices=READING_ORDERS,
+                default="auto",
+                help=(
+                    "Whole-document geometric order; explicit rows/columns require "
+                    "unrotated horizontal LTR text and do not verify table semantics"
+                ),
+            )
         if operation in {"markdown", "textlayout"}:
             cmd.add_argument(
                 "--skip-repeated-margins",

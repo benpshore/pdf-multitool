@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from pdf_multitool.catalog import OPERATIONS
+from pdf_multitool.catalog import OPERATIONS, READING_ORDER_OPERATIONS, READING_ORDERS
 
 LEGACY = [
     "merge",
@@ -130,7 +130,10 @@ def build():
     requests = [
         obj(
             {
-                "operation": {"type": "string", "enum": LEGACY},
+                "operation": {
+                    "type": "string",
+                    "enum": [name for name in LEGACY if name not in READING_ORDER_OPERATIONS],
+                },
                 "files": files,
                 "options": {
                     "type": "object",
@@ -140,6 +143,30 @@ def build():
             ["operation", "files"],
         )
     ]
+    for operation in sorted(READING_ORDER_OPERATIONS):
+        requests.append(
+            obj(
+                {
+                    "operation": {"type": "string", "const": operation},
+                    "files": files,
+                    "options": obj(
+                        {
+                            "reading_order": {
+                                "type": "string",
+                                "enum": list(READING_ORDERS),
+                                "default": "auto",
+                                "description": (
+                                    "Whole-document geometric order. Explicit rows/columns require "
+                                    "unrotated horizontal LTR content; table semantics remain "
+                                    "unverified. Existing other options are listed in docs/API.md."
+                                ),
+                            }
+                        }
+                    ),
+                },
+                ["operation", "files"],
+            )
+        )
     for name, contract in OPERATIONS.items():
         properties = {}
         for key, spec in contract["options"].items():

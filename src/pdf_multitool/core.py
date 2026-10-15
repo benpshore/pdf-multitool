@@ -414,7 +414,12 @@ class Job:
         directory: Path,
         limits: Limits = DEFAULT_LIMITS,
     ):
-        from .catalog import OPERATIONS, validate_options
+        from .catalog import (
+            OPERATIONS,
+            READING_ORDER_OPERATIONS,
+            validate_options,
+            validate_reading_order,
+        )
 
         if operation not in OPERATIONS and operation not in {
             "merge",
@@ -445,6 +450,15 @@ class Job:
             raise JobError("Unknown operation")
         if not isinstance(options, dict):
             raise JobError("Options must be an object")
+        if "reading_order" in options:
+            if operation not in READING_ORDER_OPERATIONS:
+                raise JobError(
+                    "reading_order is supported only for Markdown, structured text and HTML exports"
+                )
+            try:
+                validate_reading_order(options["reading_order"])
+            except ValueError as exc:
+                raise JobError(str(exc)) from exc
         if operation in OPERATIONS:
             options = validate_options(operation, options)
             if (not files and OPERATIONS[operation]["inputs"]) or (

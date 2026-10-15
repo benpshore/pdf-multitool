@@ -4,6 +4,15 @@ from __future__ import annotations
 
 import math
 
+READING_ORDERS = ("auto", "rows", "columns")
+READING_ORDER_OPERATIONS = frozenset({"markdown", "textlayout", "pdfhtml"})
+
+
+def validate_reading_order(value):
+    if not isinstance(value, str) or value not in READING_ORDERS:
+        raise ValueError("reading_order must be auto, rows or columns")
+    return value
+
 
 def field(label, kind="string", default="", **kwargs):
     return {"label": label, "type": kind, "default": default, **kwargs}

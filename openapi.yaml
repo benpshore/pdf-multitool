@@ -1547,7 +1547,6 @@
                   "compress",
                   "docling",
                   "identify",
-                  "pdfhtml",
                   "rename",
                   "clean",
                   "repaginate",
@@ -1556,8 +1555,6 @@
                   "redact",
                   "unlock",
                   "protect",
-                  "markdown",
-                  "textlayout",
                   "unpack",
                   "bundle",
                   "preview"
@@ -1575,6 +1572,117 @@
               "options": {
                 "type": "object",
                 "description": "Existing options are listed in docs/API.md."
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "markdown"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "type": "object",
+                "properties": {
+                  "reading_order": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "rows",
+                      "columns"
+                    ],
+                    "default": "auto",
+                    "description": "Whole-document geometric order. Explicit rows/columns require unrotated horizontal LTR content; table semantics remain unverified. Existing other options are listed in docs/API.md."
+                  }
+                }
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "pdfhtml"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "type": "object",
+                "properties": {
+                  "reading_order": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "rows",
+                      "columns"
+                    ],
+                    "default": "auto",
+                    "description": "Whole-document geometric order. Explicit rows/columns require unrotated horizontal LTR content; table semantics remain unverified. Existing other options are listed in docs/API.md."
+                  }
+                }
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "const": "textlayout"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "type": "object",
+                "properties": {
+                  "reading_order": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "rows",
+                      "columns"
+                    ],
+                    "default": "auto",
+                    "description": "Whole-document geometric order. Explicit rows/columns require unrotated horizontal LTR content; table semantics remain unverified. Existing other options are listed in docs/API.md."
+                  }
+                }
               }
             },
             "required": [

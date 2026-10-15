@@ -227,6 +227,7 @@
     $('compression-field').hidden = op !== 'compress';
     $('ocr-field').hidden = op !== 'docling';
     $('text-export-field').hidden = op !== 'text';
+    $('reading-order-field').hidden = !['markdown', 'textlayout', 'pdfhtml'].includes(effective);
     $('password-field').hidden = ['html', 'imagepdf', 'create'].includes(op);
     $('new-password-field').hidden = op !== 'protect';
     $('forms-field').hidden = op !== 'forms';
@@ -466,6 +467,7 @@
       options[name] = spec.type === 'boolean' ? input.checked : ['integer', 'number'].includes(spec.type) ? Number(input.value) : input.value;
     }
     if (['markdown', 'textlayout'].includes(operation)) options.skip_repeated_margins = $('skip-margins').checked;
+    if (['markdown', 'textlayout', 'pdfhtml'].includes(operation)) options.reading_order = $('reading-order').value;
     let rawForm = null;
     try {
       if (operation !== 'create' && $('document-password').value) options.password = $('document-password').value;

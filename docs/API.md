@@ -90,7 +90,7 @@ annotation/form appearance conversion remain unqualified. See the
 | `html` | none | WeasyPrint inline HTML/CSS to PDF; all resource URLs blocked. |
 | `compress` | `compress_profile=ebook` (`screen`, `printer`, `prepress`), `allow_lossy=true`, `password` | Ghostscript rewrite PDF with content-loss warning and size comparison. |
 | `identify`, `rename` | `password` | Analysis JSON or conservatively named PDF copy. |
-| `pdfhtml`, `markdown`, `textlayout` | `password`, `include_images` where supported, `skip_repeated_margins=false` for structured text/Markdown | HTML/Markdown/TXT, companion images and reports. No general semantic-order guarantee. |
+| `pdfhtml`, `markdown`, `textlayout` | `password`, `include_images` where supported, `skip_repeated_margins=false` for structured text/Markdown, `reading_order=auto` (`auto`, `rows`, `columns`) | HTML/Markdown/TXT, companion images and reports. Explicit order applies to the whole document and requires unrotated horizontal LTR content. No general semantic-order guarantee. |
 | `clean`, `repaginate` | `password` | Structural PDF cleanup, or HTML-mediated reflow PDF. Reflow can alter layout. |
 | `forms` | `password`, `fields` mapping or `create_fields` array, `flatten=false` | Inspection JSON, or verified filled/created/flattened PDF. See [forms](FORMS.md). |
 | `signatures` | `password` | Signature-field report; no cryptographic validation/signing. |

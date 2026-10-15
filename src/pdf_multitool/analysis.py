@@ -20,6 +20,8 @@ from string import punctuation
 
 import pymupdf
 
+from .catalog import validate_reading_order
+
 _ANALYSIS_WARNINGS = [
     (
         "Text-layer detection cannot establish whether text was authored "
@@ -537,7 +539,86 @@ def _order_baseline_pair(block):
         return block
 
 
-def _ordered_blocks(page, include_images=True):
+def _explicit_line_blocks(blocks, rotation):
+    """Keep every occurrence, splitting only into existing parser lines.
+
+    Explicit spatial policies are bounded to unrotated horizontal LTR content.
+    Unsupported direction or malformed geometry must fail, not silently become
+    a different policy. Overlapping objects retain their parser-relative order
+    where no non-crossing whitespace cut exists.
+    """
+    if rotation:
+        raise ValueError("Explicit reading_order requires unrotated pages")
+    result = []
+    for block in blocks:
+        lines = block.get("lines", []) if block.get("type") == 0 else []
+        for item in [block, *lines, *(s for line in lines for s in line.get("spans", []))]:
+            box = item.get("bbox", ())
+            if len(box) != 4 or not all(
+                isinstance(v, (int, float)) and math.isfinite(v) for v in box
+            ):
+                raise ValueError("Explicit reading_order requires finite bounding boxes")
+            if box[2] < box[0] or box[3] < box[1]:
+                raise ValueError("Explicit reading_order requires valid bounding boxes")
+        for line in lines:
+            if tuple(line.get("dir", ())) != (1, 0) or line.get("wmode") != 0:
+                raise ValueError("Explicit reading_order requires horizontal LTR lines")
+            if any(unicodedata.bidirectional(c) in {"R", "AL", "AN"} for c in _line_text(line)):
+                raise ValueError("Explicit reading_order does not support bidirectional text")
+            result.append({**block, "bbox": line["bbox"], "lines": [line]})
+        if not lines:
+            result.append(block)
+    return result
+
+
+def _order_warning(mode):
+    if mode == "auto":
+        return []
+    return [
+        f"Reading order was explicitly selected as {mode}. This applies a geometric "
+        "policy to the whole document, not verified table or prose semantics. "
+        "Mixed layouts, wrapped cells, empty cells and overlapping objects require review."
+    ]
+
+
+def _explicit_reading_order(items, mode):
+    """Partition existing line boxes by the selected axis priority, without recursion.
+
+    Every cut is non-crossing. Choose a balanced legal cut so equal-spaced rows
+    do not hit the legacy inferred-order depth limit. No fixture names, token
+    shapes, numeric content or alleged table classification participate.
+    """
+    pending, result = [items], []
+    axes = (1, 0) if mode == "rows" else (0, 1)
+    while pending:
+        group = pending.pop()
+        if len(group) < 2:
+            result.extend(group)
+            continue
+        for axis in axes:
+            intervals = sorted((b["bbox"][axis], b["bbox"][axis + 2]) for b in group)
+            end, candidates = intervals[0][1], []
+            for index, (start, stop) in enumerate(intervals[1:], 1):
+                if start > end:
+                    candidates.append((abs(index - len(group) / 2), (start + end) / 2))
+                end = max(end, stop)
+            if not candidates:
+                continue
+            cut = min(candidates)[1]
+            before = [b for b in group if b["bbox"][axis + 2] <= cut]
+            after = [b for b in group if b["bbox"][axis] >= cut]
+            if before and after and len(before) + len(after) == len(group):
+                pending.extend([after, before])
+                break
+        else:
+            # No legal geometric distinction: retain all occurrences and their
+            # relative parser order. The explicit-policy warning covers overlaps.
+            result.extend(group)
+    return result
+
+
+def _ordered_blocks(page, include_images=True, reading_order="auto"):
+    reading_order = validate_reading_order(reading_order)
     flags = pymupdf.TEXTFLAGS_DICT
     if not include_images:
         flags &= ~pymupdf.TEXT_PRESERVE_IMAGES
@@ -546,6 +627,9 @@ def _ordered_blocks(page, include_images=True):
     if page.rotation == 0:
         blocks = [_order_baseline_pair(block) for block in blocks]
     width = _number(data.get("width"), page.rect.width)
+    if reading_order != "auto":
+        blocks = _explicit_line_blocks(blocks, page.rotation)
+        return _explicit_reading_order(blocks, reading_order)
     return _reading_order(_split_column_blocks(blocks, width), width)
 
 
@@ -695,13 +779,17 @@ break-after:page}
 def export_html(doc, out_path, original_name, options=None) -> dict:
     """Write one inert HTML file with inline CSS and base64 raster images.
 
-    Supported option: ``include_images`` (bool, default True). No OCR, scripts,
+    Options: ``include_images`` (bool, default True), ``reading_order``
+    (auto, rows or columns; default auto). No OCR, scripts,
     network access, XML parsing, document edits or additional files are involved.
     """
     options = options or {}
-    if not isinstance(options, dict) or not isinstance(options.get("include_images", True), bool):
+    if not isinstance(options, dict) or set(options) - {"include_images", "reading_order"}:
+        raise ValueError("Unsupported HTML export options")
+    if not isinstance(options.get("include_images", True), bool):
         raise ValueError("HTML options must be an object with boolean include_images")
     include_images = options.get("include_images", True)
+    reading_order = validate_reading_order(options.get("reading_order", "auto"))
     analysis = analyze_document(doc, original_name)
     title = analysis["document_title"] or analysis["original_filename"]
     headings = analysis["heading_candidates"]
@@ -711,6 +799,7 @@ def export_html(doc, out_path, original_name, options=None) -> dict:
         for occurrence in candidate["occurrences"]:
             margin_keys.add((occurrence["page"], tuple(occurrence["bbox"])))
     warnings = list(dict.fromkeys(analysis["warnings"] + _HTML_WARNINGS))
+    warnings.extend(_order_warning(reading_order))
     stats = Counter()
     emitted_anchors = set()
     output = Path(out_path)
@@ -749,7 +838,7 @@ def export_html(doc, out_path, original_name, options=None) -> dict:
                 if heading["page"] == page_num and heading["bbox"] is None:
                     stream.write(f'<span class="anchor" id="{heading["anchor"]}"></span>')
                     emitted_anchors.add(heading["anchor"])
-            for block in _ordered_blocks(page, include_images):
+            for block in _ordered_blocks(page, include_images, reading_order):
                 if block.get("type") == 1:
                     stats["image_occurrences_seen"] += 1
                     try:
@@ -839,6 +928,8 @@ def export_html(doc, out_path, original_name, options=None) -> dict:
         stream.write("</ul></details></main></body></html>\n")
     return {
         "format": "html",
+        "reading_order": reading_order,
+        "semantics_verified": False,
         "output_path": str(output),
         "self_contained": True,
         "outputs": [{"path": str(output), "name": output.name, "kind": "html"}],
@@ -893,10 +984,13 @@ _STRUCTURED_WARNINGS = [
 def _structured_options(options, markdown):
     if options is None:
         options = {}
-    allowed = {"include_images", "skip_repeated_margins"} if markdown else {"skip_repeated_margins"}
+    allowed = {"skip_repeated_margins", "reading_order"}
+    if markdown:
+        allowed.add("include_images")
     if not isinstance(options, dict) or set(options) - allowed:
         raise ValueError("Unsupported structured export options")
-    if any(not isinstance(v, bool) for v in options.values()):
+    validate_reading_order(options.get("reading_order", "auto"))
+    if any(not isinstance(v, bool) for k, v in options.items() if k != "reading_order"):
         raise ValueError("Structured export options must be boolean")
     return options
 
@@ -1051,6 +1145,7 @@ def _page_label(info):
 
 def _structured_export(doc, out_path, original_name, options, markdown):
     options = _structured_options(options, markdown)
+    reading_order = options.get("reading_order", "auto")
     include_images = options.get("include_images", True) if markdown else False
     skip_margins = options.get("skip_repeated_margins", False)
     analysis = analyze_document(doc, original_name)
@@ -1062,6 +1157,7 @@ def _structured_export(doc, out_path, original_name, options, markdown):
         for o in candidate["occurrences"]
     }
     warnings = list(dict.fromkeys(analysis["warnings"] + _STRUCTURED_WARNINGS))
+    warnings.extend(_order_warning(reading_order))
     if markdown:
         warnings.extend(
             [
@@ -1130,7 +1226,7 @@ def _structured_export(doc, out_path, original_name, options, markdown):
                         emitted_anchors.add(h["anchor"])
             else:
                 stream.write("[" + label + "]\n\n")
-            for block in _ordered_blocks(page, include_images):
+            for block in _ordered_blocks(page, include_images, reading_order):
                 if block.get("type") == 1:
                     if not include_images:
                         continue
@@ -1245,6 +1341,8 @@ def _structured_export(doc, out_path, original_name, options, markdown):
                 stream.write("- " + _markdown_escape(warning) + "\n")
     return {
         "format": kind,
+        "reading_order": reading_order,
+        "semantics_verified": False,
         "output_path": str(output),
         "outputs": outputs,
         "self_contained": not bool(stats["images_exported"]),
@@ -1272,7 +1370,8 @@ def _structured_export(doc, out_path, original_name, options, markdown):
 def export_markdown(doc, out_path, original_name, options=None) -> dict:
     """Write structured UTF-8 Markdown with safe sibling PNG/JPEG assets.
 
-    Options: include_images (default True), skip_repeated_margins (default False).
+    Options: include_images (default True), skip_repeated_margins (default False),
+    reading_order (auto, rows or columns; default auto).
     The outputs list includes the Markdown file and every linked image. Preserve
     their relative paths when copying or archiving. No OCR or network is used.
     """
@@ -1282,7 +1381,8 @@ def export_markdown(doc, out_path, original_name, options=None) -> dict:
 def export_text(doc, out_path, original_name, options=None) -> dict:
     """Write cleaned UTF-8 text with source page labels and cautious paragraphs.
 
-    Only skip_repeated_margins (default False) is supported. Images and font style
+    Options: skip_repeated_margins (default False), reading_order (auto, rows or
+    columns; default auto). Images and font style
     cannot be represented. Characters, including hyphens, are not reconstructed.
     """
     return _structured_export(doc, out_path, original_name, options, markdown=False)

@@ -549,6 +549,7 @@ def process(request: dict) -> dict:
 
             out = workdir / ("document.md" if operation == "markdown" else "document.txt")
             export_options = {"skip_repeated_margins": options.get("skip_repeated_margins", False)}
+            export_options["reading_order"] = options.get("reading_order", "auto")
             if operation == "markdown":
                 export_options["include_images"] = options.get("include_images", True)
             report = (export_markdown if operation == "markdown" else export_text)(
@@ -584,7 +585,8 @@ def process(request: dict) -> dict:
                 add(report, f"{suggested_stem}-analysis.json")
             else:
                 out = workdir / "document.html"
-                export_report = export_html(doc, out, names[0])
+                export_options = {"reading_order": options.get("reading_order", "auto")}
+                export_report = export_html(doc, out, names[0], export_options)
                 warnings.extend(export_report.get("warnings", []))
                 if operation == "pdfhtml":
                     add(out, f"{suggested_stem}.html")
