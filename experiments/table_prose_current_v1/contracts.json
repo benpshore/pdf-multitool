@@ -1,0 +1,57 @@
+{
+  "protocol": "Frozen before current-main capture; no product correction proposed. Exact whitespace-normalized sequence preserves all tokens and duplicate occurrences.",
+  "recommendation": "Explicit borderless-table row-relationship limitation; no automatic heuristic.",
+  "positive_cases": [
+    "space_explicit",
+    "space_tj",
+    "operator_chunks",
+    "objects_forward",
+    "objects_reverse",
+    "form_repeated",
+    "form_expanded",
+    "prose_row_operators",
+    "prose_column_operators"
+  ],
+  "known_negative_cases": [
+    "table_row_operators",
+    "table_column_operators"
+  ],
+  "scorer_controls": [
+    {
+      "name": "correct_table",
+      "expected": "A1 B1 A2 B2 A3 B3",
+      "observed": "A1 B1 A2 B2 A3 B3",
+      "accept": true
+    },
+    {
+      "name": "column_first_table",
+      "expected": "A1 B1 A2 B2 A3 B3",
+      "observed": "A1 A2 A3 B1 B2 B3",
+      "accept": false
+    },
+    {
+      "name": "column_prose",
+      "expected": "L1 L2 L3 R1 R2 R3",
+      "observed": "L1 L2 L3 R1 R2 R3",
+      "accept": true
+    },
+    {
+      "name": "row_first_prose",
+      "expected": "L1 L2 L3 R1 R2 R3",
+      "observed": "L1 R1 L2 R2 L3 R3",
+      "accept": false
+    },
+    {
+      "name": "lost_occurrence",
+      "expected": "STAMP STAMP",
+      "observed": "STAMP",
+      "accept": false
+    },
+    {
+      "name": "reverse_words",
+      "expected": "ALPHA BETA",
+      "observed": "BETA ALPHA",
+      "accept": false
+    }
+  ]
+}

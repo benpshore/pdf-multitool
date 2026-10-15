@@ -1,0 +1,309 @@
+{
+  "mode": "limitation",
+  "accepted": true,
+  "gates": {
+    "original_tree_intact": true,
+    "precapture_protocol_intact": true,
+    "two_runs_byte_identical": true,
+    "positive_controls": true,
+    "scorer_controls": true,
+    "render_invariance_only": true,
+    "pinned_main": true,
+    "known_table_failures_explicit": true
+  },
+  "scorer_controls": {
+    "correct_table": true,
+    "column_first_table": true,
+    "column_prose": true,
+    "row_first_prose": true,
+    "lost_occurrence": true,
+    "reverse_words": true
+  },
+  "cases": {
+    "space_explicit": {
+      "expected": "ALPHA BETA",
+      "stages": {
+        "parser_block_text": "ALPHA BETA",
+        "split_block_text": "ALPHA BETA",
+        "application_ordered_text": "ALPHA BETA"
+      },
+      "exports": {
+        "txt": "ALPHA BETA",
+        "md": "ALPHA BETA",
+        "html": "ALPHA BETA"
+      },
+      "matches": {
+        "txt": true,
+        "md": true,
+        "html": true
+      }
+    },
+    "space_tj": {
+      "expected": "ALPHA BETA",
+      "stages": {
+        "parser_block_text": "ALPHA BETA",
+        "split_block_text": "ALPHA BETA",
+        "application_ordered_text": "ALPHA BETA"
+      },
+      "exports": {
+        "txt": "ALPHA BETA",
+        "md": "ALPHA BETA",
+        "html": "ALPHA BETA"
+      },
+      "matches": {
+        "txt": true,
+        "md": true,
+        "html": true
+      }
+    },
+    "operator_chunks": {
+      "expected": "ALPHA BETA",
+      "stages": {
+        "parser_block_text": "ALPHA BETA",
+        "split_block_text": "ALPHA BETA",
+        "application_ordered_text": "ALPHA BETA"
+      },
+      "exports": {
+        "txt": "ALPHA BETA",
+        "md": "ALPHA BETA",
+        "html": "ALPHA BETA"
+      },
+      "matches": {
+        "txt": true,
+        "md": true,
+        "html": true
+      }
+    },
+    "objects_forward": {
+      "expected": "ALPHA BETA",
+      "stages": {
+        "parser_block_text": "ALPHA BETA",
+        "split_block_text": "ALPHA BETA",
+        "application_ordered_text": "ALPHA BETA"
+      },
+      "exports": {
+        "txt": "ALPHA BETA",
+        "md": "ALPHA BETA",
+        "html": "ALPHA BETA"
+      },
+      "matches": {
+        "txt": true,
+        "md": true,
+        "html": true
+      }
+    },
+    "objects_reverse": {
+      "expected": "ALPHA BETA",
+      "stages": {
+        "parser_block_text": "BETA ALPHA",
+        "split_block_text": "BETA ALPHA",
+        "application_ordered_text": "ALPHA BETA"
+      },
+      "exports": {
+        "txt": "ALPHA BETA",
+        "md": "ALPHA BETA",
+        "html": "ALPHA BETA"
+      },
+      "matches": {
+        "txt": true,
+        "md": true,
+        "html": true
+      }
+    },
+    "form_repeated": {
+      "expected": "STAMP STAMP",
+      "stages": {
+        "parser_block_text": "STAMP STAMP",
+        "split_block_text": "STAMP STAMP",
+        "application_ordered_text": "STAMP STAMP"
+      },
+      "exports": {
+        "txt": "STAMP STAMP",
+        "md": "STAMP STAMP",
+        "html": "STAMP STAMP"
+      },
+      "matches": {
+        "txt": true,
+        "md": true,
+        "html": true
+      }
+    },
+    "form_expanded": {
+      "expected": "STAMP STAMP",
+      "stages": {
+        "parser_block_text": "STAMP STAMP",
+        "split_block_text": "STAMP STAMP",
+        "application_ordered_text": "STAMP STAMP"
+      },
+      "exports": {
+        "txt": "STAMP STAMP",
+        "md": "STAMP STAMP",
+        "html": "STAMP STAMP"
+      },
+      "matches": {
+        "txt": true,
+        "md": true,
+        "html": true
+      }
+    },
+    "prose_row_operators": {
+      "expected": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "stages": {
+        "parser_block_text": "L1 Left column sentence 1. R1 Right column sentence 1. L2 Left column sentence 2. R2 Right column sentence 2. L3 Left column sentence 3. R3 Right column sentence 3.",
+        "split_block_text": "L1 Left column sentence 1. R1 Right column sentence 1. L2 Left column sentence 2. R2 Right column sentence 2. L3 Left column sentence 3. R3 Right column sentence 3.",
+        "application_ordered_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3."
+      },
+      "exports": {
+        "txt": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+        "md": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+        "html": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3."
+      },
+      "matches": {
+        "txt": true,
+        "md": true,
+        "html": true
+      },
+      "column_chains": {
+        "txt": [
+          "L1",
+          "L2",
+          "L3",
+          "R1",
+          "R2",
+          "R3"
+        ],
+        "md": [
+          "L1",
+          "L2",
+          "L3",
+          "R1",
+          "R2",
+          "R3"
+        ],
+        "html": [
+          "L1",
+          "L2",
+          "L3",
+          "R1",
+          "R2",
+          "R3"
+        ]
+      }
+    },
+    "prose_column_operators": {
+      "expected": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "stages": {
+        "parser_block_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+        "split_block_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+        "application_ordered_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3."
+      },
+      "exports": {
+        "txt": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+        "md": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+        "html": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3."
+      },
+      "matches": {
+        "txt": true,
+        "md": true,
+        "html": true
+      },
+      "column_chains": {
+        "txt": [
+          "L1",
+          "L2",
+          "L3",
+          "R1",
+          "R2",
+          "R3"
+        ],
+        "md": [
+          "L1",
+          "L2",
+          "L3",
+          "R1",
+          "R2",
+          "R3"
+        ],
+        "html": [
+          "L1",
+          "L2",
+          "L3",
+          "R1",
+          "R2",
+          "R3"
+        ]
+      }
+    },
+    "table_row_operators": {
+      "expected": "A1 B1 A2 B2 A3 B3",
+      "stages": {
+        "parser_block_text": "A1 B1 A2 B2 A3 B3",
+        "split_block_text": "A1 B1 A2 B2 A3 B3",
+        "application_ordered_text": "A1 A2 A3 B1 B2 B3"
+      },
+      "exports": {
+        "txt": "A1 A2 A3 B1 B2 B3",
+        "md": "A1 A2 A3 B1 B2 B3",
+        "html": "A1 A2 A3 B1 B2 B3"
+      },
+      "matches": {
+        "txt": false,
+        "md": false,
+        "html": false
+      },
+      "row_pairs": {
+        "txt": {
+          "A1 B1": false,
+          "A2 B2": false,
+          "A3 B3": false
+        },
+        "md": {
+          "A1 B1": false,
+          "A2 B2": false,
+          "A3 B3": false
+        },
+        "html": {
+          "A1 B1": false,
+          "A2 B2": false,
+          "A3 B3": false
+        }
+      }
+    },
+    "table_column_operators": {
+      "expected": "A1 B1 A2 B2 A3 B3",
+      "stages": {
+        "parser_block_text": "A1 A2 A3 B1 B2 B3",
+        "split_block_text": "A1 A2 A3 B1 B2 B3",
+        "application_ordered_text": "A1 A2 A3 B1 B2 B3"
+      },
+      "exports": {
+        "txt": "A1 A2 A3 B1 B2 B3",
+        "md": "A1 A2 A3 B1 B2 B3",
+        "html": "A1 A2 A3 B1 B2 B3"
+      },
+      "matches": {
+        "txt": false,
+        "md": false,
+        "html": false
+      },
+      "row_pairs": {
+        "txt": {
+          "A1 B1": false,
+          "A2 B2": false,
+          "A3 B3": false
+        },
+        "md": {
+          "A1 B1": false,
+          "A2 B2": false,
+          "A3 B3": false
+        },
+        "html": {
+          "A1 B1": false,
+          "A2 B2": false,
+          "A3 B3": false
+        }
+      }
+    }
+  },
+  "scope": "Designed frozen cases only; no corpus accuracy or held-out heuristic claim."
+}
