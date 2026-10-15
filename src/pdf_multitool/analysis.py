@@ -485,12 +485,62 @@ def _reading_order(items, width, depth=0):
     return items
 
 
+def _order_baseline_pair(block):
+    """Repair only two adjacent, typographically identical horizontal LTR words.
+
+    Parser line order can follow reversed text-object emission on one baseline.
+    Keep ambiguous blocks intact; this is not a general reading-order algorithm.
+    """
+    lines = block.get("lines", [])
+    if block.get("type") != 0 or len(lines) != 2:
+        return block
+    try:
+        spans = []
+        for line in lines:
+            if tuple(line["dir"]) != (1, 0) or line["wmode"] != 0 or len(line["spans"]) != 1:
+                return block
+            span = line["spans"][0]
+            text = span["text"]
+            if len(text) < 2 or not all(
+                c.isalpha() and unicodedata.bidirectional(c) == "L" for c in text
+            ):
+                return block
+            box, origin, size = span["bbox"], span["origin"], span["size"]
+            if len(box) != 4 or len(origin) != 2 or len(line["bbox"]) != 4:
+                return block
+            if not all(math.isfinite(v) for v in (*box, *origin, size, *line["bbox"])):
+                return block
+            if size <= 0 or box[2] <= box[0] or box[3] <= box[1] or span["flags"] & 1:
+                return block
+            if any(abs(a - b) > 0.01 for a, b in zip(box, line["bbox"], strict=True)):
+                return block
+            spans.append(span)
+        first, second = spans
+        if any(first[key] != second[key] for key in ("font", "size", "flags", "color")):
+            return block
+        if abs(first["origin"][1] - second["origin"][1]) > 0.01:
+            return block
+        if any(abs(first["bbox"][i] - second["bbox"][i]) > 0.01 for i in (1, 3)):
+            return block
+        left, right = sorted(spans, key=lambda span: span["bbox"][0])
+        gap = right["bbox"][0] - left["bbox"][2]
+        if not 0.2 * left["size"] <= gap <= 0.75 * left["size"]:
+            return block
+        if first is left:
+            return block
+        return {**block, "lines": list(reversed(lines))}
+    except KeyError, TypeError, ValueError, IndexError, OverflowError:
+        return block
+
+
 def _ordered_blocks(page, include_images=True):
     flags = pymupdf.TEXTFLAGS_DICT
     if not include_images:
         flags &= ~pymupdf.TEXT_PRESERVE_IMAGES
     data = page.get_text("dict", flags=flags, sort=False)
     blocks = [b for b in data.get("blocks", []) if b.get("type") in {0, 1}]
+    if page.rotation == 0:
+        blocks = [_order_baseline_pair(block) for block in blocks]
     width = _number(data.get("width"), page.rect.width)
     return _reading_order(_split_column_blocks(blocks, width), width)
 
