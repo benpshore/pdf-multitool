@@ -15,6 +15,10 @@ fully qualified. The [SVG follow-up](SVG_QUALIFICATION_20261015.md) adds a bound
 PY-006 route and records the matrix hashes and version differences.
 The [recoloring follow-up](RECOLOR_QUALIFICATION_20261015.md) adds whole-document
 PY-036 gray/RGB/CMYK conversion; exact colorimetry and print proofing remain unqualified.
+The [structured-grid follow-up](STRUCTURED_TABLE_QUALIFICATION_20261015.md) adds
+bounded automatic ruled cells and explicit borderless spatial bands. Automatic
+borderless semantics, wrapped-cell TXT appearance and Ada's acceptance remain open;
+the 198-family qualification count is unchanged.
 
 | Toolkit and chosen version | Application coverage | Remaining boundaries | Official source |
 | --- | --- | --- | --- |

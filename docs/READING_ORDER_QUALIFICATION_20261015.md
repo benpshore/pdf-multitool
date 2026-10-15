@@ -1,5 +1,10 @@
 # Explicit reading order — merge hold remains
 
+This records the earlier `9e8fa46` flat-order checkpoint. The subsequent
+[structured-grid work](STRUCTURED_TABLE_QUALIFICATION_20261015.md) adds actual
+cells and a bounded automatic path; it does not turn this earlier result into
+table qualification.
+
 The frozen borderless-table cases are untagged. The historical shared exporter
 splits distant same-row cells into separate blocks and prioritizes vertical
 gutters. Both tables become `A1 A2 A3 B1 B2 B3`, while the two-column prose controls

@@ -187,7 +187,7 @@ def main():
                         }
                     )
             page.reload()
-            expect(page.locator("#results button")).to_have_count(2)
+            expect(page.locator("#results button")).to_have_count(len(job.results))
             require(len(app.jobs) == 21, "Reload must not submit a new job")
             page.set_viewport_size({"width": 390, "height": 844})
             page.select_option("#operation", "textlayout")

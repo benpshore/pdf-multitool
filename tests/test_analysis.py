@@ -194,7 +194,13 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(
             result["text_characters_exported"], result["analysis"]["text_layer_characters"]
         )
-        self.assertEqual(set(Path(self.temp.name).iterdir()), {self.output})
+        self.assertEqual(
+            set(Path(self.temp.name).iterdir()),
+            {Path(item["path"]) for item in result["outputs"]},
+        )
+        for item in result["outputs"][1:]:
+            self.assertEqual(item["kind"], "table_structure")
+            self.assertFalse(json.loads(Path(item["path"]).read_text())["semantics_verified"])
         json.dumps(result, allow_nan=False)
 
     def test_escape_text_metadata_and_outline(self):

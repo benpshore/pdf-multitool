@@ -32,12 +32,17 @@ passing synthetic checks does not establish full product acceptance.
 - SVG page export with selectable glyph paths or font-dependent text
 - Whole-document gray, RGB or CMYK conversion with text/geometry verification
 
+Native HTML, Markdown and structured TXT can project supported drawn-rule grids
+into actual cells, with a JSON companion describing geometry and limitations.
+Borderless candidates remain explicitly ambiguous under `auto`. See
+[structured-grid qualification](docs/STRUCTURED_TABLE_QUALIFICATION_20261015.md).
+
 For a known row-based record layout, the `pdfhtml`, `markdown` and `textlayout`
 commands accept `--reading-order rows`; `columns` reads down separated columns.
-The GUI exposes the same choice. The default `auto` policy is unchanged and can
-export borderless tables column by column. Explicit ordering applies to the whole
+The GUI exposes the same choice. The default `auto` policy can still export
+borderless tables column by column. Explicit ordering applies to the whole
 document, requires unrotated horizontal left-to-right content, and does not infer
-table cell identities or guarantee mixed-layout correctness. See
+general table cell identities or guarantee mixed-layout correctness. See
 [reading-order qualification](docs/READING_ORDER_QUALIFICATION_20261015.md).
 
 Signature-field inspection does not verify or create cryptographic signatures.

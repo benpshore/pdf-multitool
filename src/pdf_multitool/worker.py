@@ -561,7 +561,7 @@ def process(request: dict) -> dict:
                     f"{stem}{out.suffix}" if Path(item["path"]) == out else item["name"],
                 )
             warnings.extend(report.get("warnings", []))
-            if len(report["outputs"]) > 1:
+            if any(item["kind"] == "image" for item in report["outputs"]):
                 warnings.append(
                     "Markdown images are companion files. Package these results as ZIP"
                     " or TAR.GZ to preserve their relative links."
@@ -590,6 +590,9 @@ def process(request: dict) -> dict:
                 warnings.extend(export_report.get("warnings", []))
                 if operation == "pdfhtml":
                     add(out, f"{suggested_stem}.html")
+                    for item in export_report["outputs"]:
+                        if Path(item["path"]) != out:
+                            add(Path(item["path"]), item["name"])
                     add(report, f"{suggested_stem}-analysis.json")
                 else:
                     from weasyprint import HTML
@@ -603,6 +606,9 @@ def process(request: dict) -> dict:
                     _validate_pdf(pdf_out)
                     add(pdf_out, f"{suggested_stem}-repaginated.pdf")
                     add(out, f"{suggested_stem}-reflow.html")
+                    for item in export_report["outputs"]:
+                        if Path(item["path"]) != out:
+                            add(Path(item["path"]), item["name"])
                     warnings.append(
                         "Repagination is reconstructed from extracted content. Original "
                         "layout, formulas and complex tables may differ."
