@@ -47,6 +47,7 @@ in process arguments or result records. `pages` is one-based, for example `1,3-5
 
 | Operation | Options (defaults shown) | Outputs and boundaries |
 | --- | --- | --- |
+| `svg` | `pages=""`, `text_mode="paths"` or `text`, `scale=1` (0.25–4) | SVG per selected page, preserving visible crop/rotation, plus a manifest with page geometry and hashes. Paths preserve glyph shapes; text references fonts without embedding them. Maximum 100 pages, 14,400-point side and 16 MiB/page. PDF interactions are not transferred. |
 | `create` | `content=""`, `paper="a4"` or `letter`, `font_size=12`, `margin=36` | Paginated PDF using a bundled Unicode font. Missing glyphs fail. 20,000 characters and 100 pages maximum; no rich-text editor. |
 | `paginate` | `pages=""`, `header=""`, `footer="Page {page} of {pages}"`, `font_size=10`, `margin=24` | New PDF with measured single-line headers/footers; unrotated pages only; overflow fails. Review overlap. |
 | `tables` | `pages=""`, `strategy="lines"` or `text`, `tolerance=3` | JSON with source-page coordinates and candidate cells; CSV per table. CSV formula-leading strings are escaped; JSON retains original strings. No candidates gives partial. |
@@ -64,6 +65,13 @@ character/table/attachment bounds in addition to process time, address-space,
 file-size, descriptor and process limits. Every result is subject to shared
 atomic publication, cancellation and session quotas. These limits do not provide
 native filesystem isolation; see [security boundaries](SECURITY.md).
+
+SVG downloads use `image/svg+xml` with attachment disposition, `nosniff`, and the
+existing restrictive download CSP. The product does not execute or embed them as
+live HTML. Engine-generated SVG is checked for passive elements, internal fragment
+references, bounded embedded PNG/JPEG images and forbidden external resources.
+This output check is not an arbitrary SVG upload sanitizer. See the
+[SVG qualification](SVG_QUALIFICATION_20261015.md) for additional limits.
 
 ## Existing operation options retained
 

@@ -1,0 +1,4078 @@
+{
+  "schema_version": "product-feature-reconciliation/v1",
+  "matrix_sha256": "b4aeb7325765cceabe3d1164119b67036d1a18e8f9b8746b01a20cf625ebdfe5",
+  "acceptance_sha256": "eec52cb604c777de5d0e3ff92384ba4f73ba3ab0d944de86061378afd330914f",
+  "base_commit": "662a5e449d5636adcd1068ec8a3863a3357c607c",
+  "scope": "Conservative product-route crosswalk, not public-symbol enumeration or acceptance execution.",
+  "acceptance_cases_received": false,
+  "proposed_case_count_reported_by_acceptance": 1626,
+  "fully_qualified_families": 0,
+  "features": [
+    {
+      "feature_id": "WP-001",
+      "provider": "WP",
+      "title": "HTML creation",
+      "public_references": [
+        "HTML",
+        "HTML.write_pdf"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py",
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Exact expected text, page sizes and page count; independent render matches designed fixture",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inline HTML/CSS is passed to WeasyPrint under a deny-all resource fetcher. Only existing fixtures are qualified; each CSS, font, link, footnote and pagination variant still needs explicit case binding."
+    },
+    {
+      "feature_id": "WP-002",
+      "provider": "WP",
+      "title": "CSS cascade and media",
+      "public_references": [
+        "CSS",
+        "stylesheets",
+        "media_type",
+        "presentational_hints"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py",
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "User stylesheet priority and print/screen variants produce expected boxes",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inline HTML/CSS is passed to WeasyPrint under a deny-all resource fetcher. Only existing fixtures are qualified; each CSS, font, link, footnote and pagination variant still needs explicit case binding."
+    },
+    {
+      "feature_id": "WP-003",
+      "provider": "WP",
+      "title": "Pagination and page geometry",
+      "public_references": [
+        "HTML.render",
+        "Document.pages",
+        "@page"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py",
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Named pages, first/left/right/blank selectors and units match fixture geometry",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inline HTML/CSS is passed to WeasyPrint under a deny-all resource fetcher. Only existing fixtures are qualified; each CSS, font, link, footnote and pagination variant still needs explicit case binding."
+    },
+    {
+      "feature_id": "WP-004",
+      "provider": "WP",
+      "title": "Headers footers and page counters",
+      "public_references": [
+        "@page margin boxes",
+        "running elements",
+        "named strings"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py",
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Every page has correct section header and page/total counter",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inline HTML/CSS is passed to WeasyPrint under a deny-all resource fetcher. Only existing fixtures are qualified; each CSS, font, link, footnote and pagination variant still needs explicit case binding."
+    },
+    {
+      "feature_id": "WP-005",
+      "provider": "WP",
+      "title": "Fragmentation and footnotes",
+      "public_references": [
+        "break-*",
+        "orphans",
+        "widows",
+        "float:footnote"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py",
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "No missing/duplicated lines across page breaks; footnote reference pairing exact",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inline HTML/CSS is passed to WeasyPrint under a deny-all resource fetcher. Only existing fixtures are qualified; each CSS, font, link, footnote and pagination variant still needs explicit case binding."
+    },
+    {
+      "feature_id": "WP-006",
+      "provider": "WP",
+      "title": "Links and bookmarks",
+      "public_references": [
+        "Document.make_bookmark_tree",
+        "Page.links",
+        "Page.anchors"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py",
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "External and internal links resolve to intended URI/page/point",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inline HTML/CSS is passed to WeasyPrint under a deny-all resource fetcher. Only existing fixtures are qualified; each CSS, font, link, footnote and pagination variant still needs explicit case binding."
+    },
+    {
+      "feature_id": "WP-007",
+      "provider": "WP",
+      "title": "Font shaping and embedding",
+      "public_references": [
+        "FontConfiguration",
+        "@font-face",
+        "full_fonts",
+        "hinting"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py",
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Latin ligatures, Arabic and CJK fixture text and glyph placement correct",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inline HTML/CSS is passed to WeasyPrint under a deny-all resource fetcher. Only existing fixtures are qualified; each CSS, font, link, footnote and pagination variant still needs explicit case binding."
+    },
+    {
+      "feature_id": "WP-008",
+      "provider": "WP",
+      "title": "Images and vector SVG",
+      "public_references": [
+        "img",
+        "embed",
+        "object"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py",
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Alpha, EXIF orientation, SVG text and gradients render correctly",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inline HTML/CSS is passed to WeasyPrint under a deny-all resource fetcher. Only existing fixtures are qualified; each CSS, font, link, footnote and pagination variant still needs explicit case binding."
+    },
+    {
+      "feature_id": "WP-009",
+      "provider": "WP",
+      "title": "Image size and quality controls",
+      "public_references": [
+        "optimize_images",
+        "jpeg_quality",
+        "dpi",
+        "cache"
+      ],
+      "product_status": "implicit_behavior_unqualified",
+      "product_routes": [
+        "html"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Lossless mode preserves decoded image; lossy settings meet per-fixture quality budget",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Some behavior can be supplied by inline HTML/CSS defaults; dedicated image-quality, metadata and XMP option surfaces and their cases are not exposed or qualified."
+    },
+    {
+      "feature_id": "WP-010",
+      "provider": "WP",
+      "title": "Metadata and XMP",
+      "public_references": [
+        "DocumentMetadata",
+        "custom_metadata",
+        "xmp_metadata"
+      ],
+      "product_status": "implicit_behavior_unqualified",
+      "product_routes": [
+        "html"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Unicode titles, author arrays, dates and language reopen as expected",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Some behavior can be supplied by inline HTML/CSS defaults; dedicated image-quality, metadata and XMP option surfaces and their cases are not exposed or qualified."
+    },
+    {
+      "feature_id": "WP-011",
+      "provider": "WP",
+      "title": "Attachments",
+      "public_references": [
+        "Attachment",
+        "attachments",
+        "attachment_relationships"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Extracted attachment hashes and relationships equal supplied assets",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "WP-012",
+      "provider": "WP",
+      "title": "Interactive forms",
+      "public_references": [
+        "pdf_forms",
+        "appearance:auto"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Canonical values, widget appearances and field types agree after reopen",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "WP-013",
+      "provider": "WP",
+      "title": "Tagged accessible PDF",
+      "public_references": [
+        "pdf_tags",
+        "pdf_variant"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Structure tree, reading order, language and alt text match fixtures",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "WP-014",
+      "provider": "WP",
+      "title": "Archival print exchange variants",
+      "public_references": [
+        "pdf_variant",
+        "pdf_version",
+        "output_intent"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Validate each advertised PDF/A, PDF/UA and PDF/X flavor independently",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "WP-015",
+      "provider": "WP",
+      "title": "Hybrid e-invoice composition",
+      "public_references": [
+        "Attachment",
+        "DocumentMetadata.xmp_metadata"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Embedded XML and metadata match independently validated synthetic invoice",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "WP-016",
+      "provider": "WP",
+      "title": "Document subset and copy",
+      "public_references": [
+        "Document.copy",
+        "Document.write_pdf"
+      ],
+      "product_status": "different_provider_only",
+      "product_routes": [
+        "split"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py"
+      ],
+      "remaining_contract": "Page order and references match explicit selection",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "The product can split PDFs with PyMuPDF; WeasyPrint Document.copy is not the selected backend for that route."
+    },
+    {
+      "feature_id": "WP-017",
+      "provider": "WP",
+      "title": "Resource loading controls",
+      "public_references": [
+        "urls.URLFetcher",
+        "allowed_protocols",
+        "no_http_redirects"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py"
+      ],
+      "remaining_contract": "Local allowlisted assets render and prohibited sources generate precise error",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Resource URLs are denied. No allowlisted fetching broker, local-resource bundling or complete nested-format suite is qualified."
+    },
+    {
+      "feature_id": "WP-018",
+      "provider": "WP",
+      "title": "CLI streams diagnostics",
+      "public_references": [
+        "weasyprint",
+        "--info",
+        "--version"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Bytes never contaminated by logs; CLI/Python output semantics equivalent",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "WP-019",
+      "provider": "WP",
+      "title": "CSS layout feature families",
+      "public_references": [
+        "CSS supported-feature sections"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "html",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_html.py",
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Separate documented property/value variants have approved expected layouts",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inline HTML/CSS is passed to WeasyPrint under a deny-all resource fetcher. Only existing fixtures are qualified; each CSS, font, link, footnote and pagination variant still needs explicit case binding."
+    },
+    {
+      "feature_id": "WP-020",
+      "provider": "WP",
+      "title": "Render finishing and low-level painting",
+      "public_references": [
+        "write_pdf finisher",
+        "Page.paint"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Custom finishing preserves valid trailer, tags and page content",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PL-001",
+      "provider": "PL",
+      "title": "Open and metadata",
+      "public_references": [
+        "pdfplumber.open",
+        "PDF.metadata",
+        "PDF.close"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "geometry"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Correct metadata and selected pages; caller-owned stream lifetime preserved",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Bounded character/word/text export and optional character deduplication are exposed. Full object classes, text options, Unicode cases and lifecycle APIs are not mapped."
+    },
+    {
+      "feature_id": "PL-002",
+      "provider": "PL",
+      "title": "Object geometry",
+      "public_references": [
+        "Page.chars",
+        "lines",
+        "rects",
+        "curves",
+        "images",
+        "annots"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "geometry"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Coordinates, matrices, colors and page sizes match independent fixture truth",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Bounded character/word/text export and optional character deduplication are exposed. Full object classes, text options, Unicode cases and lifecycle APIs are not mapped."
+    },
+    {
+      "feature_id": "PL-003",
+      "provider": "PL",
+      "title": "Page crop and filter views",
+      "public_references": [
+        "crop",
+        "within_bbox",
+        "outside_bbox",
+        "filter"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Partial and fully enclosed objects obey boundary policy",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PL-004",
+      "provider": "PL",
+      "title": "Text extraction",
+      "public_references": [
+        "extract_text",
+        "extract_text_simple"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "geometry"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Exact fixture strings/order under documented normalization",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Bounded character/word/text export and optional character deduplication are exposed. Full object classes, text options, Unicode cases and lifecycle APIs are not mapped."
+    },
+    {
+      "feature_id": "PL-005",
+      "provider": "PL",
+      "title": "Words lines and character mapping",
+      "public_references": [
+        "extract_words",
+        "extract_text_lines"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "geometry"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Each output span maps to correct source characters and coordinates",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Bounded character/word/text export and optional character deduplication are exposed. Full object classes, text options, Unicode cases and lifecycle APIs are not mapped."
+    },
+    {
+      "feature_id": "PL-006",
+      "provider": "PL",
+      "title": "Regex text search",
+      "public_references": [
+        "Page.search"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Groups, case settings and returned character spans match fixture",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PL-007",
+      "provider": "PL",
+      "title": "Character deduplication",
+      "public_references": [
+        "Page.dedupe_chars"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "geometry"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Coincident duplicate glyphs removed while nearby legitimate repeats remain",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Bounded character/word/text export and optional character deduplication are exposed. Full object classes, text options, Unicode cases and lifecycle APIs are not mapped."
+    },
+    {
+      "feature_id": "PL-008",
+      "provider": "PL",
+      "title": "Table detection",
+      "public_references": [
+        "find_tables",
+        "find_table",
+        "debug_tablefinder"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "tables"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Ruled and unruled fixture cell coordinates match truth",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Ruled/aligned-text candidates, one tolerance and JSON/CSV export are available. Full strategies/options, merged cells and semantic correctness are not qualified."
+    },
+    {
+      "feature_id": "PL-009",
+      "provider": "PL",
+      "title": "Table text extraction",
+      "public_references": [
+        "extract_table",
+        "extract_tables",
+        "Table.extract"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "tables"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Rows, columns, empty cells and multiline content exact",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Ruled/aligned-text candidates, one tolerance and JSON/CSV export are available. Full strategies/options, merged cells and semantic correctness are not qualified."
+    },
+    {
+      "feature_id": "PL-010",
+      "provider": "PL",
+      "title": "Raster debug views",
+      "public_references": [
+        "Page.to_image",
+        "PageImage.save"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Pixel dimensions, crop selection and antialias flag verified",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PL-011",
+      "provider": "PL",
+      "title": "Visual overlays",
+      "public_references": [
+        "PageImage.draw_*",
+        "debug_tablefinder"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Overlays align with independent object geometry at multiple DPI",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PL-012",
+      "provider": "PL",
+      "title": "Form-value traversal",
+      "public_references": [
+        "PDF.doc catalog",
+        "pdfminer helpers"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Inherited field values and Unicode names match canonical tree",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PL-013",
+      "provider": "PL",
+      "title": "CLI structured output",
+      "public_references": [
+        "pdfplumber --format",
+        "--pages",
+        "--types"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Schema, precision, page indexing and CLI/Python agreement verified",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PL-014",
+      "provider": "PL",
+      "title": "Cache lifetime",
+      "public_references": [
+        "Page.close",
+        "PDF.close"
+      ],
+      "product_status": "internal_behavior_unqualified",
+      "product_routes": [
+        "tables",
+        "geometry"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Resident memory plateaus across thousands of bounded page operations",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Selected pdfplumber pages are closed explicitly. Cache/repeated-load lifetime qualification is incomplete."
+    },
+    {
+      "feature_id": "PL-015",
+      "provider": "PL",
+      "title": "Unsupported editing and OCR",
+      "public_references": [
+        "No generation/modification/OCR API"
+      ],
+      "product_status": "documented_limitation",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Router directs to separately identified capability with provenance",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "pdfplumber editing and OCR remain unsupported by that provider; other product engines do not alter this distinction."
+    },
+    {
+      "feature_id": "PY-001",
+      "provider": "PY",
+      "title": "Document open and formats",
+      "public_references": [
+        "pymupdf.open",
+        "Document.close"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "merge",
+        "split",
+        "rotate",
+        "create",
+        "render_native",
+        "imagepdf"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_images.py"
+      ],
+      "remaining_contract": "PDF and each supported non-PDF format open with correct layout bounds",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF page operations and supported image intake only. Non-PDF formats, arbitrary crop/media boxes, page movement and complete rendering options are not exposed."
+    },
+    {
+      "feature_id": "PY-002",
+      "provider": "PY",
+      "title": "Page construction",
+      "public_references": [
+        "Document.new_page",
+        "insert_page"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "merge",
+        "split",
+        "rotate",
+        "create",
+        "render_native",
+        "imagepdf"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_images.py"
+      ],
+      "remaining_contract": "Count, boxes and content persist after independent reopen",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF page operations and supported image intake only. Non-PDF formats, arbitrary crop/media boxes, page movement and complete rendering options are not exposed."
+    },
+    {
+      "feature_id": "PY-003",
+      "provider": "PY",
+      "title": "Merge split select copy move",
+      "public_references": [
+        "insert_pdf",
+        "insert_file",
+        "select",
+        "copy_page",
+        "move_page",
+        "delete_pages"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "merge",
+        "split",
+        "rotate",
+        "create",
+        "render_native",
+        "imagepdf"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_images.py"
+      ],
+      "remaining_contract": "Page content and permitted links/widgets survive every range variant",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF page operations and supported image intake only. Non-PDF formats, arbitrary crop/media boxes, page movement and complete rendering options are not exposed."
+    },
+    {
+      "feature_id": "PY-004",
+      "provider": "PY",
+      "title": "Page geometry",
+      "public_references": [
+        "set_rotation",
+        "set_cropbox",
+        "set_mediabox",
+        "rotation_matrix"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "merge",
+        "split",
+        "rotate",
+        "create",
+        "render_native",
+        "imagepdf"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_images.py"
+      ],
+      "remaining_contract": "Coordinate roundtrips and all page boxes match fixture",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF page operations and supported image intake only. Non-PDF formats, arbitrary crop/media boxes, page movement and complete rendering options are not exposed."
+    },
+    {
+      "feature_id": "PY-005",
+      "provider": "PY",
+      "title": "Rendering",
+      "public_references": [
+        "Page.get_pixmap",
+        "DisplayList.get_pixmap"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "merge",
+        "split",
+        "rotate",
+        "create",
+        "render_native",
+        "imagepdf"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_images.py"
+      ],
+      "remaining_contract": "Dimensions, alpha, clip, annotation toggle and colors checked",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF page operations and supported image intake only. Non-PDF formats, arbitrary crop/media boxes, page movement and complete rendering options are not exposed."
+    },
+    {
+      "feature_id": "PY-006",
+      "provider": "PY",
+      "title": "SVG page output",
+      "public_references": [
+        "Page.get_svg_image"
+      ],
+      "product_status": "new_bounded_route",
+      "product_routes": [
+        "svg"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/svg.py",
+        "src/pdf_multitool/catalog.py",
+        "src/pdf_multitool/server.py"
+      ],
+      "test_evidence": [
+        "tests/test_svg.py",
+        "tests/test_extended_http.py",
+        "scripts/qualify_svg_workflow.py"
+      ],
+      "remaining_contract": "Rasterized SVG preserves visible features and geometry",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "New bounded SVG route: page selection, uniform scale and paths/text modes. Arbitrary affine transforms, exhaustive fonts/graphics, source-built Poppler comparison, APP-ERROR-V1 and parent visual review remain incomplete."
+    },
+    {
+      "feature_id": "PY-007",
+      "provider": "PY",
+      "title": "Text extraction",
+      "public_references": [
+        "Page.get_text",
+        "TextPage"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "markdown",
+        "textlayout",
+        "pdfhtml",
+        "identify"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_analysis.py",
+        "tests/test_baseline_ltr.py"
+      ],
+      "remaining_contract": "All advertised formats preserve fixture Unicode and coordinates",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Native-text subset is exposed. All extraction flags/formats and semantic reading-order cases are not qualified; frozen table/prose counterexamples remain."
+    },
+    {
+      "feature_id": "PY-008",
+      "provider": "PY",
+      "title": "Word search and selections",
+      "public_references": [
+        "Page.search_for",
+        "Page.get_textbox",
+        "TextPage.search"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "redact"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [
+        "tests/test_document_ops.py"
+      ],
+      "remaining_contract": "Hyphenation, case, ligatures and rotated quads match truth",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Native search is used for exact-text redaction. General selection/quads/search flags are not a public search contract."
+    },
+    {
+      "feature_id": "PY-009",
+      "provider": "PY",
+      "title": "Tables",
+      "public_references": [
+        "Page.find_tables"
+      ],
+      "product_status": "different_provider_only",
+      "product_routes": [
+        "tables"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Cell topology, headings and values match independent fixtures",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Table extraction uses pdfplumber, not PyMuPDF find_tables."
+    },
+    {
+      "feature_id": "PY-010",
+      "provider": "PY",
+      "title": "Drawing extraction",
+      "public_references": [
+        "get_drawings",
+        "get_cdrawings",
+        "cluster_drawings"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "identify"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Fill/stroke/opacity and clipping match known construction",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inspection uses selected font/layout/vector evidence; full drawing/font extraction APIs are not exposed."
+    },
+    {
+      "feature_id": "PY-011",
+      "provider": "PY",
+      "title": "Image inspection and extraction",
+      "public_references": [
+        "get_images",
+        "get_image_info",
+        "get_image_rects",
+        "extract_image"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "markdown",
+        "pdfhtml"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_analysis.py",
+        "tests/test_baseline_ltr.py"
+      ],
+      "remaining_contract": "Repeated image placements and soft masks correctly distinguished",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Companion-image extraction exists. Full image replacement, masks, metadata and codec option coverage remain incomplete."
+    },
+    {
+      "feature_id": "PY-012",
+      "provider": "PY",
+      "title": "Font inspection and extraction",
+      "public_references": [
+        "get_fonts",
+        "extract_font",
+        "Font"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "identify"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Embedded font identities and glyph coverage match fixture",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inspection uses selected font/layout/vector evidence; full drawing/font extraction APIs are not exposed."
+    },
+    {
+      "feature_id": "PY-013",
+      "provider": "PY",
+      "title": "Text insertion and layout",
+      "public_references": [
+        "insert_text",
+        "insert_textbox",
+        "insert_htmlbox",
+        "TextWriter"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "create",
+        "paginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Overflow return semantics and visible baseline positions verified",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Bounded Unicode creation and unrotated headers/footers are exposed. Full text placement, shaping, writing and layout APIs are not."
+    },
+    {
+      "feature_id": "PY-014",
+      "provider": "PY",
+      "title": "Vector and image authoring",
+      "public_references": [
+        "Shape",
+        "draw_*",
+        "insert_image",
+        "show_pdf_page"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "imagepdf"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/images.py"
+      ],
+      "test_evidence": [
+        "tests/test_images.py"
+      ],
+      "remaining_contract": "Scale, rotation, alpha and reused resources render correctly",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Image-to-page construction exists. General vector and image authoring/editing is not exposed."
+    },
+    {
+      "feature_id": "PY-015",
+      "provider": "PY",
+      "title": "Story flow and writing",
+      "public_references": [
+        "Story",
+        "DocumentWriter"
+      ],
+      "product_status": "different_provider_only",
+      "product_routes": [
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Every source block flows once with correct callbacks and links",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Reflow uses WeasyPrint, not PyMuPDF Story."
+    },
+    {
+      "feature_id": "PY-016",
+      "provider": "PY",
+      "title": "Annotations",
+      "public_references": [
+        "Page.add_*_annot",
+        "Annot",
+        "delete_annot"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "forms",
+        "redact"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [
+        "tests/test_document_ops.py"
+      ],
+      "remaining_contract": "Create/update/delete each advertised subtype and flags roundtrip",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Widgets and redaction annotations are used internally. General annotation creation/editing and appearance control are not exposed."
+    },
+    {
+      "feature_id": "PY-017",
+      "provider": "PY",
+      "title": "Redaction",
+      "public_references": [
+        "add_redact_annot",
+        "apply_redactions"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "redact",
+        "forms",
+        "unlock",
+        "protect",
+        "clean"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [
+        "tests/test_document_ops.py",
+        "tests/test_forms.py",
+        "tests/test_form_workflows.py"
+      ],
+      "remaining_contract": "Sensitive text/images absent from objects, extraction and final render",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded document workflows cover a subset. Full annotation/form/encryption/sanitization options, composition and acceptance oracles remain incomplete."
+    },
+    {
+      "feature_id": "PY-018",
+      "provider": "PY",
+      "title": "Forms",
+      "public_references": [
+        "Widget",
+        "Page.widgets",
+        "add_widget",
+        "update"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "redact",
+        "forms",
+        "unlock",
+        "protect",
+        "clean"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [
+        "tests/test_document_ops.py",
+        "tests/test_forms.py",
+        "tests/test_form_workflows.py"
+      ],
+      "remaining_contract": "Types, names, inherited values and appearances independently agree",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded document workflows cover a subset. Full annotation/form/encryption/sanitization options, composition and acceptance oracles remain incomplete."
+    },
+    {
+      "feature_id": "PY-019",
+      "provider": "PY",
+      "title": "Links bookmarks labels",
+      "public_references": [
+        "set_toc",
+        "get_toc",
+        "set_page_labels",
+        "insert_link"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "merge",
+        "split",
+        "pdfhtml"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_page_links.py",
+        "tests/test_link_actions.py"
+      ],
+      "remaining_contract": "Named/remote/internal destinations and labels reopen correctly",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Selected links/destinations are preserved or exported. General outline, action and page-label editing is not exposed."
+    },
+    {
+      "feature_id": "PY-020",
+      "provider": "PY",
+      "title": "Metadata and attachments",
+      "public_references": [
+        "set_metadata",
+        "set_xml_metadata",
+        "embfile_*"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "identify"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Unicode metadata and attachment hashes exact",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Metadata inspection is available. Full metadata/XMP and attachment creation/editing through this provider are not exposed."
+    },
+    {
+      "feature_id": "PY-021",
+      "provider": "PY",
+      "title": "Encryption and permissions",
+      "public_references": [
+        "authenticate",
+        "Document.save encryption"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "redact",
+        "forms",
+        "unlock",
+        "protect",
+        "clean"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [
+        "tests/test_document_ops.py",
+        "tests/test_forms.py",
+        "tests/test_form_workflows.py"
+      ],
+      "remaining_contract": "Expected authorized password opens and policy metadata matches",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded document workflows cover a subset. Full annotation/form/encryption/sanitization options, composition and acceptance oracles remain incomplete."
+    },
+    {
+      "feature_id": "PY-022",
+      "provider": "PY",
+      "title": "Repair and syntax cleanup",
+      "public_references": [
+        "Document.repair",
+        "save clean",
+        "Page.clean_contents"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "redact",
+        "forms",
+        "unlock",
+        "protect",
+        "clean"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [
+        "tests/test_document_ops.py",
+        "tests/test_forms.py",
+        "tests/test_form_workflows.py"
+      ],
+      "remaining_contract": "Repair report plus independently verified content preservation",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded document workflows cover a subset. Full annotation/form/encryption/sanitization options, composition and acceptance oracles remain incomplete."
+    },
+    {
+      "feature_id": "PY-023",
+      "provider": "PY",
+      "title": "Lossless dedup and compression",
+      "public_references": [
+        "save garbage",
+        "deflate",
+        "use_objstms",
+        "compression_effort"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "clean",
+        "deduplicate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py",
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py",
+        "tests/test_document_ops.py"
+      ],
+      "remaining_contract": "Decoded streams/images and logical content invariant; duplicates coalesce",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Garbage collection and exact object/stream deduplication are exposed. Page/content deduplication and every save/compression option remain separate."
+    },
+    {
+      "feature_id": "PY-024",
+      "provider": "PY",
+      "title": "Lossy image recompression",
+      "public_references": [
+        "Document.rewrite_images",
+        "Page.replace_image"
+      ],
+      "product_status": "different_provider_only",
+      "product_routes": [
+        "compress"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py"
+      ],
+      "remaining_contract": "Per-fixture quality/resolution and structure-preservation budgets pass",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Lossy PDF rewrite uses Ghostscript profiles; PyMuPDF image recompression is not exposed."
+    },
+    {
+      "feature_id": "PY-025",
+      "provider": "PY",
+      "title": "Incremental and linear save",
+      "public_references": [
+        "can_save_incrementally",
+        "saveIncr",
+        "save linear"
+      ],
+      "product_status": "different_provider_only",
+      "product_routes": [
+        "optimize"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Incremental byte-prefix preservation and linearization independently checked",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Linearization uses pikepdf/qpdf. Incremental PyMuPDF save is not exposed."
+    },
+    {
+      "feature_id": "PY-026",
+      "provider": "PY",
+      "title": "Optional content layers",
+      "public_references": [
+        "add_ocg",
+        "get_ocgs",
+        "set_oc",
+        "set_layer"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Visibility states render and reopen correctly",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PY-027",
+      "provider": "PY",
+      "title": "Journal checkpoint undo redo",
+      "public_references": [
+        "journal_*"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Undo/redo restores semantic object state and serialized checkpoints",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PY-028",
+      "provider": "PY",
+      "title": "Low-level PDF access",
+      "public_references": [
+        "xref_*",
+        "update_object",
+        "update_stream"
+      ],
+      "product_status": "internal_behavior_unqualified",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Object relationships, filters and byte semantics roundtrip",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Selected low-level/geometry functions are internal helpers, not a public arbitrary-object editing/utility API."
+    },
+    {
+      "feature_id": "PY-029",
+      "provider": "PY",
+      "title": "OCR textpage",
+      "public_references": [
+        "Page.get_textpage_ocr"
+      ],
+      "product_status": "different_provider_only",
+      "product_routes": [
+        "ocr_tesseract"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "OCR uses pinned traineddata; coordinate and text accuracy budgets pass",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Searchable image PDFs use a Tesseract CLI pipeline. PyMuPDF OCR TextPage/pixmap OCR APIs are not the selected route."
+    },
+    {
+      "feature_id": "PY-030",
+      "provider": "PY",
+      "title": "Searchable image PDF",
+      "public_references": [
+        "Pixmap.pdfocr_save",
+        "pdfocr_tobytes"
+      ],
+      "product_status": "different_provider_only",
+      "product_routes": [
+        "ocr_tesseract"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Visual image preserved and OCR layer aligned and extractable",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Searchable image PDFs use a Tesseract CLI pipeline. PyMuPDF OCR TextPage/pixmap OCR APIs are not the selected route."
+    },
+    {
+      "feature_id": "PY-031",
+      "provider": "PY",
+      "title": "Pixmap pixel transforms",
+      "public_references": [
+        "Pixmap",
+        "warp",
+        "shrink",
+        "gamma_with",
+        "invert_irect"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "render_native"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Color, alpha and perspective fixture coordinates meet expected transform",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Pixmap creation/PNG output are internal. General pixel manipulation, alpha/color/mask transforms are not exposed."
+    },
+    {
+      "feature_id": "PY-032",
+      "provider": "PY",
+      "title": "Geometry and utilities",
+      "public_references": [
+        "Rect",
+        "IRect",
+        "Point",
+        "Quad",
+        "Matrix",
+        "Tools",
+        "Archive",
+        "Xml"
+      ],
+      "product_status": "internal_behavior_unqualified",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Inversion, intersections, coordinate conventions and archive lookup verified",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Selected low-level/geometry functions are internal helpers, not a public arbitrary-object editing/utility API."
+    },
+    {
+      "feature_id": "PY-033",
+      "provider": "PY",
+      "title": "Optional product extensions",
+      "public_references": [
+        "pymupdf4llm",
+        "pymupdfpro"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Qualify separately by package/version/license; no core credit from extra",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-001",
+      "provider": "MU",
+      "title": "Native rendering and extraction",
+      "public_references": [
+        "mutool draw",
+        "C rendering/text devices"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Every enabled output format and banded/unbanded path independently checked",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-002",
+      "provider": "MU",
+      "title": "Clean repair and dedup",
+      "public_references": [
+        "mutool clean -g/-gg/-ggg/-gggg"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Each garbage level has expected object and stream behavior",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-003",
+      "provider": "MU",
+      "title": "Compression controls",
+      "public_references": [
+        "mutool clean -z/-e/-f/-i/-Z"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Stream/object/image/font settings preserve intended content",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-004",
+      "provider": "MU",
+      "title": "Encryption rewrite",
+      "public_references": [
+        "mutool clean -D/-E"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Password and permissions validated independently",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-005",
+      "provider": "MU",
+      "title": "Appearance regeneration and outlining",
+      "public_references": [
+        "mutool clean -A/-AA/-v/-S"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Visual output preserved; text loss from outlining explicitly measured",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-006",
+      "provider": "MU",
+      "title": "Document create and merge",
+      "public_references": [
+        "mutool create",
+        "mutool merge"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Page order, resources and geometry correct",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-007",
+      "provider": "MU",
+      "title": "Conversion and extraction",
+      "public_references": [
+        "mutool convert",
+        "mutool extract"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Every enabled exporter and resource byte identity checked",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-008",
+      "provider": "MU",
+      "title": "Inspection search audit",
+      "public_references": [
+        "mutool info",
+        "show",
+        "pages",
+        "grep",
+        "audit"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Known object IDs and defects discovered accurately",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-009",
+      "provider": "MU",
+      "title": "Page tiling cropping color",
+      "public_references": [
+        "mutool poster",
+        "trim",
+        "recolor"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Tiles reconstruct original; crop/color metrics match policy",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-010",
+      "provider": "MU",
+      "title": "Bake and signatures",
+      "public_references": [
+        "mutool bake",
+        "mutool sign"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Baked appearance and test-only signature status independently verified",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-011",
+      "provider": "MU",
+      "title": "Barcode and trace",
+      "public_references": [
+        "mutool barcode",
+        "mutool trace"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Known code payload and trace geometry roundtrip",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-012",
+      "provider": "MU",
+      "title": "Script and C APIs",
+      "public_references": [
+        "mutool run",
+        "Fitz/C API"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Versioned public API surface mapped separately from PyMuPDF",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "MU-013",
+      "provider": "MU",
+      "title": "Linearization discrepancy",
+      "public_references": [
+        "mutool clean -l"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Current 1.28.5 documentation removal represented accurately",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-001",
+      "provider": "PK",
+      "title": "Open repair and validation",
+      "public_references": [
+        "Pdf.open",
+        "check_pdf_syntax",
+        "get_warnings"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "inspectpdf",
+        "optimize"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Recoverable defects recorded and content retained after repair",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Syntax inspection and save validation exist. Complete repair/strict-warning/format cases and error categories are not qualified."
+    },
+    {
+      "feature_id": "PK-002",
+      "provider": "PK",
+      "title": "Page list operations",
+      "public_references": [
+        "Pdf.pages",
+        "add_blank_page",
+        "PageList"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Content, boxes, foreign resources and page order exact",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-003",
+      "provider": "PK",
+      "title": "Geometry overlay underlay",
+      "public_references": [
+        "Page.rotate",
+        "add_overlay",
+        "add_underlay"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Crop/media/rotation and annotation coordinates preserved",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-004",
+      "provider": "PK",
+      "title": "Object and stream editing",
+      "public_references": [
+        "Object",
+        "ObjectSet",
+        "Object.is_same_object_as",
+        "Dictionary",
+        "Array",
+        "Name",
+        "NamePath",
+        "Stream"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Foreign object copy and raw/decoded stream behavior roundtrip",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-005",
+      "provider": "PK",
+      "title": "Content stream parsing",
+      "public_references": [
+        "parse_content_stream",
+        "unparse_content_stream",
+        "TokenFilter"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Operator sequence semantics preserved through no-op roundtrip",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-006",
+      "provider": "PK",
+      "title": "Resource cleanup",
+      "public_references": [
+        "remove_unreferenced_resources"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Unused resources removed without removing shared used resources",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-007",
+      "provider": "PK",
+      "title": "Compression and object streams",
+      "public_references": [
+        "Pdf.save",
+        "JobBuilder.compress"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "optimize"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Flate levels and object-stream modes preserve decoded content",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Flate levels, object streams and linearization are exposed. Deterministic save IDs and the full filter/save option surface are not."
+    },
+    {
+      "feature_id": "PK-008",
+      "provider": "PK",
+      "title": "Image extraction and replacement",
+      "public_references": [
+        "PdfImage",
+        "PdfInlineImage",
+        "extract_to",
+        "as_pil_image"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "JPEG extraction can remain byte-identical; masks/colors verified",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-009",
+      "provider": "PK",
+      "title": "Image optimization",
+      "public_references": [
+        "JobBuilder",
+        "image options"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Quality/size/threshold settings measured on fixture variants",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-010",
+      "provider": "PK",
+      "title": "Metadata XMP and DocInfo",
+      "public_references": [
+        "open_metadata",
+        "docinfo",
+        "PdfMetadata"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "inspectpdf"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Unicode, dates and namespace behavior exact",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inspection reports selected metadata/outline presence; editing XMP/DocInfo/outlines/destinations/actions is not exposed."
+    },
+    {
+      "feature_id": "PK-011",
+      "provider": "PK",
+      "title": "Outlines destinations and actions",
+      "public_references": [
+        "open_outline",
+        "OutlineItem",
+        "Destination",
+        "Action"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "inspectpdf"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Hierarchies, style and destinations survive editing",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Inspection reports selected metadata/outline presence; editing XMP/DocInfo/outlines/destinations/actions is not exposed."
+    },
+    {
+      "feature_id": "PK-012",
+      "provider": "PK",
+      "title": "Name and number trees",
+      "public_references": [
+        "NameTree",
+        "NumberTree"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Ordering, collision and Unicode key semantics correct",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-013",
+      "provider": "PK",
+      "title": "Attachments",
+      "public_references": [
+        "Attachments",
+        "AttachedFileSpec",
+        "AttachedFile"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "attachments",
+        "inspectpdf"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Hashes, names, timestamps and relationships roundtrip",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Document-level extraction uses inert generated filenames and hashes. Adding/editing/removing attachments, annotation-level extraction and complete formats remain incomplete."
+    },
+    {
+      "feature_id": "PK-014",
+      "provider": "PK",
+      "title": "Encryption and permissions",
+      "public_references": [
+        "Encryption",
+        "Permissions",
+        "Pdf.save"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Selected algorithm and authorized credentials verified",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-015",
+      "provider": "PK",
+      "title": "Linearized and deterministic save",
+      "public_references": [
+        "Pdf.save linearize",
+        "deterministic_id"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "optimize"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "qpdf linearization check and repeat-build deterministic contract pass",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Flate levels, object streams and linearization are exposed. Deterministic save IDs and the full filter/save option surface are not."
+    },
+    {
+      "feature_id": "PK-016",
+      "provider": "PK",
+      "title": "Low-level form model",
+      "public_references": [
+        "AcroForm",
+        "AcroFormField",
+        "Annotation"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Inherited names/values and widget relationships correct",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-017",
+      "provider": "PK",
+      "title": "High-level form filling",
+      "public_references": [
+        "pikepdf.form.Form"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Values and generated appearances agree on every page",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-018",
+      "provider": "PK",
+      "title": "Appearance generation",
+      "public_references": [
+        "DefaultAppearanceStreamGenerator",
+        "ExtendedAppearanceStreamGenerator"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Clipping, check/radio states, multiline and font sizes visually correct",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-019",
+      "provider": "PK",
+      "title": "Annotation and rotation flattening",
+      "public_references": [
+        "JobBuilder.flatten_annotations",
+        "flatten_rotation"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "All/print/screen policy and transformed geometry correct",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-020",
+      "provider": "PK",
+      "title": "PDF drawing canvas",
+      "public_references": [
+        "Canvas",
+        "ContentStreamBuilder",
+        "Text",
+        "Font"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Graphics state, font encoding and coordinate fixture exact",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-021",
+      "provider": "PK",
+      "title": "JavaScript and external access removal",
+      "public_references": [
+        "Sanitizer",
+        "remove_javascript",
+        "remove_external_access"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "All tested action paths removed; inert links preserved per policy",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-022",
+      "provider": "PK",
+      "title": "Embedded data and multimedia removal",
+      "public_references": [
+        "remove_attachments",
+        "remove_multimedia",
+        "remove_collection"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Requested categories absent after object-level reopen",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-023",
+      "provider": "PK",
+      "title": "Other sanitization",
+      "public_references": [
+        "remove_thumbnails",
+        "remove_search_index",
+        "remove_web_capture",
+        "remove_private_app_data"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Each category independently removed with explicit report",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-024",
+      "provider": "PK",
+      "title": "PDF/A preparation",
+      "public_references": [
+        "pdfa.prepare",
+        "repair_annotation_flags"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Record all changes; repeat operation idempotent except declared times",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-025",
+      "provider": "PK",
+      "title": "PDF/A checking and safe save",
+      "public_references": [
+        "pdfa.check",
+        "pdfa.save"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Validate actual output bytes; unsupported constructs never pass",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-026",
+      "provider": "PK",
+      "title": "qpdf jobs and JSON",
+      "public_references": [
+        "Job",
+        "JobBuilder",
+        "Pdf.write_qpdf_json",
+        "Pdf.from_qpdf_json",
+        "Pdf.update_from_qpdf_json"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Pin qpdf schema and cover every advertised option through mapping",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-027",
+      "provider": "PK",
+      "title": "No rasterization guarantee",
+      "public_references": [
+        "No page rasterizer"
+      ],
+      "product_status": "documented_limitation",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "UI identifies actual raster provider and version",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "pikepdf has no renderer. Renderer routes use separately identified providers."
+    },
+    {
+      "feature_id": "DC-001",
+      "provider": "DC",
+      "title": "Input conversion dispatch",
+      "public_references": [
+        "DocumentConverter.convert",
+        "convert_all"
+      ],
+      "product_status": "blocked_model_inference",
+      "product_routes": [
+        "docling"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/models.py"
+      ],
+      "test_evidence": [
+        "tests/test_models.py",
+        "scripts/smoke_docling_configuration.py"
+      ],
+      "remaining_contract": "Each advertised format has fixture, exact backend and status checks",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF-only adapter and offline configuration exist; real inference is blocked by model artifact access/provenance. Other formats, pipelines and exports are not exposed."
+    },
+    {
+      "feature_id": "DC-002",
+      "provider": "DC",
+      "title": "PDF layout and reading order",
+      "public_references": [
+        "PdfPipelineOptions",
+        "standard pipeline"
+      ],
+      "product_status": "blocked_model_inference",
+      "product_routes": [
+        "docling"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/models.py"
+      ],
+      "test_evidence": [
+        "tests/test_models.py",
+        "scripts/smoke_docling_configuration.py"
+      ],
+      "remaining_contract": "Columns, captions, lists, headers and footers match independent annotations",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF-only adapter and offline configuration exist; real inference is blocked by model artifact access/provenance. Other formats, pipelines and exports are not exposed."
+    },
+    {
+      "feature_id": "DC-003",
+      "provider": "DC",
+      "title": "Native model-free PDF path",
+      "public_references": [
+        "NativePdfPipelineOptions"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Truthfully returns basic cells without inferred layout/table promise",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-004",
+      "provider": "DC",
+      "title": "OCR routing and languages",
+      "public_references": [
+        "OcrOptions",
+        "TesseractCliOcrOptions",
+        "EasyOcrOptions",
+        "OcrMacOptions"
+      ],
+      "product_status": "blocked_model_inference",
+      "product_routes": [
+        "docling"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/models.py"
+      ],
+      "test_evidence": [
+        "tests/test_models.py",
+        "scripts/smoke_docling_configuration.py"
+      ],
+      "remaining_contract": "Every enabled engine/language and full-page/region policy independently scored",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF-only adapter and offline configuration exist; real inference is blocked by model artifact access/provenance. Other formats, pipelines and exports are not exposed."
+    },
+    {
+      "feature_id": "DC-005",
+      "provider": "DC",
+      "title": "Table structure",
+      "public_references": [
+        "do_table_structure",
+        "table_structure_options"
+      ],
+      "product_status": "blocked_model_inference",
+      "product_routes": [
+        "docling"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/models.py"
+      ],
+      "test_evidence": [
+        "tests/test_models.py",
+        "scripts/smoke_docling_configuration.py"
+      ],
+      "remaining_contract": "Row/column spans, headers and cell text agree with ground truth",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF-only adapter and offline configuration exist; real inference is blocked by model artifact access/provenance. Other formats, pipelines and exports are not exposed."
+    },
+    {
+      "feature_id": "DC-006",
+      "provider": "DC",
+      "title": "Heading hierarchy",
+      "public_references": [
+        "HeadingHierarchyOptions"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Numbering, bookmarks and font-style cases yield approved hierarchy",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-007",
+      "provider": "DC",
+      "title": "Code and formulas",
+      "public_references": [
+        "do_code_enrichment",
+        "do_formula_enrichment"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Exact code tokens and formula semantic fixture comparisons",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-008",
+      "provider": "DC",
+      "title": "Picture classification description",
+      "public_references": [
+        "do_picture_classification",
+        "do_picture_description"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Known pictures meet per-class scores; generated text clearly marked",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-009",
+      "provider": "DC",
+      "title": "Chart understanding",
+      "public_references": [
+        "do_chart_extraction",
+        "chart_extraction_options"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Synthetic chart values, units and legends exact within defined tolerance",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-010",
+      "provider": "DC",
+      "title": "VLM conversion",
+      "public_references": [
+        "VlmPipelineOptions"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Pinned local model reconstructs independent fixtures within budgets",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-011",
+      "provider": "DC",
+      "title": "Document object model",
+      "public_references": [
+        "DoclingDocument",
+        "iterate_items",
+        "provenance"
+      ],
+      "product_status": "blocked_model_inference",
+      "product_routes": [
+        "docling"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/models.py"
+      ],
+      "test_evidence": [
+        "tests/test_models.py",
+        "scripts/smoke_docling_configuration.py"
+      ],
+      "remaining_contract": "Hierarchy, page origin, boxes and references survive edits/serialization",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF-only adapter and offline configuration exist; real inference is blocked by model artifact access/provenance. Other formats, pipelines and exports are not exposed."
+    },
+    {
+      "feature_id": "DC-012",
+      "provider": "DC",
+      "title": "Structured exports",
+      "public_references": [
+        "export_to_markdown",
+        "export_to_html",
+        "export_to_dict"
+      ],
+      "product_status": "blocked_model_inference",
+      "product_routes": [
+        "docling"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/models.py"
+      ],
+      "test_evidence": [
+        "tests/test_models.py",
+        "scripts/smoke_docling_configuration.py"
+      ],
+      "remaining_contract": "Text, tables, image references and hierarchy preserved per format contract",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF-only adapter and offline configuration exist; real inference is blocked by model artifact access/provenance. Other formats, pipelines and exports are not exposed."
+    },
+    {
+      "feature_id": "DC-013",
+      "provider": "DC",
+      "title": "Serialization and reload",
+      "public_references": [
+        "save_as_json",
+        "load_from_json"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Lossless semantic roundtrip with versioned schema and provenance",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-014",
+      "provider": "DC",
+      "title": "Chunking for retrieval",
+      "public_references": [
+        "HybridChunker",
+        "contextualize"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "All content covered once subject to declared overlap; token limits honored",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-015",
+      "provider": "DC",
+      "title": "Figure table and page images",
+      "public_references": [
+        "generate_page_images",
+        "generate_picture_images",
+        "images_scale"
+      ],
+      "product_status": "blocked_model_inference",
+      "product_routes": [
+        "docling"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/models.py"
+      ],
+      "test_evidence": [
+        "tests/test_models.py",
+        "scripts/smoke_docling_configuration.py"
+      ],
+      "remaining_contract": "Every image tied to page/bbox and physical dimensions",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF-only adapter and offline configuration exist; real inference is blocked by model artifact access/provenance. Other formats, pipelines and exports are not exposed."
+    },
+    {
+      "feature_id": "DC-016",
+      "provider": "DC",
+      "title": "Audio transcription",
+      "public_references": [
+        "ASR pipeline",
+        "asr extra"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Words/timestamps and channel/duration handling meet independent truth",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-017",
+      "provider": "DC",
+      "title": "Video parsing",
+      "public_references": [
+        "Video pipeline",
+        "format-video extra"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Known time markers and frames aligned; no muxing claim",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-018",
+      "provider": "DC",
+      "title": "CLI batch and export",
+      "public_references": [
+        "docling CLI"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "CLI and Python configuration/output agree for each enabled format",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-019",
+      "provider": "DC",
+      "title": "Offline model artifacts",
+      "public_references": [
+        "artifacts_path",
+        "model prefetch configuration"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "docling"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/models.py",
+        "src/pdf_multitool/worker.py"
+      ],
+      "test_evidence": [
+        "tests/test_models.py",
+        "scripts/smoke_docling_configuration.py"
+      ],
+      "remaining_contract": "Run with network disabled and hash-verified artifacts",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Manifest/digest checks and disabled downloads/plugins/remote services are exercised. Complete authenticated model artifacts and actual inference are missing."
+    },
+    {
+      "feature_id": "DC-020",
+      "provider": "DC",
+      "title": "Accelerator and stage queues",
+      "public_references": [
+        "accelerator_options",
+        "queue_max_size",
+        "stage_shutdown_timeout_seconds"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "CPU/GPU settings, batch queues and shutdown honored under saturation",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-021",
+      "provider": "DC",
+      "title": "External services and plugins",
+      "public_references": [
+        "enable_remote_services",
+        "allow_external_plugins"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "docling"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/models.py",
+        "src/pdf_multitool/worker.py"
+      ],
+      "test_evidence": [
+        "tests/test_models.py",
+        "scripts/smoke_docling_configuration.py"
+      ],
+      "remaining_contract": "Disabled modes cannot contact services or load third-party plugin code",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Manifest/digest checks and disabled downloads/plugins/remote services are exercised. Complete authenticated model artifacts and actual inference are missing."
+    },
+    {
+      "feature_id": "DC-022",
+      "provider": "DC",
+      "title": "Legacy formats and renderer helpers",
+      "public_references": [
+        "format-specific backends",
+        "LibreOffice",
+        "Tectonic"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Per-format semantic fixtures; executable identity/config recorded",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "DC-023",
+      "provider": "DC",
+      "title": "Integration products",
+      "public_references": [
+        "docling-serve",
+        "MCP/integrations"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Separate versions/scopes tested; no automatic core coverage credit",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "GS-001",
+      "provider": "GS",
+      "title": "PDF PS EPS interpretation",
+      "public_references": [
+        "gs",
+        "ps2pdf",
+        "pdf2ps"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "compress",
+        "render_native"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_worker_isolation.py"
+      ],
+      "remaining_contract": "Visible geometry and fonts match fixture after conversion",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF input, fixed raster device and four rewrite profiles are exposed. Arbitrary PostScript, other devices, detailed color/quality/geometry options and complete OS isolation are not qualified."
+    },
+    {
+      "feature_id": "GS-002",
+      "provider": "GS",
+      "title": "Raster devices",
+      "public_references": [
+        "gs -sDEVICE"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "compress",
+        "render_native"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_worker_isolation.py"
+      ],
+      "remaining_contract": "DPI/colors/alpha/page range and device-specific output verified",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF input, fixed raster device and four rewrite profiles are exposed. Arbitrary PostScript, other devices, detailed color/quality/geometry options and complete OS isolation are not qualified."
+    },
+    {
+      "feature_id": "GS-003",
+      "provider": "GS",
+      "title": "PDF rewrite",
+      "public_references": [
+        "pdfwrite"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "compress",
+        "render_native"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_worker_isolation.py"
+      ],
+      "remaining_contract": "Preservation report enumerates forms/tags/layers/links/attachments/signatures",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF input, fixed raster device and four rewrite profiles are exposed. Arbitrary PostScript, other devices, detailed color/quality/geometry options and complete OS isolation are not qualified."
+    },
+    {
+      "feature_id": "GS-004",
+      "provider": "GS",
+      "title": "Variable compression and downsample",
+      "public_references": [
+        "pdfwrite image/font parameters"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "compress",
+        "render_native"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_worker_isolation.py"
+      ],
+      "remaining_contract": "Separate lossless/lossy profiles meet size, quality and preservation budgets",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF input, fixed raster device and four rewrite profiles are exposed. Arbitrary PostScript, other devices, detailed color/quality/geometry options and complete OS isolation are not qualified."
+    },
+    {
+      "feature_id": "GS-005",
+      "provider": "GS",
+      "title": "Text and position output",
+      "public_references": [
+        "txtwrite"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Unicode, spans and geometry scored on independent fixtures",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "GS-006",
+      "provider": "GS",
+      "title": "Color management and separations",
+      "public_references": [
+        "ICC/device color options"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Reference patches and spot/separation behavior measured",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "GS-007",
+      "provider": "GS",
+      "title": "Page selection fitting geometry",
+      "public_references": [
+        "FirstPage",
+        "LastPage",
+        "PDFPageList",
+        "PDFFitPage"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "compress",
+        "render_native"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_worker_isolation.py"
+      ],
+      "remaining_contract": "Order, rotation, crop and page-box selection exact",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF input, fixed raster device and four rewrite profiles are exposed. Arbitrary PostScript, other devices, detailed color/quality/geometry options and complete OS isolation are not qualified."
+    },
+    {
+      "feature_id": "GS-008",
+      "provider": "GS",
+      "title": "PDF/A and PDF/X production",
+      "public_references": [
+        "pdfwrite conformance options"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Independent standards validator plus visual and structure checks",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "GS-009",
+      "provider": "GS",
+      "title": "Embedded OCR devices",
+      "public_references": [
+        "OCR-enabled devices"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Only compiled-in supported devices enabled and pinned OCR data scored",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "GS-010",
+      "provider": "GS",
+      "title": "Native library API and printing devices",
+      "public_references": [
+        "gsapi",
+        "configured device set"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Library lifecycle and enabled-file devices tested separately",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "GS-011",
+      "provider": "GS",
+      "title": "Interpreter safety and limits",
+      "public_references": [
+        "SAFER",
+        "permit-file/device policy"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "compress",
+        "render_native"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/extended.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_core.py",
+        "tests/test_extended.py",
+        "tests/test_worker_isolation.py"
+      ],
+      "remaining_contract": "No file/pipe/network escape; OS sandbox still required",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "PDF input, fixed raster device and four rewrite profiles are exposed. Arbitrary PostScript, other devices, detailed color/quality/geometry options and complete OS isolation are not qualified."
+    },
+    {
+      "feature_id": "GP-001",
+      "provider": "GP",
+      "title": "Record evidenced package interpretation",
+      "public_references": [
+        "ghostprint project metadata"
+      ],
+      "product_status": "documented_scope_decision",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Use earlier explicit Ghostscript request and public repo evidence; preserve spelling distinction",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Ghostscript interpretation is explicitly retained; unrelated terminal-animation package is not installed."
+    },
+    {
+      "feature_id": "POP-001",
+      "provider": "POP",
+      "title": "Source-built comparator identity",
+      "public_references": [
+        "pdftoppm -v",
+        "pdftotext -v",
+        "pdfinfo -v"
+      ],
+      "product_status": "blocked_comparator",
+      "product_routes": [
+        "render",
+        "text"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "docs/GUI_QUALIFICATION_20261015.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "All binaries resolve inside comparator prefix and linked libraries recorded",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Official 26.10 archive/Git access returns HTTP 403; no signature-verified source-built comparator. Installed system text/render tools do not satisfy this gate."
+    },
+    {
+      "feature_id": "POP-002",
+      "provider": "POP",
+      "title": "Raster reference",
+      "public_references": [
+        "pdftoppm",
+        "pdftocairo"
+      ],
+      "product_status": "blocked_comparator",
+      "product_routes": [
+        "render",
+        "text"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "docs/GUI_QUALIFICATION_20261015.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "DPI, page boxes and font/profile config fixed for cross-engine comparison",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Official 26.10 archive/Git access returns HTTP 403; no signature-verified source-built comparator. Installed system text/render tools do not satisfy this gate."
+    },
+    {
+      "feature_id": "POP-003",
+      "provider": "POP",
+      "title": "Text and geometry reference",
+      "public_references": [
+        "pdftotext",
+        "pdftohtml"
+      ],
+      "product_status": "blocked_comparator",
+      "product_routes": [
+        "render",
+        "text"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "docs/GUI_QUALIFICATION_20261015.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Independent text truth plus provider discrepancy report",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Official 26.10 archive/Git access returns HTTP 403; no signature-verified source-built comparator. Installed system text/render tools do not satisfy this gate."
+    },
+    {
+      "feature_id": "POP-004",
+      "provider": "POP",
+      "title": "Document resource inspection",
+      "public_references": [
+        "pdfinfo",
+        "pdffonts",
+        "pdfimages",
+        "pdfdetach"
+      ],
+      "product_status": "blocked_comparator",
+      "product_routes": [
+        "render",
+        "text"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "docs/GUI_QUALIFICATION_20261015.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Known inventory matched; image hashes and page count checked",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Official 26.10 archive/Git access returns HTTP 403; no signature-verified source-built comparator. Installed system text/render tools do not satisfy this gate."
+    },
+    {
+      "feature_id": "POP-005",
+      "provider": "POP",
+      "title": "Page assembly reference",
+      "public_references": [
+        "pdfseparate",
+        "pdfunite",
+        "pdftops"
+      ],
+      "product_status": "blocked_comparator",
+      "product_routes": [
+        "render",
+        "text"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "docs/GUI_QUALIFICATION_20261015.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Independent page identity and box checks on split/merge",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Official 26.10 archive/Git access returns HTTP 403; no signature-verified source-built comparator. Installed system text/render tools do not satisfy this gate."
+    },
+    {
+      "feature_id": "POP-006",
+      "provider": "POP",
+      "title": "Signature inspection",
+      "public_references": [
+        "pdfsig"
+      ],
+      "product_status": "blocked_comparator",
+      "product_routes": [
+        "render",
+        "text"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/worker.py",
+        "docs/GUI_QUALIFICATION_20261015.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Crypto status, coverage and signer trust kept distinct",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Official 26.10 archive/Git access returns HTTP 403; no signature-verified source-built comparator. Installed system text/render tools do not satisfy this gate."
+    },
+    {
+      "feature_id": "TESS-001",
+      "provider": "TESS",
+      "title": "OCR language and engine modes",
+      "public_references": [
+        "tesseract -l",
+        "--oem",
+        "TessBaseAPI"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "ocr_tesseract"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "CER/WER by script and language against independently authored truth",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Selected installed language codes, DPI, PSM 3/6/11 and PDF/TXT/TSV outputs are exposed. OEM/OSD, full languages/formats/streaming, authenticity and per-class OCR accuracy remain incomplete."
+    },
+    {
+      "feature_id": "TESS-002",
+      "provider": "TESS",
+      "title": "Page segmentation and orientation",
+      "public_references": [
+        "--psm",
+        "osd",
+        "AnalyseLayout"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "ocr_tesseract"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Block/line/word modes and rotated scripts meet fixture truth",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Selected installed language codes, DPI, PSM 3/6/11 and PDF/TXT/TSV outputs are exposed. OEM/OSD, full languages/formats/streaming, authenticity and per-class OCR accuracy remain incomplete."
+    },
+    {
+      "feature_id": "TESS-003",
+      "provider": "TESS",
+      "title": "Structured OCR output",
+      "public_references": [
+        "hocr",
+        "tsv",
+        "alto",
+        "PAGE/box outputs if compiled/advertised"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "ocr_tesseract"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Every enabled output schema parsed; boxes inside image and text matches",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Selected installed language codes, DPI, PSM 3/6/11 and PDF/TXT/TSV outputs are exposed. OEM/OSD, full languages/formats/streaming, authenticity and per-class OCR accuracy remain incomplete."
+    },
+    {
+      "feature_id": "TESS-004",
+      "provider": "TESS",
+      "title": "Searchable PDF",
+      "public_references": [
+        "pdf",
+        "textonly_pdf"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "ocr_tesseract"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Visible image and invisible text align after independent rendering",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Selected installed language codes, DPI, PSM 3/6/11 and PDF/TXT/TSV outputs are exposed. OEM/OSD, full languages/formats/streaming, authenticity and per-class OCR accuracy remain incomplete."
+    },
+    {
+      "feature_id": "TESS-005",
+      "provider": "TESS",
+      "title": "Preprocessing choices",
+      "public_references": [
+        "thresholding_*",
+        "Leptonica preprocessing"
+      ],
+      "product_status": "different_provider_only",
+      "product_routes": [
+        "deskew"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Binarization variants scored on uneven background fixtures",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Deskew is a Pillow preprocessing route. Full Tesseract preprocessing choices are not exposed."
+    },
+    {
+      "feature_id": "TESS-006",
+      "provider": "TESS",
+      "title": "API iteration and confidence",
+      "public_references": [
+        "TessBaseAPI",
+        "ResultIterator",
+        "PageIterator"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Confidence scale and coordinate contract documented and measured",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "TESS-007",
+      "provider": "TESS",
+      "title": "Multipage and streaming",
+      "public_references": [
+        "CLI image list/TIFF",
+        "API page iteration"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "ocr_tesseract"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "All pages processed once with page-local evidence",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Selected installed language codes, DPI, PSM 3/6/11 and PDF/TXT/TSV outputs are exposed. OEM/OSD, full languages/formats/streaming, authenticity and per-class OCR accuracy remain incomplete."
+    },
+    {
+      "feature_id": "TESS-008",
+      "provider": "TESS",
+      "title": "Custom dictionaries and training",
+      "public_references": [
+        "user words/patterns",
+        "training tools"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Configuration provenance and deterministic evaluation separated from training",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "VISION-001",
+      "provider": "VISION",
+      "title": "Official text recognition",
+      "public_references": [
+        "VNRecognizeTextRequest",
+        "VNImageRequestHandler"
+      ],
+      "product_status": "platform_unavailable",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Text/boxes/candidate confidence scored against same OCR corpus",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Linux cloud profile only; no Apple framework/backend, OS revision, device selection or authorized Mac execution in this task."
+    },
+    {
+      "feature_id": "VISION-002",
+      "provider": "VISION",
+      "title": "Recognition constraints",
+      "public_references": [
+        "recognitionLevel",
+        "minimumTextHeight"
+      ],
+      "product_status": "platform_unavailable",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Fast/accurate and minimum height each have separate accuracy/latency evidence",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Linux cloud profile only; no Apple framework/backend, OS revision, device selection or authorized Mac execution in this task."
+    },
+    {
+      "feature_id": "VISION-003",
+      "provider": "VISION",
+      "title": "Languages and correction",
+      "public_references": [
+        "recognitionLanguages",
+        "customWords",
+        "usesLanguageCorrection",
+        "automaticallyDetectsLanguage"
+      ],
+      "product_status": "platform_unavailable",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Every supported requested language and correction setting tested",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Linux cloud profile only; no Apple framework/backend, OS revision, device selection or authorized Mac execution in this task."
+    },
+    {
+      "feature_id": "VISION-004",
+      "provider": "VISION",
+      "title": "Coordinates and candidates",
+      "public_references": [
+        "VNRecognizedTextObservation",
+        "topCandidates",
+        "boundingBox"
+      ],
+      "product_status": "platform_unavailable",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Orientation and lower-left/upper-left transforms align after zoom inspection",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Linux cloud profile only; no Apple framework/backend, OS revision, device selection or authorized Mac execution in this task."
+    },
+    {
+      "feature_id": "VISION-005",
+      "provider": "VISION",
+      "title": "Revisions and availability",
+      "public_references": [
+        "supportedRevisions",
+        "revision"
+      ],
+      "product_status": "platform_unavailable",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Capture OS build, SDK, hardware and actual request revision",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Linux cloud profile only; no Apple framework/backend, OS revision, device selection or authorized Mac execution in this task."
+    },
+    {
+      "feature_id": "VISION-006",
+      "provider": "VISION",
+      "title": "Compute-device selection",
+      "public_references": [
+        "supportedComputeStageDevices",
+        "setComputeDevice",
+        "computeDevice"
+      ],
+      "product_status": "platform_unavailable",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Report eligible and assigned device per stage; unsupported ANE stays unavailable",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Linux cloud profile only; no Apple framework/backend, OS revision, device selection or authorized Mac execution in this task."
+    },
+    {
+      "feature_id": "VISION-007",
+      "provider": "VISION",
+      "title": "Cancellation and isolation",
+      "public_references": [
+        "VNRequest.cancel",
+        "worker lifecycle"
+      ],
+      "product_status": "platform_unavailable",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Cooperative cancel plus helper termination meets application deadline",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Linux cloud profile only; no Apple framework/backend, OS revision, device selection or authorized Mac execution in this task."
+    },
+    {
+      "feature_id": "VISION-008",
+      "provider": "VISION",
+      "title": "New Swift API distinction",
+      "public_references": [
+        "RecognizeTextRequest"
+      ],
+      "product_status": "platform_unavailable",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/TOOLKIT_FEATURE_MATRIX.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "Qualify separately if selected; bridge schema agrees with app contract",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Linux cloud profile only; no Apple framework/backend, OS revision, device selection or authorized Mac execution in this task."
+    },
+    {
+      "feature_id": "APP-001",
+      "provider": "APP",
+      "title": "Exact document deduplication",
+      "public_references": [
+        "content hash pipeline"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Byte-identical files grouped without deleting originals by default",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "APP-002",
+      "provider": "APP",
+      "title": "Visual page deduplication",
+      "public_references": [
+        "independent page fingerprint algorithm"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "True duplicates and near-duplicates distinguished using labeled corpus",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "APP-003",
+      "provider": "APP",
+      "title": "Automatic deskew",
+      "public_references": [
+        "independent skew estimator and rotate"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "deskew"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Known angles recovered within 0.2 degrees; text and margins not clipped",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Bounded automatic/manual planar correction and abstention exist. Held-out scan classes, exact proposed thresholds and every boundary case remain unqualified."
+    },
+    {
+      "feature_id": "APP-004",
+      "provider": "APP",
+      "title": "Perspective rectification",
+      "public_references": [
+        "independent corner detector",
+        "optional Pixmap.warp"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Known projective transform inverted within landmark error budget",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "APP-005",
+      "provider": "APP",
+      "title": "Curved-page dewarp",
+      "public_references": [
+        "independent deformation model"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Synthetic curved grids and held-out scans meet local-line/geometry budgets",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "APP-006",
+      "provider": "APP",
+      "title": "Scan cleanup",
+      "public_references": [
+        "independent denoise/background/crop pipeline"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Noise reduction improves designated fixtures without erasing fine print",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "APP-007",
+      "provider": "APP",
+      "title": "Audio codecs and muxing",
+      "public_references": [
+        "separate explicitly selected media backend"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Decode roundtrip, duration, seek/chapter timestamps and codec profile correct",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "APP-008",
+      "provider": "APP",
+      "title": "Semantic heading detection",
+      "public_references": [
+        "independent document semantics"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "identify",
+        "rename",
+        "pdfhtml",
+        "repaginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/analysis.py"
+      ],
+      "test_evidence": [
+        "tests/test_analysis.py"
+      ],
+      "remaining_contract": "Precision/recall and hierarchy scored on annotated corpus by document class",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Heuristic headings/title candidates are exposed; semantic hierarchy accuracy is not established."
+    },
+    {
+      "feature_id": "APP-009",
+      "provider": "APP",
+      "title": "HTTP and CLI product parity",
+      "public_references": [
+        "installed CLI and HTTP/UI workflows"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/cli.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/catalog.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_extended_http.py",
+        "tests/test_extended_browser.py"
+      ],
+      "remaining_contract": "Same parameters yield same semantics; UI reflects unavailable features",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Shared new contracts and existing real workflows are tested. Every legacy CLI/UI option and supplied APP-ERROR-V1 field is not reconciled."
+    },
+    {
+      "feature_id": "APP-010",
+      "provider": "APP",
+      "title": "Backpressure and fairness",
+      "public_references": [
+        "bounded job scheduler"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "Worker and queue maxima hold; cancellation frees capacity; no starvation",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "APP-011",
+      "provider": "APP",
+      "title": "Atomic publication",
+      "public_references": [
+        "staging validation rename/manifest commit"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "Visibility changes only after all checks; previous artifact remains intact",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "APP-012",
+      "provider": "APP",
+      "title": "Process tree cleanup and kill switches",
+      "public_references": [
+        "isolated worker supervisor"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "Per-job cancel, global stop and shutdown kill/reap all owned descendants",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "APP-013",
+      "provider": "APP",
+      "title": "Memory process file and time bounds",
+      "public_references": [
+        "OS resource controls plus preflight"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "Measured whole-process-tree usage within declared caps",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "APP-014",
+      "provider": "APP",
+      "title": "Sandbox and fork containment",
+      "public_references": [
+        "OS/VM/container confinement"
+      ],
+      "product_status": "blocked_platform_isolation",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/isolation.py",
+        "docs/GUI_QUALIFICATION_20261015.md"
+      ],
+      "test_evidence": [
+        "tests/test_worker_isolation.py"
+      ],
+      "remaining_contract": "Dedicated UID/rootfs/network deny/PID limit proven by canary tests",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Native syscall restrictions are tested; user namespaces fail, Landlock is ENOSYS and cgroups are not writable. Process groups/RLIMIT_NPROC are not a full filesystem or multi-tenant sandbox."
+    },
+    {
+      "feature_id": "APP-015",
+      "provider": "APP",
+      "title": "SSRF defenses",
+      "public_references": [
+        "central fetch broker and network isolation"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "All nested schemes/redirects/DNS responses validated; egress denied by default",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "APP-016",
+      "provider": "APP",
+      "title": "RCE and injection defenses",
+      "public_references": [
+        "fixed executable argv and strict option schemas"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "No shell/eval/pickle/untrusted plugin/model code; active docs inert",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "APP-017",
+      "provider": "APP",
+      "title": "Failure status and recovery",
+      "public_references": [
+        "versioned job state machine"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "Crash recovery, retry and idempotency preserve exactly one published result",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "APP-018",
+      "provider": "APP",
+      "title": "Privacy and offline operation",
+      "public_references": [
+        "redacted logs/cache policies"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "Canary secrets absent from logs/telemetry/error pages; original retained",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "APP-019",
+      "provider": "APP",
+      "title": "Genuine Rust parity",
+      "public_references": [
+        "independent Rust implementation"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Per-feature differential, property and hostile-input evidence passes",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "APP-020",
+      "provider": "APP",
+      "title": "Complete visual coverage",
+      "public_references": [
+        "per-artifact render and zoom manifest"
+      ],
+      "product_status": "pending_parent_and_comparator",
+      "product_routes": [],
+      "code_evidence": [
+        "docs/GUI_QUALIFICATION_20261015.md"
+      ],
+      "test_evidence": [],
+      "remaining_contract": "All pages and all images inspected at overview and 100/200 percent or higher",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Prior bounded visual review does not satisfy the new every-artifact/hash/150-300-DPI/zoom review protocol. Current outputs require new parent review."
+    },
+    {
+      "feature_id": "APP-021",
+      "provider": "APP",
+      "title": "Dependency discovery and provenance",
+      "public_references": [
+        "capability/status manifest"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "Record executable/library/model hashes and actual versions",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "APP-022",
+      "provider": "APP",
+      "title": "Distribution and reproducibility",
+      "public_references": [
+        "locked wheel/sdist and clean install"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [],
+      "code_evidence": [
+        "src/pdf_multitool/core.py",
+        "src/pdf_multitool/server.py",
+        "src/pdf_multitool/worker.py",
+        "src/pdf_multitool/isolation.py"
+      ],
+      "test_evidence": [
+        "tests/test_server.py",
+        "tests/test_worker_isolation.py",
+        "tests/test_input_bounds.py",
+        "scripts/smoke_installed.py"
+      ],
+      "remaining_contract": "Offline hash-pinned install plus CLI/UI workflows on supported 3.14 targets",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Existing bounded admission, supervised groups, syscall filters, publication and offline/install checks provide partial evidence. Proposed aggregate cgroups, full fault/restart/fairness coverage, trusted-executable provenance, SBOM and APP-ERROR-V1 are not all implemented or qualified."
+    },
+    {
+      "feature_id": "PY-034",
+      "provider": "PY",
+      "title": "Document sanitization",
+      "public_references": [
+        "Document.scrub"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "redact",
+        "forms"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [
+        "tests/test_document_ops.py",
+        "tests/test_form_workflows.py"
+      ],
+      "remaining_contract": "Each removal flag eliminates its designated data while retained content remains",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Redaction cleanup and form flattening are exposed; general scrub/bake controls and every annotation type are not qualified."
+    },
+    {
+      "feature_id": "PY-035",
+      "provider": "PY",
+      "title": "Bake annotations and forms",
+      "public_references": [
+        "Document.bake"
+      ],
+      "product_status": "partial_product_route",
+      "product_routes": [
+        "redact",
+        "forms"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/document_ops.py"
+      ],
+      "test_evidence": [
+        "tests/test_document_ops.py",
+        "tests/test_form_workflows.py"
+      ],
+      "remaining_contract": "Render preserved while selected interactive objects and associated data removed",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Redaction cleanup and form flattening are exposed; general scrub/bake controls and every annotation type are not qualified."
+    },
+    {
+      "feature_id": "PY-036",
+      "provider": "PY",
+      "title": "Document and page recoloring",
+      "public_references": [
+        "Document.recolor",
+        "Page.recolor"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Text vectors and images use requested component policy; independent colors checked",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PY-037",
+      "provider": "PY",
+      "title": "Content clipping versus crop boxes",
+      "public_references": [
+        "Page.clip_to_rect"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Fully outside characters paths and images removed without changing page rectangle",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PY-038",
+      "provider": "PY",
+      "title": "Font subsetting",
+      "public_references": [
+        "Document.subset_fonts"
+      ],
+      "product_status": "internal_behavior_unqualified",
+      "product_routes": [
+        "create",
+        "paginate"
+      ],
+      "code_evidence": [
+        "src/pdf_multitool/extended.py"
+      ],
+      "test_evidence": [
+        "tests/test_extended.py"
+      ],
+      "remaining_contract": "Glyph coverage text and rendering preserved with reduced eligible font data",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "Font subsetting is internal to text creation/pagination, not a standalone optimization contract."
+    },
+    {
+      "feature_id": "PY-039",
+      "provider": "PY",
+      "title": "Reflowable document layout",
+      "public_references": [
+        "Document.layout",
+        "Document.apply_css",
+        "chapter_count",
+        "make_bookmark",
+        "find_bookmark"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Page dimensions CSS and chapter navigation agree with independently authored content",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PY-040",
+      "provider": "PY",
+      "title": "Document format conversion",
+      "public_references": [
+        "Document.convert_to_pdf"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Selected ranges and rotation preserve content and declared layout behavior",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-028",
+      "provider": "PK",
+      "title": "Scalar conversion and free-threaded locking",
+      "public_references": [
+        "explicit_conversion",
+        "implicit_conversion",
+        "set_object_conversion_mode",
+        "Pdf.lock"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Explicit scalar classes and implicit Python values match requested context; compound locks serialize",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-029",
+      "provider": "PK",
+      "title": "Xref and dangling-reference inspection",
+      "public_references": [
+        "Pdf.get_xref_table",
+        "XrefEntry",
+        "Pdf.fix_dangling_references"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Known free uncompressed and object-stream entries reported; missing references handled",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-030",
+      "provider": "PK",
+      "title": "Foreign object ownership and copying",
+      "public_references": [
+        "Pdf.copy_foreign",
+        "Pdf.make_indirect",
+        "Object.same_owner_as"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Cross-document copy preserves referenced graph and object sharing semantics",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    },
+    {
+      "feature_id": "PK-031",
+      "provider": "PK",
+      "title": "Parser limit controls",
+      "public_references": [
+        "JobBuilder.limits"
+      ],
+      "product_status": "no_product_route_identified",
+      "product_routes": [],
+      "code_evidence": [],
+      "test_evidence": [],
+      "remaining_contract": "Container nesting error and filter limits honored per exact qpdf build",
+      "qualification": "not_run_against_supplied_acceptance_cases",
+      "gap": "No corresponding public product route was identified. Installed upstream APIs do not establish product implementation."
+    }
+  ]
+}

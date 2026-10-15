@@ -1158,6 +1158,38 @@
           "warnings"
         ]
       },
+      "svgOptions": {
+        "type": "object",
+        "properties": {
+          "text_mode": {
+            "type": "string",
+            "default": "paths",
+            "enum": [
+              "paths",
+              "text"
+            ],
+            "description": "Text representation"
+          },
+          "scale": {
+            "type": "number",
+            "default": 1,
+            "minimum": 0.25,
+            "maximum": 4,
+            "description": "Page scale"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
       "createOptions": {
         "type": "object",
         "properties": {
@@ -1523,6 +1555,31 @@
               "operation",
               "files"
             ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "svg"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/svgOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Export each selected PDF page as an SVG image, preserving its visible crop and rotation. Paths preserve glyph shapes; text mode needs matching fonts in the viewer. PDF links, forms and signatures are not transferred."
           },
           {
             "type": "object",

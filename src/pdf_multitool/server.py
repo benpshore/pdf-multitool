@@ -272,6 +272,7 @@ def make_handler(app: Workbench):
                     ".txt": "text/plain",
                     ".md": "text/markdown",
                     ".png": "image/png",
+                    ".svg": "image/svg+xml",
                     ".jpg": "image/jpeg",
                     ".jpeg": "image/jpeg",
                     ".jp2": "image/jp2",

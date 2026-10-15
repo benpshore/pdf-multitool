@@ -47,3 +47,20 @@ def test_keyboard_native_zoom_and_mobile(tmp_path, monkeypatch):
         "mobile_320",
         "mobile_320_dark",
     }
+
+
+@pytest.mark.skipif(
+    not importlib.util.find_spec("playwright") or not shutil.which("chromium"),
+    reason="Requires playwright and system chromium",
+)
+def test_svg_browser_export_and_independent_rendering(tmp_path, monkeypatch):
+    from scripts.qualify_svg_workflow import main
+
+    output = tmp_path / "svg"
+    monkeypatch.setattr(sys, "argv", ["qualify_svg_workflow", "--output", str(output)])
+    main()
+    report = json.loads((output / "report.json").read_text())
+    assert report["passed"]
+    assert report["feature_id"] == "PY-006"
+    assert len(report["scenarios"]) == 2
+    assert not report["svg_external_requests"]

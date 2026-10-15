@@ -98,3 +98,24 @@ class AdditionalHTTPTests(unittest.TestCase):
         self.assertTrue(any(g["feature"] == "Curved-page dewarping" for g in capabilities["gaps"]))
         self.assertIn("/api/jobs/{job_id}/cancel", build()["paths"])
         self.assertNotIn("/health", build()["paths"])
+
+    def test_svg_contract_download_headers_and_source_preservation(self):
+        source = self.upload()
+        request = {"operation": "svg", "files": [source["id"]], "options": {"scale": True}}
+        self.assertEqual(self.request("POST", "/api/jobs", request)[0], 400)
+        self.assertFalse(self.app.jobs)
+        request["options"] = {"scale": 2, "text_mode": "paths"}
+        status, _, body = self.request("POST", "/api/jobs", request)
+        self.assertEqual(status, 202)
+        snapshot = self.wait_job(json.loads(body)["id"])
+        self.assertEqual(snapshot["state"], "completed", snapshot)
+        svg = next(r for r in snapshot["results"] if r["name"].endswith(".svg"))
+        status, headers, body = self.request("GET", svg["url"])
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/svg+xml")
+        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+        self.assertTrue(headers["Content-Disposition"].startswith("attachment;"))
+        self.assertIn("default-src 'none'", headers["Content-Security-Policy"])
+        self.assertIn(b"<svg", body)
+        self.assertEqual(self.request("GET", svg["url"], auth=False)[0], 401)
+        self.assertEqual(self.request("GET", f"/api/files/{source['id']}/original")[2], self.pdf)

@@ -1,5 +1,9 @@
 # GUI qualification follow-up — 15 October 2026
 
+Historical checkpoint note: the readable matrix was subsequently received. See
+[the SVG follow-up](SVG_QUALIFICATION_20261015.md) for that receipt and subsequent
+work. The results and blocked archive attempt below describe this earlier run.
+
 This follows the partial [engine checkpoint](ENGINE_CHECKPOINT_20261015.md).
 All work ran in the saved Linux cloud environment on Python 3.14.8. The complete
 198-family / 1,626-proposed-case inventory has not been received or qualified;

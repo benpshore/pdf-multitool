@@ -10,6 +10,23 @@ def field(label, kind="string", default="", **kwargs):
 
 
 OPERATIONS = {
+    "svg": {
+        "label": "Export SVG pages",
+        "engine": "pymupdf",
+        "inputs": 1,
+        "pages": True,
+        "feature_ids": ["PY-006"],
+        "description": (
+            "Export each selected PDF page as an SVG image, preserving its visible "
+            "crop and rotation. Paths preserve glyph shapes; text mode needs matching "
+            "fonts in the viewer. PDF links, forms and signatures are not transferred."
+        ),
+        "outputs": ["image/svg+xml", "application/json"],
+        "options": {
+            "text_mode": field("Text representation", default="paths", enum=["paths", "text"]),
+            "scale": field("Page scale", "number", 1, minimum=0.25, maximum=4),
+        },
+    },
     "create": {
         "label": "Create text PDF",
         "engine": "pymupdf",

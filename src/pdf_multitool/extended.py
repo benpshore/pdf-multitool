@@ -462,6 +462,7 @@ def process(request):
         if not path.is_file():
             raise JobError("Engine did not produce the required output")
         outputs.append({"file": path.name, "name": safe_name(name or f"{stem}-{path.name}")})
+        return outputs[-1]["name"]
 
     if operation == "create":
         if request["inputs"]:
@@ -473,7 +474,11 @@ def process(request):
     else:
         path = Path(request["inputs"][0]).resolve(strict=True)
         with _pdf(path, request["limits"]["max_pages"], options.get("password", "")) as doc:
-            if operation in {"tables", "geometry"}:
+            if operation == "svg":
+                from .svg import export_pages
+
+                warnings = export_pages(doc, options, workdir, request["limits"], add)
+            elif operation in {"tables", "geometry"}:
                 warnings, partial = _plumber(path, doc, options, workdir, operation, add)
             elif operation in {"optimize", "inspectpdf", "attachments"}:
                 warnings, partial = _pike(path, options, workdir, operation, request["limits"], add)

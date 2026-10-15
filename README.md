@@ -29,6 +29,7 @@ passing synthetic checks does not establish full product acceptance.
 - pdfplumber text/geometry and candidate-table exports; pikepdf stream optimization
 - Embedded attachment inventory/extraction, Tesseract OCR and bounded planar deskew
 - Additional MuPDF/Ghostscript rendering and shared API/GUI option contracts
+- SVG page export with selectable glyph paths or font-dependent text
 
 Signature-field inspection does not verify or create cryptographic signatures.
 Docling OCR remains unavailable without a separately verified model set. Tesseract
@@ -42,6 +43,10 @@ resource loading disabled; it does not promise layout fidelity. Read the limits 
 The [toolkit feature matrix](docs/TOOLKIT_FEATURE_MATRIX.md) records implemented,
 partial, unsupported and unqualified scope. The [API reference](docs/API.md)
 describes the actual loopback routes and operation options.
+The [198-family reconciliation](docs/feature_reconciliation.json) maps the supplied
+inventory to product routes without claiming complete public-API coverage.
+The [SVG qualification](docs/SVG_QUALIFICATION_20261015.md) records its bounds,
+independent rendering checks and outstanding acceptance work.
 
 ## Running locally
 
@@ -55,6 +60,7 @@ uv run --locked pdf-multitool doctor
 uv run --locked pdf-multitool gui
 uv run --locked pdf-multitool merge first.pdf second.pdf -o output
 uv run --locked pdf-multitool split document.pdf --pages '1-3;4;5-7'
+uv run --locked pdf-multitool svg document.pdf --pages '1-3' --text-mode paths --scale 1
 ```
 
 Poppler's `pdftotext` and `pdftoppm` provide text extraction and rendering;

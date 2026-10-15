@@ -6,9 +6,17 @@ unqualified work remains part of the requested scope. No private source has been
 imported. Existing source and frozen experiments remain available in the base
 checkpoint and preservation bundle.
 
+The readable official-source inventory was received after the earlier checkpoint:
+198 feature families and 464 public references. Its 1,626 proposed initial cases
+are not executed tests, and the eventual public-symbol denominator remains unknown.
+The [machine-readable reconciliation](feature_reconciliation.json) records every
+family's actual route, source/tests and remaining contract. No family is declared
+fully qualified. The [SVG follow-up](SVG_QUALIFICATION_20261015.md) adds a bounded
+PY-006 route and records the matrix hashes and version differences.
+
 | Toolkit and chosen version | Application coverage | Remaining boundaries | Official source |
 | --- | --- | --- | --- |
-| PyMuPDF 1.26.7 / bundled MuPDF | Page merge/split/rotation; rendering; native extraction; redaction; forms; encryption; creation, headers/footers and object deduplication | General layout reconstruction, full annotation/bookmark editing, every document format, cryptographic signatures and semantic completeness are not implemented. | [PyMuPDF documentation](https://pymupdf.readthedocs.io/en/latest/) |
+| PyMuPDF 1.26.7 / bundled MuPDF | Page merge/split/rotation; rendering; native extraction; redaction; forms; encryption; creation, headers/footers, object deduplication and bounded SVG page export | General layout reconstruction, full annotation/bookmark editing, every document format, cryptographic signatures and semantic completeness are not implemented. The supplied inventory references 1.28.2; this pinned version is not silently relabelled. | [PyMuPDF documentation](https://pymupdf.readthedocs.io/en/latest/) |
 | WeasyPrint 70.0 | Inline HTML/CSS generation and reflow through existing guarded fetchers; system font and paged layout integration | All uploaded resource URLs remain blocked. Full CSS feature fidelity, PDF/A/PDF/UA conformance, font/resource bundling and arbitrary web-page fetching are not qualified. | [WeasyPrint API](https://doc.courtbouillon.org/weasyprint/stable/api_reference.html) |
 | pdfplumber 0.11.10 | Character/word geometry, text, explicit duplicate-character suppression; ruled and aligned-text table candidates, JSON/CSV | No universal borderless-table/prose discriminator, OCR or inferred correctness percentage. Existing frozen ambiguity evidence remains unchanged. | [Official repository](https://github.com/jsvine/pdfplumber) |
 | pikepdf 10.17.0 / qpdf 12.4.2 | Syntax inspection, object streams, configurable lossless Flate recompression/linearization, attachment extraction and inventory | No rasterization. Upstream Canvas/forms APIs are not a claim that this app exposes all of them; current form workflows use PyMuPDF. No general content editing or signature verification. | [Main API](https://pikepdf.readthedocs.io/en/latest/api/main.html), [attachments](https://pikepdf.readthedocs.io/en/latest/topics/attachments.html) |
