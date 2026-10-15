@@ -1,0 +1,14 @@
+[Source page 1]
+
+L1 Left column sentence 1.
+
+L2 Left column sentence 2.
+
+L3 Left column sentence 3.
+
+R1 Right column sentence 1.
+
+R2 Right column sentence 2.
+
+R3 Right column sentence 3.
+

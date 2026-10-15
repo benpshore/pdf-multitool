@@ -1,0 +1,414 @@
+{
+  "protocol": "Observed expectation failures are retained, not assertions of product success.",
+  "freeze_commit": "ac6a1d1fedbd60f5e34d6fe9f7a8ca01af46d211",
+  "frozen_manifest_sha256": "a2dedc01e0f55cfbf164b8aa32ce821f6dd066f517d5459b44701be1e1ed28a8",
+  "production_base": "4ed4f914fe11024cb8771734afbda6747f6521e3",
+  "analysis_py_sha256": "0e8ead3770461e6f762c840d0aa9b5e8d00e8079ea5c6ac1adaae41351e5f4e5",
+  "measurement_script_sha256": "cc125e3b260b6fe8722c25374ff4bcafaf691bd55ea865492ab0803f2cf36ef5",
+  "runtime": {
+    "python": "3.14.7",
+    "pymupdf": "1.26.7",
+    "mupdf": "1.26.12",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41"
+  },
+  "cases": {
+    "space_explicit": {
+      "pdf_sha256": "135021687affe0be6f8e41c11b431c8a49f6fa3ad92263f74600711b76cbcd21",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "fa1ffad4e35284a481c880b35b833e0e11b36cacf7856ec89e18440c29412ce5",
+          "png_sha256": "5c693ea4ebf8467aa4e48f1875423d248f3910e00958b19da6db1a9d2b10e1ad"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "e02ea564e6c4d1b6d691f7a70c10a86dd36b65c9b8aff2dda004699dbfa1d087",
+          "png_sha256": "a9b0d3f13521af346925ee53f08b6a5233d3e6b24d88c1886d1d34e7a55f4f15"
+        }
+      },
+      "expected_text": "ALPHA BETA",
+      "trace_character_text": "ALPHA BETA",
+      "parser_block_text": "ALPHA BETA",
+      "parser_blocks": 1,
+      "parser_lines": 1,
+      "parser_spans": 1,
+      "split_block_text": "ALPHA BETA",
+      "split_blocks": 1,
+      "application_ordered_text": "ALPHA BETA",
+      "structured_text_body": "ALPHA BETA",
+      "ordered_matches_expectation": true,
+      "export_matches_expectation": true
+    },
+    "space_tj": {
+      "pdf_sha256": "e624cba13bed56f44c4b4c3e075aabb566b88d384c392596af11fc274421afd7",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "fa1ffad4e35284a481c880b35b833e0e11b36cacf7856ec89e18440c29412ce5",
+          "png_sha256": "5c693ea4ebf8467aa4e48f1875423d248f3910e00958b19da6db1a9d2b10e1ad"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "e02ea564e6c4d1b6d691f7a70c10a86dd36b65c9b8aff2dda004699dbfa1d087",
+          "png_sha256": "a9b0d3f13521af346925ee53f08b6a5233d3e6b24d88c1886d1d34e7a55f4f15"
+        }
+      },
+      "expected_text": "ALPHA BETA",
+      "trace_character_text": "ALPHABETA",
+      "parser_block_text": "ALPHA BETA",
+      "parser_blocks": 1,
+      "parser_lines": 1,
+      "parser_spans": 1,
+      "split_block_text": "ALPHA BETA",
+      "split_blocks": 1,
+      "application_ordered_text": "ALPHA BETA",
+      "structured_text_body": "ALPHA BETA",
+      "ordered_matches_expectation": true,
+      "export_matches_expectation": true
+    },
+    "operator_chunks": {
+      "pdf_sha256": "1c3630a7ae252a5226592c1410d2cf9665256ef7e68aedb35361c897ebf0961e",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "fa1ffad4e35284a481c880b35b833e0e11b36cacf7856ec89e18440c29412ce5",
+          "png_sha256": "5c693ea4ebf8467aa4e48f1875423d248f3910e00958b19da6db1a9d2b10e1ad"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "e02ea564e6c4d1b6d691f7a70c10a86dd36b65c9b8aff2dda004699dbfa1d087",
+          "png_sha256": "a9b0d3f13521af346925ee53f08b6a5233d3e6b24d88c1886d1d34e7a55f4f15"
+        }
+      },
+      "expected_text": "ALPHA BETA",
+      "trace_character_text": "ALPHA BETA",
+      "parser_block_text": "ALPHA BETA",
+      "parser_blocks": 1,
+      "parser_lines": 1,
+      "parser_spans": 1,
+      "split_block_text": "ALPHA BETA",
+      "split_blocks": 1,
+      "application_ordered_text": "ALPHA BETA",
+      "structured_text_body": "ALPHA BETA",
+      "ordered_matches_expectation": true,
+      "export_matches_expectation": true
+    },
+    "objects_forward": {
+      "pdf_sha256": "38a4d4b5c7f6cce37d0028924c9f00abd439d4d666944e5d98f0de08f9ecdf55",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "fa1ffad4e35284a481c880b35b833e0e11b36cacf7856ec89e18440c29412ce5",
+          "png_sha256": "5c693ea4ebf8467aa4e48f1875423d248f3910e00958b19da6db1a9d2b10e1ad"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "e02ea564e6c4d1b6d691f7a70c10a86dd36b65c9b8aff2dda004699dbfa1d087",
+          "png_sha256": "a9b0d3f13521af346925ee53f08b6a5233d3e6b24d88c1886d1d34e7a55f4f15"
+        }
+      },
+      "expected_text": "ALPHA BETA",
+      "trace_character_text": "ALPHABETA",
+      "parser_block_text": "ALPHA BETA",
+      "parser_blocks": 1,
+      "parser_lines": 1,
+      "parser_spans": 1,
+      "split_block_text": "ALPHA BETA",
+      "split_blocks": 1,
+      "application_ordered_text": "ALPHA BETA",
+      "structured_text_body": "ALPHA BETA",
+      "ordered_matches_expectation": true,
+      "export_matches_expectation": true
+    },
+    "objects_reverse": {
+      "pdf_sha256": "838aaad1a32eb4d61dfb9dd83a2ee4fa5a9c9871c636dd9b45236a4da2c121c6",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "fa1ffad4e35284a481c880b35b833e0e11b36cacf7856ec89e18440c29412ce5",
+          "png_sha256": "5c693ea4ebf8467aa4e48f1875423d248f3910e00958b19da6db1a9d2b10e1ad"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "e02ea564e6c4d1b6d691f7a70c10a86dd36b65c9b8aff2dda004699dbfa1d087",
+          "png_sha256": "a9b0d3f13521af346925ee53f08b6a5233d3e6b24d88c1886d1d34e7a55f4f15"
+        }
+      },
+      "expected_text": "ALPHA BETA",
+      "trace_character_text": "BETAALPHA",
+      "parser_block_text": "BETA ALPHA",
+      "parser_blocks": 1,
+      "parser_lines": 2,
+      "parser_spans": 2,
+      "split_block_text": "BETA ALPHA",
+      "split_blocks": 1,
+      "application_ordered_text": "BETA ALPHA",
+      "structured_text_body": "BETA ALPHA",
+      "ordered_matches_expectation": false,
+      "export_matches_expectation": false
+    },
+    "form_repeated": {
+      "pdf_sha256": "5033d439397e00a9ff95f8cd26649fbf581f1fb91e6077a353009cbd7c2a0c3a",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "3154edd93c51c8f0a405dbb1653e4dc34576daf598217819b66fef64aea2528a",
+          "png_sha256": "e19f4f54a7322724040f5da70beccf9049e4448c47ae56f0255e08a4659df1b2"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "34b9b228003e2a71f2e99ea290992fd4a0c34e53bc5a3e75a1110938681571e2",
+          "png_sha256": "f99bcca43eac4f8b7fb6bfcbb893b969e6a6aeea711f5c5e9cc941b9eb23ad6c"
+        }
+      },
+      "expected_text": "STAMP STAMP",
+      "trace_character_text": "STAMPSTAMP",
+      "parser_block_text": "STAMP STAMP",
+      "parser_blocks": 2,
+      "parser_lines": 2,
+      "parser_spans": 2,
+      "split_block_text": "STAMP STAMP",
+      "split_blocks": 2,
+      "application_ordered_text": "STAMP STAMP",
+      "structured_text_body": "STAMP STAMP",
+      "ordered_matches_expectation": true,
+      "export_matches_expectation": true
+    },
+    "form_expanded": {
+      "pdf_sha256": "05e2f61b99805f631797db7c1c215e98b54e84bbf049d4971614a3f9db1e6d72",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "3154edd93c51c8f0a405dbb1653e4dc34576daf598217819b66fef64aea2528a",
+          "png_sha256": "e19f4f54a7322724040f5da70beccf9049e4448c47ae56f0255e08a4659df1b2"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "34b9b228003e2a71f2e99ea290992fd4a0c34e53bc5a3e75a1110938681571e2",
+          "png_sha256": "f99bcca43eac4f8b7fb6bfcbb893b969e6a6aeea711f5c5e9cc941b9eb23ad6c"
+        }
+      },
+      "expected_text": "STAMP STAMP",
+      "trace_character_text": "STAMPSTAMP",
+      "parser_block_text": "STAMP STAMP",
+      "parser_blocks": 2,
+      "parser_lines": 2,
+      "parser_spans": 2,
+      "split_block_text": "STAMP STAMP",
+      "split_blocks": 2,
+      "application_ordered_text": "STAMP STAMP",
+      "structured_text_body": "STAMP STAMP",
+      "ordered_matches_expectation": true,
+      "export_matches_expectation": true
+    },
+    "prose_row_operators": {
+      "pdf_sha256": "d7a24635115ffd3e3c99af355f8db4b04e8a08da4c7e2280185c86fb3bc5794f",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "7191f926f618ec6b6089dbdf7e4d5f61aa556044f2f8240cfb7b154305168e20",
+          "png_sha256": "90fa949b093ff929def8811ce4901e8f5975b1bb1d51560497c46784ca652338"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "440799f6e3f6744c7ab346a1a6f397eedf597e7866cf8123b1db0f216af1f60f",
+          "png_sha256": "33887337d4c21088b33f401cfc17f1a8463ef6826e7e3e010609a62760c4c5fc"
+        }
+      },
+      "expected_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "trace_character_text": "L1 Left column sentence 1.R1 Right column sentence 1.L2 Left column sentence 2.R2 Right column sentence 2.L3 Left column sentence 3.R3 Right column sentence 3.",
+      "parser_block_text": "L1 Left column sentence 1. R1 Right column sentence 1. L2 Left column sentence 2. R2 Right column sentence 2. L3 Left column sentence 3. R3 Right column sentence 3.",
+      "parser_blocks": 3,
+      "parser_lines": 6,
+      "parser_spans": 6,
+      "split_block_text": "L1 Left column sentence 1. R1 Right column sentence 1. L2 Left column sentence 2. R2 Right column sentence 2. L3 Left column sentence 3. R3 Right column sentence 3.",
+      "split_blocks": 6,
+      "application_ordered_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "structured_text_body": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "ordered_matches_expectation": true,
+      "export_matches_expectation": true
+    },
+    "prose_column_operators": {
+      "pdf_sha256": "89d2277ccd3d2775abce29fe53fae382e878d152a51e2081d30e4a0a7f1b1302",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "7191f926f618ec6b6089dbdf7e4d5f61aa556044f2f8240cfb7b154305168e20",
+          "png_sha256": "90fa949b093ff929def8811ce4901e8f5975b1bb1d51560497c46784ca652338"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "440799f6e3f6744c7ab346a1a6f397eedf597e7866cf8123b1db0f216af1f60f",
+          "png_sha256": "33887337d4c21088b33f401cfc17f1a8463ef6826e7e3e010609a62760c4c5fc"
+        }
+      },
+      "expected_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "trace_character_text": "L1 Left column sentence 1.L2 Left column sentence 2.L3 Left column sentence 3.R1 Right column sentence 1.R2 Right column sentence 2.R3 Right column sentence 3.",
+      "parser_block_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "parser_blocks": 6,
+      "parser_lines": 6,
+      "parser_spans": 6,
+      "split_block_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "split_blocks": 6,
+      "application_ordered_text": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "structured_text_body": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+      "ordered_matches_expectation": true,
+      "export_matches_expectation": true
+    },
+    "table_row_operators": {
+      "pdf_sha256": "be45678df1348ff98c30e6fed816b619358858176e0ed9112ff949cc0427817b",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "97ef2d23c015de42b8e89f67784dfb246f1f0f5b94ec544a4bc591e330238a1d",
+          "png_sha256": "14e016b7cbc4e68da21aa26631895b57e81e073a24aa165151ef301bfb5e5e6c"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "b1be23d2629691979e6b75fcf5937eb1781eb6f56ddf8c5ba2b74fa0aa1caed1",
+          "png_sha256": "9fa4e234f3729fff0d31031b8ae9614ca3a8311d941cdc2512898d252d6ea3f1"
+        }
+      },
+      "expected_text": "A1 B1 A2 B2 A3 B3",
+      "trace_character_text": "A1B1A2B2A3B3",
+      "parser_block_text": "A1 B1 A2 B2 A3 B3",
+      "parser_blocks": 3,
+      "parser_lines": 6,
+      "parser_spans": 6,
+      "split_block_text": "A1 B1 A2 B2 A3 B3",
+      "split_blocks": 6,
+      "application_ordered_text": "A1 A2 A3 B1 B2 B3",
+      "structured_text_body": "A1 A2 A3 B1 B2 B3",
+      "ordered_matches_expectation": false,
+      "export_matches_expectation": false
+    },
+    "table_column_operators": {
+      "pdf_sha256": "666fa78301c42f3d02e95893b083e635001788b1321d219d4e8d57eef081efa4",
+      "renders": {
+        "72": {
+          "width": 600,
+          "height": 800,
+          "channels": 3,
+          "samples_sha256": "97ef2d23c015de42b8e89f67784dfb246f1f0f5b94ec544a4bc591e330238a1d",
+          "png_sha256": "14e016b7cbc4e68da21aa26631895b57e81e073a24aa165151ef301bfb5e5e6c"
+        },
+        "144": {
+          "width": 1200,
+          "height": 1600,
+          "channels": 3,
+          "samples_sha256": "b1be23d2629691979e6b75fcf5937eb1781eb6f56ddf8c5ba2b74fa0aa1caed1",
+          "png_sha256": "9fa4e234f3729fff0d31031b8ae9614ca3a8311d941cdc2512898d252d6ea3f1"
+        }
+      },
+      "expected_text": "A1 B1 A2 B2 A3 B3",
+      "trace_character_text": "A1A2A3B1B2B3",
+      "parser_block_text": "A1 A2 A3 B1 B2 B3",
+      "parser_blocks": 6,
+      "parser_lines": 6,
+      "parser_spans": 6,
+      "split_block_text": "A1 A2 A3 B1 B2 B3",
+      "split_blocks": 6,
+      "application_ordered_text": "A1 A2 A3 B1 B2 B3",
+      "structured_text_body": "A1 A2 A3 B1 B2 B3",
+      "ordered_matches_expectation": false,
+      "export_matches_expectation": false
+    }
+  },
+  "groups": {
+    "spacing_and_fragmentation": {
+      "fixtures": [
+        "space_explicit",
+        "space_tj",
+        "operator_chunks",
+        "objects_forward",
+        "objects_reverse"
+      ],
+      "equal_render_samples": {
+        "72": true,
+        "144": true
+      },
+      "equal_parser_text": false,
+      "equal_application_order": false,
+      "equal_structured_text": false
+    },
+    "form_placements": {
+      "fixtures": [
+        "form_repeated",
+        "form_expanded"
+      ],
+      "equal_render_samples": {
+        "72": true,
+        "144": true
+      },
+      "equal_parser_text": true,
+      "equal_application_order": true,
+      "equal_structured_text": true
+    },
+    "two_column_prose": {
+      "fixtures": [
+        "prose_row_operators",
+        "prose_column_operators"
+      ],
+      "equal_render_samples": {
+        "72": true,
+        "144": true
+      },
+      "equal_parser_text": false,
+      "equal_application_order": true,
+      "equal_structured_text": true
+    },
+    "borderless_table": {
+      "fixtures": [
+        "table_row_operators",
+        "table_column_operators"
+      ],
+      "equal_render_samples": {
+        "72": true,
+        "144": true
+      },
+      "equal_parser_text": false,
+      "equal_application_order": true,
+      "equal_structured_text": true
+    }
+  }
+}
