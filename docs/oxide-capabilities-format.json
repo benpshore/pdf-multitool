@@ -1,0 +1,40 @@
+{
+  "package": "pdf-oxide==0.3.78",
+  "scope": "Native per-page formatted text, Markdown and HTML",
+  "qualification": "Bounded tested adapters, not general semantic or visual qualification",
+  "capabilities": [
+    {
+      "api": ["PdfDocument.to_plain_text"],
+      "operation": "oxide_format",
+      "status": "implemented_with_explicit_gaps",
+      "options": ["format=text", "pages", "preserve_layout", "detect_headings"],
+      "limits": "100 selected pages, 500000 total baseline/output characters, shared 16MiB output budget and native process bounds.",
+      "accuracy": "Pinned untagged geometric plain-text path ignores include_artifacts=False on the frozen tagged-artifact fixture; this combination is rejected before worker creation. No form-field toggle exists in this binding. Original native text is retained in a separate baseline file. Numeric tokens tested against the frozen authored-cell oracle. No layout or order qualification is implied.",
+      "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/document.rs#L22804"
+    },
+    {
+      "api": ["PdfDocument.to_markdown"],
+      "operation": "oxide_format",
+      "status": "implemented",
+      "options": ["format=markdown", "pages", "preserve_layout", "detect_headings", "include_artifacts", "include_form_fields"],
+      "accuracy": "Actual tagged-artifact and form-field toggles checked; untouched baseline retained. All numeric fixture cells checked. Native inferred tables and reading order require source comparison. Native images disabled; explicit bounded PNG export is separate."
+    },
+    {
+      "api": ["PdfDocument.to_html"],
+      "operation": "oxide_format",
+      "status": "implemented",
+      "options": ["format=html", "pages", "preserve_layout", "detect_headings", "include_form_fields"],
+      "accuracy": "No include_artifacts toggle exists in native HTML; exclusion rejected. Raw native output remains inert .native-html.txt; browser review permits structural tags only, with all native attributes/styles/images/links/active content removed. It is a content review, not layout reproduction."
+    },
+    {
+      "api": ["PdfDocument.to_plain_text_all", "PdfDocument.to_markdown_all", "PdfDocument.to_html_all", "PdfDocument.extract_all_text"],
+      "operation": "oxide_format / oxide",
+      "status": "bounded_per_page_equivalent",
+      "reason": "Explicit selected-page iteration retains per-page source identity, bounds and errors. Native convenience all-page accumulation and async executor wrappers are not called. Images are not embedded in native text/HTML conversion; oxide offers separately bounded inspection/export."
+    }
+  ],
+  "tests": "tests/test_oxide_format.py",
+  "preserved_native_failure": "Isolated cloud evidence/format-artifact-probe retains original.pdf and plain-text outputs with both artifact flag values; original files are not overwritten.",
+  "parent_ada_acceptance": "pending for this new route; existing extraction failures already confirmed independently",
+  "merge_hold": true
+}

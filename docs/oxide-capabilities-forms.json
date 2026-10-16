@@ -1,0 +1,160 @@
+{
+  "distribution": "pdf-oxide",
+  "version": "0.3.78",
+  "owner": "oxide_forms",
+  "scope": "Pinned Python bindings for existing-document forms and annotations",
+  "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs",
+  "implementation": "src/pdf_multitool/oxide_forms.py",
+  "tests": "tests/test_oxide_forms.py",
+  "qualification": {
+    "general_visual_fidelity": "unqualified; parent Ada review required",
+    "merge_hold": true,
+    "runtime": "Optional pinned wheel; disposable nonroot Linux worker with hard 2 GiB address-space/120 second ceilings and native network/process confinement",
+    "input": "Source bytes retained; input at most 50 MiB; whole-document form/edit workflows limited to 100 pages",
+    "output": "1000 fields, 2000 annotations, 2 MiB report/export, 16 MiB aggregate output; no truncated success",
+    "configuration": "32 KiB strict JSON; 100 edits; no arbitrary method dispatch or user output paths",
+    "coordinates": "Native PDF user-space coordinates; one-based source pages, zero-based annotation indices; no rotation/crop normalization",
+    "independent_validation": "PyMuPDF structural reopen; checkbox /Yes export-state and choice constraints; native saved field/annotation comparisons. These do not establish visible appearance accuracy."
+  },
+  "capabilities": [
+    {
+      "id": "oxide.forms.inspect",
+      "apis": ["PdfDocument.get_form_fields", "PdfDocument.get_form_field_value"],
+      "route": "oxide_form_inspect",
+      "status": "implemented",
+      "details": "Exact field report and per-page widget annotations; get_form_field_value also validates pending filled values.",
+      "verification": ["exact numeric strings and leading zeros", "multiline values", "readonly and signature classifications", "source hashes", "source page/widget identity"]
+    },
+    {
+      "id": "oxide.forms.field_properties",
+      "apis": ["FormField.name", "FormField.field_type", "FormField.value", "FormField.tooltip", "FormField.bounds", "FormField.flags", "FormField.max_length", "FormField.is_readonly", "FormField.is_required"],
+      "route": "oxide_form_inspect",
+      "status": "implemented",
+      "details": "Properties retained in JSON; native bounds are not relabeled as normalized screen coordinates."
+    },
+    {
+      "id": "oxide.forms.fill",
+      "apis": ["PdfDocument.set_form_field_value", "PdfDocument.get_form_field_value", "PdfDocument.to_bytes"],
+      "route": "oxide_form_fill",
+      "status": "implemented_with_explicit_restrictions",
+      "details": "Text/null, standard /Yes boolean checkboxes, single choices and multi-select arrays. Saved requested and untouched values must match exactly. Native choice validity independently checked. Readonly/signature/unknown/push-button/radio fields, duplicate names and non-/Yes checkbox states fail closed. Encrypted rewrites fail because encryption cannot be preserved by this route.",
+      "verification": ["independent native and PyMuPDF saved numeric/multiline strings", "Unicode native value preservation", "boolean checkbox", "single choice", "multi-choice", "readonly/maximum-length/missing-field errors", "source preservation"],
+      "limitations": ["Visible field appearance and Unicode glyph coverage require visual review", "Radio string setter serializes PDF strings rather than name states; no supported radio repair is claimed"]
+    },
+    {
+      "id": "oxide.forms.xfa",
+      "apis": ["PdfDocument.has_xfa"],
+      "route": "oxide_form_inspect",
+      "status": "implemented_detection_only",
+      "details": "XFA presence reported; XFA form mutations/export/flatten fail closed. No XFA extraction, rendering, filling or XML import method exists in the pinned Python binding.",
+      "verification": ["synthetic XFA packet detected", "mutation/export rejected atomically"]
+    },
+    {
+      "id": "oxide.forms.export_fdf",
+      "apis": ["PdfDocument.export_form_data(format='fdf')"],
+      "route": "oxide_form_export",
+      "status": "implemented_with_explicit_restrictions",
+      "details": "App-owned generated output filename only. Exact JSON report accompanies native FDF. Only ASCII names/values and representable button export names accepted; Unicode fails closed because pinned writer uses raw UTF-8 literal PDF strings. Export operates on a freshly opened source, never unsaved editor changes.",
+      "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/fdf/fdf_writer.rs",
+      "verification": ["ASCII numeric/special-character output", "multi-select array delimiters", "native output hash", "Unicode rejection"]
+    },
+    {
+      "id": "oxide.forms.export_xfdf",
+      "apis": ["PdfDocument.export_form_data(format='xfdf')"],
+      "route": "oxide_form_export",
+      "status": "implemented_with_explicit_restrictions",
+      "details": "Scalar Unicode XML export with parsed-value check against exact source fields. Reject DTD/entities, XML-invalid/control-normalized names/values, arrays and empty strings. Pinned upstream comma-joins arrays and omits empty-string value elements.",
+      "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/fdf/xfdf_writer.rs",
+      "verification": ["XML escaping", "Unicode strings", "booleans and null values", "array/empty-string rejection", "native output hash"]
+    },
+    {
+      "id": "oxide.forms.import",
+      "apis": [],
+      "route": null,
+      "status": "unavailable_in_pinned_python_binding",
+      "details": "No FDF/XFDF import method is exported in Python 0.3.78. A bounded JSON fill workflow is implemented and is not presented as native FDF/XFDF import."
+    },
+    {
+      "id": "oxide.forms.flatten",
+      "apis": ["PdfDocument.flatten_forms", "PdfDocument.flatten_forms_on_page", "PdfDocument.flatten_warnings"],
+      "route": "oxide_form_flatten",
+      "status": "implemented_with_visual_review_required",
+      "details": "Explicit allow_flatten; selected widgets or entire AcroForm flattened in a derivative. Source fields, before/after page annotations and post-save native appearance warnings retained. XFA unsupported. Interactivity changes; missing appearances may lose content.",
+      "verification": ["selected-page widget removal", "other-page widgets preserved", "non-widget notes retained", "all-page AcroForm removal", "source page text retained"]
+    },
+    {
+      "id": "oxide.annotations.inspect",
+      "apis": ["PdfDocument.get_annotations", "Page.annotations"],
+      "route": "oxide_annotation_inspect",
+      "status": "implemented",
+      "details": "Read metadata available from get_annotations including literal contents/URI, field data, author, subject, dates, opacity and rectangles. Page.annotations delegates to get_annotations in the binding; the app calls get_annotations directly.",
+      "verification": ["one-based page identities", "selected page order", "exact native rectangles", "inert URI strings"]
+    },
+    {
+      "id": "oxide.annotations.editor_wrapper",
+      "apis": ["PdfPage.annotations", "PdfAnnotation.subtype", "PdfAnnotation.rect", "PdfAnnotation.contents", "PdfAnnotation.color", "PdfAnnotation.is_modified", "PdfAnnotation.is_new"],
+      "route": "oxide_annotation_edit",
+      "status": "partial_editor_internals",
+      "details": "PdfPage.annotations and PdfAnnotation.subtype are called for removal validation. Native rect/contents/color getters are not called directly; equivalent persistent metadata is exported via get_annotations. Transient is_modified/is_new editor flags are not exposed by the app. FormField/PdfAnnotation have no public native constructor; values are returned by native document APIs. No claim that all wrapper getters are separately implemented."
+    },
+    {
+      "id": "oxide.annotations.add",
+      "apis": ["PdfDocument.page", "PdfPage.add_note", "PdfPage.add_link", "PdfDocument.save_page", "PdfDocument.to_bytes"],
+      "route": "oxide_annotation_edit",
+      "status": "implemented",
+      "details": "Strict action allowlist. Links limited to HTTP(S)/mailto without credentials; no link is fetched. Native saved counts, metadata, rectangles, contents and retained page text checked; existing annotations kept. Output is structurally reopened independently.",
+      "verification": ["note contents and rectangle", "link URI and rectangle", "source page identity", "untouched annotations/page text", "unknown keys, paths and script/file URI rejection"]
+    },
+    {
+      "id": "oxide.annotations.add_highlight",
+      "apis": ["PdfPage.add_highlight"],
+      "route": "oxide_annotation_edit",
+      "status": "pinned_native_visual_failure_gated",
+      "details": "Correct saved geometry/color metadata and successful native serialization do not establish a visible highlight. An isolated synthetic native highlight renders as a malformed bow-tie in MuPDF and is absent in PDFium (zero colored pixels at the requested rectangle). New highlight actions are rejected before spawn; originals remain intact. No renderer fallback disguises the native defect.",
+      "verification": ["independent MuPDF malformed bow-tie appearance", "independent PDFium missing color", "explicit pre-spawn capability gate"],
+      "recovery_evidence": "External evidence/forms-highlight-appearance-probe-2/test_added_highlight_has_visib0 preserves source, wrong output, report and PDFium render; the final review pack includes the negative case."
+    },
+    {
+      "id": "oxide.annotations.remove",
+      "apis": ["PdfPage.remove_annotation"],
+      "route": "oxide_annotation_edit",
+      "status": "pinned_native_persistence_failure_fail_closed",
+      "details": "Method returns True and save succeeds but the reopened PDF retains removed original annotations in a real synthetic test. Runtime saved-metadata check rejects the output. Widget removal is refused; no alternate parser silently substitutes for PDF Oxide.",
+      "verification": ["real original-note removal defect reproduced", "no partial outputs after rejection"],
+      "recovery_evidence": "External evidence/forms-test-run-1/test_annotation_add_remove_reo0 contains the original and erroneous pre-guard native output/report; preserved for review."
+    },
+    {
+      "id": "oxide.annotations.flatten",
+      "apis": ["PdfDocument.flatten_page_annotations", "PdfDocument.flatten_all_annotations", "PdfDocument.is_page_marked_for_flatten"],
+      "route": "oxide_annotation_flatten",
+      "status": "implemented_with_visual_review_required",
+      "details": "Explicit allow_flatten; selected page annotations flattened with source/after metadata. Existing widgets require separate form flattening. Native code skips annotations without usable appearance streams; successful serialization does not establish visible-content retention.",
+      "verification": ["selected page marking and saved annotation removal", "other-page annotation/link preservation", "widget gate"]
+    },
+    {
+      "id": "oxide.annotations.unmark",
+      "apis": ["PdfDocument.unmark_page_for_flatten"],
+      "route": "oxide_annotation_flatten",
+      "status": "internal_editor_state_not_user_workflow",
+      "details": "The app selects final flatten pages before editing, so no pending marks are exposed across requests. This state-mutator has no independent durable artifact; selected-page exclusion provides the user-visible result. No arbitrary persistent editor session is created."
+    },
+    {
+      "id": "oxide.forms.creation",
+      "apis": ["FluentPageBuilder.text_field", "FluentPageBuilder.checkbox", "FluentPageBuilder.combo_box", "FluentPageBuilder.radio_group", "FluentPageBuilder.push_button", "FluentPageBuilder.signature_field"],
+      "status": "owned_by_creation_module",
+      "details": "New-document field creation and builder verification are delegated to oxide_creation; this inventory makes no completion claim for those methods."
+    },
+    {
+      "id": "oxide.annotations.creation",
+      "apis": ["FluentPageBuilder.highlight", "FluentPageBuilder.underline", "FluentPageBuilder.strikeout", "FluentPageBuilder.squiggly", "FluentPageBuilder.sticky_note", "FluentPageBuilder.sticky_note_at", "FluentPageBuilder.stamp", "FluentPageBuilder.freetext"],
+      "status": "owned_by_creation_module",
+      "details": "New-document annotation builders are owned by oxide_creation. Existing-document Python annotation additions expose only note/highlight/link."
+    },
+    {
+      "id": "oxide.forms.signing_and_actions",
+      "apis": [],
+      "status": "separate_explicit_gate",
+      "details": "No private keys, certificates, signing or form JavaScript is loaded/executed. Signature inspection/security belongs to oxide_security. Existing signature fields are not filled by this module; rewriting signed documents records invalidation."
+    }
+  ]
+}

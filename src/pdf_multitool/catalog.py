@@ -19,6 +19,37 @@ def field(label, kind="string", default="", **kwargs):
 
 
 OPERATIONS = {
+    "oxide": {
+        "label": "Extract with PDF Oxide",
+        "engine": "pdf_oxide",
+        "inputs": 1,
+        "pages": True,
+        "description": (
+            "Extract native text and candidate table cells with optional PDF Oxide. "
+            "Compare numbers, missing cells and wrapped rows with the original. "
+            "No OCR. Optional header/footer cleanup keeps both text copies but can "
+            "remove meaningful repeated prose, citations and table headers."
+        ),
+        "outputs": ["application/json", "text/plain", "text/html"],
+        "options": {
+            "mode": field("Extract", default="both", enum=["both", "text", "tables"]),
+            "include_html": field("Additional page HTML copy", "boolean", False),
+            "images": field(
+                "Images (inspect keeps bytes in memory)",
+                default="none",
+                enum=["none", "inspect", "export"],
+            ),
+            "strategy": field("Table boundaries", default="both", enum=["both", "lines", "text"]),
+            "cleanup": field(
+                "Additional cleanup copy",
+                default="none",
+                enum=["none", "headers", "footers", "both"],
+            ),
+            "threshold": field(
+                "Cleanup repetition fraction", "number", 0.8, minimum=0.5, maximum=1
+            ),
+        },
+    },
     "recolor": {
         "label": "Convert PDF colors",
         "engine": "pymupdf",
@@ -251,6 +282,10 @@ OPERATIONS = {
 }
 
 
+from .oxide_routes import contracts as oxide_contracts  # noqa: E402 -- after local definitions
+
+OPERATIONS.update(oxide_contracts())
+
 GAPS = [
     {
         "feature": "Curved-page dewarping",
@@ -366,6 +401,19 @@ def validate_options(operation, options):
         if "maxLength" in spec and len(value) > spec["maxLength"]:
             raise JobError(f"{key} exceeds its length limit")
         result[key] = value
+    if operation == "oxide":
+        from .oxide import validate_selection
+
+        validate_selection(result["pages"])
+        if result["mode"] == "tables" and result["cleanup"] != "none":
+            raise JobError("PDF Oxide cleanup requires text or both mode to retain both copies")
+    elif operation.startswith("oxide_"):
+        from .oxide import validate_selection
+        from .oxide_routes import validate
+
+        if contract["pages"]:
+            validate_selection(result["pages"])
+        validate(operation, result)
     return result
 
 

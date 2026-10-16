@@ -1,0 +1,122 @@
+{
+  "package": "pdf-oxide==0.3.78",
+  "scope": "Python bindings; conversion and rendering families",
+  "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs",
+  "qualification": "Implemented routes require supervised integration tests; visual acceptance remains pending Ada's own review.",
+  "capabilities": [
+    {
+      "api": ["PdfDocument.flatten_to_images"],
+      "operation": "oxide_flatten",
+      "status": "implemented_partial",
+      "options": ["dpi", "allow_rasterization", "allow_page_relayout"],
+      "limits": "100 pages, 16MP/page and 64MP/document; native temporary PNG files confined to and cleaned with the disposable work directory.",
+      "accuracy": "Native flatten reconstructs rendered pages on default paper with margins. Source geometry and interactive structure are lost. Requires both explicit acknowledgments, records source/output dimensions and returns partial. Not verified redaction."
+    },
+    {
+      "api": ["PdfDocument.render_page"],
+      "operation": "oxide_render",
+      "options": ["format=png|jpeg", "dpi", "background RGBA", "transparent", "annotations", "jpeg_quality", "excluded_layers"],
+      "status": "implemented",
+      "limits": "Selected pages <=100; DPI 36..300; 16MP/image and 64MP/input; output budget inherited from supervised worker.",
+      "accuracy": "Rejects requested raster dimensions exceeding the cap rather than accepting upstream silent downscaling. Pixel correctness is separately tested. Universal fidelity is unverified."
+    },
+    {
+      "api": ["PdfDocument.render_page_fit"],
+      "operation": "oxide_render",
+      "options": ["sizing=fit", "width", "height"],
+      "status": "implemented",
+      "limits": "Target box <=4096 pixels per axis and <=16MP. Output dimensions are checked. Upstream fit computes scale from media box even when cropping is present; report preserves actual dimensions."
+    },
+    {
+      "api": ["PdfDocument.render_pixmap", "RenderedPixmap"],
+      "operation": "oxide_render",
+      "options": ["format=pixmap", "dpi"],
+      "status": "implemented",
+      "output": "Owned raw premultiplied RGBA8888 bytes plus dimensions, stride and source/page/hash provenance. Not mislabeled as straight-alpha RGBA."
+    },
+    {
+      "api": ["PdfDocument.render_separations", "PdfDocument.render_separation", "SeparationPlate"],
+      "operation": "oxide_render",
+      "options": ["format=separations|separation", "dpi", "ink"],
+      "status": "implemented",
+      "output": "PGM coverage bytes (0 no ink, 255 full ink) with original ink names stored only as JSON data; app-owned output filenames.",
+      "limits": "32 plates/page; direct DeviceCMYK operators are budgeted separately from named resource inks. Native parsing remains under hard process bounds."
+    },
+    {
+      "api": ["PdfDocument.to_docx", "PdfDocument.to_docx_bytes", "PdfDocument.to_xlsx", "PdfDocument.to_xlsx_bytes", "PdfDocument.to_pptx", "PdfDocument.to_pptx_bytes"],
+      "operation": "oxide_office_export",
+      "options": ["format=docx|xlsx|pptx"],
+      "status": "implemented",
+      "adapter": "Calls in-memory bytes variants and writes only app-owned output paths.",
+      "limits": "Whole document <=250 pages, complete package preflight and inherited output cap. PDF page count is read fallibly before native convenience conversion.",
+      "accuracy": "Reports pinned source's positioned policy <=30 pages for DOCX/PPTX or <=200 for XLSX, flow above. Editable positioned elements are not semantic table cells. Visually reviewed XLSX/PPTX outputs omit the synthetic red vector rectangle and ruled-table borders; when source vector paths are detected the result is partial and records per-page vector counts. DOCX preserved those sampled vectors but remains unqualified. Layout, images, fonts, text and numeric fidelity require independent review."
+    },
+    {
+      "api": ["OfficeConverter.from_docx", "OfficeConverter.from_docx_bytes", "OfficeConverter.from_xlsx", "OfficeConverter.from_xlsx_bytes", "OfficeConverter.from_pptx", "OfficeConverter.from_pptx_bytes", "OfficeConverter.convert"],
+      "operation": "oxide_office_import",
+      "options": ["format=auto|docx|xlsx|pptx"],
+      "status": "implemented",
+      "adapter": "Explicit format dispatch uses byte snapshots. Path aliases and auto detection map to these same bounded methods.",
+      "limits": "ZIP entry/expanded bytes/ratio/CRC checks, no filesystem extraction, DTD/entity-safe XML with depth/node/text limits, bounded cells/sheets/slides/images. Only PNG/JPEG Office images are accepted until additional formats are qualified. Embedded fonts stay in the package; font licensing is not changed.",
+      "rejections": ["Macros and macro-enabled formats", "OLE and embedded objects", "ActiveX controls", "External relationships and links", "Encrypted Office archives", "Legacy DOC/XLS/PPT", "Unknown binary package members"],
+      "accuracy": "Originals retained; OfficeConverter supplies no structured diagnostic channel, so empty diagnostic lists are explicitly labeled unavailable. No claim that unsupported content was retained."
+    },
+    {
+      "api": ["Pdf.from_image", "Pdf.from_image_bytes"],
+      "operation": "oxide_image_pdf",
+      "status": "implemented",
+      "adapter": "Verified PNG/JPEG byte snapshots with pixel and byte limits; native bytes constructor only. One source image becomes one output page centered on native default paper/margins. Direct CMYK JPEG embedding is rejected because the independent color test found wrong output. Explicit normalize_cmyk optionally converts to unprofiled RGB PNG and records original/native input hashes; this is not print color certification."
+    },
+    {
+      "api": ["Pdf.from_images"],
+      "operation": "oxide_images_pdf",
+      "status": "implemented",
+      "adapter": "Input order preserved. Native path-only API receives bounded temporary snapshots in the disposable output directory; snapshots are removed after serialization and on errors.",
+      "limits": "100 inputs; 16MP/image, 64MP total, 16MiB/image and 64MiB aggregate input bytes, inherited output budget."
+    },
+    {
+      "api": ["PdfDocument.to_docx_bytes_flow", "PdfDocument.to_docx_bytes_layout", "PdfDocument.to_pptx_bytes_flow", "PdfDocument.to_xlsx_bytes_flow"],
+      "operation": null,
+      "status": "not_python_bound",
+      "reason": "Methods exist in pinned Rust source but not the released Python public binding. The adapter reports native automatic policy; it does not pretend to expose a selectable flow/layout method."
+    },
+    {
+      "api": ["OfficeConfig", "RenderOptions.max_output_pixels", "Pdf.from_image_data_multiple"],
+      "operation": null,
+      "status": "not_python_bound",
+      "reason": "Rust configuration/helpers are absent from the Python public binding. Bounds are external and enforced before/after native calls. Existing app operations retain their existing implementation."
+    }
+  ],
+  "python_convenience_aliases": {
+    "Page.render": "Same native method as PdfDocument.render_page, exposed through oxide_render.",
+    "Page.render_pixmap": "Same native method as PdfDocument.render_pixmap, exposed through oxide_render.",
+    "RenderedPixmap": "data, width, height are checked, emitted and reported; remaining namedtuple helpers are data protocol.",
+    "SeparationPlate": "ink_name, data, width, height are checked, emitted and reported; remaining namedtuple helpers are data protocol.",
+    "OfficeConverter.__new__": "Stateless constructor; static conversion dispatch uses the same released class.",
+    "AsyncOfficeConverter": "Native sync methods are offloaded by upstream run_in_executor. Existing app supervised async/batch jobs provide bounded scheduling instead of an in-process thread executor.",
+    "AsyncPdf image constructors": "Same native constructors through supervised image conversion jobs.",
+    "AsyncPdfDocument rendering and Office methods": "Same native methods through supervised conversion jobs."
+  },
+  "office_thread_workaround": {
+    "observed_failure": "Native DOCX import stalled until the 120-second supervisor timeout.",
+    "source_basis": "office_oxide 0.1.9 uses a parsing thread when RLIMIT_STACK is below 12MiB; binding holds GIL while joining and Rust logging callbacks may request GIL.",
+    "mitigation": "Disable native logging callbacks inside the disposable Office import worker. Correct independent DOCX import then completed in 0.38 seconds. Structured Office diagnostics are unavailable, explicitly reported; no claim of complete warnings.",
+    "dependency_sha256": "e07e156a6bc62caaa66fc698daad7405dd62e86f5292fd22898c1a55f154748d"
+  },
+  "verification": {
+    "test_file": "tests/test_oxide_conversion.py",
+    "evidence_directory": "evidence/conversion-review (isolated cloud workspace; outside repository)",
+    "visual_review": "Conversion agent inspected PDFium-rendered originals and derivatives, including native raster, DOCX, XLSX and PPTX round trips for frozen wrapped/missing/empty-cell tables and prose. Ada's independent acceptance remains pending.",
+    "limits_of_office_review": "No Microsoft Office or LibreOffice renderer is installed; Office files were independently inspected as OOXML and round-tripped with PDF Oxide before independent PDFium rendering. Successful round trip is not Office interoperability or semantic fidelity certification.",
+    "preserved_failures": ["Direct native CMYK JPEG color corruption", "Native flatten default-page/margin relayout", "XLSX/PPTX dropped ordinary vectors and ruled table borders", "Office parser/logging stall bounded by supervisor timeout"],
+    "frozen_sources_modified": false,
+    "merge_hold": "unchanged"
+  },
+  "source_links": [
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/document.rs#L23201-L23419",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/rendering/mod.rs",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/converters/office/mod.rs",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/api/pdf_builder.rs",
+    "https://pdf.oxide.fyi/rust/docs/creation/office-conversion"
+  ]
+}

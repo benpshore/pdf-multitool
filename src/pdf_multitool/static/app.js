@@ -69,7 +69,8 @@
         input.max = spec.maximum ?? '';
         input.step = spec.type === 'integer' ? '1' : 'any';
       } else {
-        if (!spec.multiline) input.type = 'text';
+        if (!spec.multiline) input.type = spec.secret ? 'password' : 'text';
+        if (spec.secret) input.autocomplete = 'new-password';
         if (spec.maxLength) input.maxLength = spec.maxLength;
         if (spec.multiline) input.rows = 8;
       }
@@ -200,17 +201,18 @@
     $('operation').disabled = blocked();
     for (const input of $('operation-options').querySelectorAll('input,select,textarea')) input.disabled = blocked();
     const requiresFiles = additional[op]?.inputs !== 0;
+    const minimumFiles = additional[op]?.inputs ?? (op === 'merge' ? 2 : 1);
     const rasterAccepted = !advancedControls.has('allow_rasterize') || advancedControls.get('allow_rasterize').input.checked;
-    $('run-button').disabled = !state.ready || blocked() || (requiresFiles && !count) || unavailable || !rasterAccepted || (op === 'merge' && count < 2) || (op === 'compress' && !$('allow-lossy').checked);
+    $('run-button').disabled = !state.ready || blocked() || count < minimumFiles || unavailable || !rasterAccepted || (op === 'compress' && !$('allow-lossy').checked);
     let hint = `${count} selected file${count === 1 ? '' : 's'} · New files only`;
     if (!state.ready) hint = 'Connecting to the local workspace…';
     else if (state.uploading) hint = 'Adding files to the workspace…';
     else if (state.busy) hint = 'Working locally. You can cancel below.';
     else if (unavailable) hint = 'This engine is unavailable. See About & engines below.';
     else if (!rasterAccepted) hint = 'Confirm rasterization and possible content loss to continue.';
-    else if (!requiresFiles) hint = 'Create a new document from the text above.';
+    else if (!requiresFiles) hint = 'Create a new file from the options above.';
     else if (!count) hint = 'Add and select files to begin.';
-    else if (op === 'merge' && count < 2) hint = 'Select at least two PDFs or images to merge.';
+    else if (count < minimumFiles) hint = `Select at least ${minimumFiles} files to continue.`;
     else if (op === 'compress' && !$('allow-lossy').checked) hint = 'Confirm PDF rewriting and possible quality loss to continue.';
     $('run-hint').textContent = hint;
     refreshOutputContext();
@@ -228,7 +230,7 @@
     $('ocr-field').hidden = op !== 'docling';
     $('text-export-field').hidden = op !== 'text';
     $('reading-order-field').hidden = !['markdown', 'textlayout', 'pdfhtml'].includes(effective);
-    $('password-field').hidden = ['html', 'imagepdf', 'create'].includes(op);
+    $('password-field').hidden = ['html', 'imagepdf', 'create'].includes(op) || additional[op]?.inputs === 0;
     $('new-password-field').hidden = op !== 'protect';
     $('forms-field').hidden = op !== 'forms';
     $('redaction-field').hidden = op !== 'redact';
@@ -313,7 +315,7 @@
       const remove = button('Remove', 'file-remove', `Remove ${file.name} from workspace`, () => removeFiles([file.id])); remove.disabled = blocked();
       const selectArea = node('label', 'file-select'); selectArea.append(check);
       const actions = node('div', 'file-actions'); actions.append(move, remove);
-      main.append(selectArea, node('span', 'file-badge', /\.html?$/i.test(file.name) ? 'HTML' : /\.(jpe?g|png|jp2|jpx|j2k)$/i.test(file.name) ? 'IMG' : 'PDF'), info, actions);
+      main.append(selectArea, node('span', 'file-badge', /\.(docx|xlsx|pptx)$/i.test(file.name) ? 'OFFICE' : /\.html?$/i.test(file.name) ? 'HTML' : /\.(jpe?g|png|jp2|jpx|j2k)$/i.test(file.name) ? 'IMG' : 'PDF'), info, actions);
       row.append(main);
       const preview = state.previews.get(file.id);
       if (preview) {
@@ -385,9 +387,9 @@
   async function addFiles(files) {
     if (blocked() || !state.ready) return;
     const source = Array.from(files);
-    const pdfs = source.filter(file => /\.(pdf|html?|zip|tar|gz|tgz|jpe?g|png|jp2|jpx|j2k)$/i.test(file.name));
+    const pdfs = source.filter(file => /\.(pdf|html?|docx|xlsx|pptx|zip|tar|gz|tgz|jpe?g|png|jp2|jpx|j2k)$/i.test(file.name));
     const ignored = source.length - pdfs.length;
-    if (!pdfs.length) { notice('Choose PDF, HTML, JPEG, PNG, JPEG2000 or supported archives.', 'error'); return; }
+    if (!pdfs.length) { notice('Choose PDF, HTML, DOCX, XLSX, PPTX, JPEG, PNG, JPEG2000 or supported archives.', 'error'); return; }
     const remaining = Math.max(0, state.maxFiles - state.files.length);
     const oversize = pdfs.filter(file => file.size > state.maxBytes);
     const eligible = pdfs.filter(file => file.size <= state.maxBytes && file.size > 0);
@@ -430,7 +432,7 @@
       if (result.length >= state.maxFiles + 1) return;
       if (entry.isFile) {
         const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
-        if (/\.(pdf|html?|zip|tar|gz|tgz|jpe?g|png|jp2|jpx|j2k)$/i.test(file.name)) result.push(file);
+        if (/\.(pdf|html?|docx|xlsx|pptx|zip|tar|gz|tgz|jpe?g|png|jp2|jpx|j2k)$/i.test(file.name)) result.push(file);
       } else if (entry.isDirectory) {
         const reader = entry.createReader();
         let batch;
@@ -470,7 +472,7 @@
     if (['markdown', 'textlayout', 'pdfhtml'].includes(operation)) options.reading_order = $('reading-order').value;
     let rawForm = null;
     try {
-      if (operation !== 'create' && $('document-password').value) options.password = $('document-password').value;
+      if (additional[operation]?.inputs !== 0 && $('document-password').value) options.password = $('document-password').value;
       if (operation === 'protect') {
         options.new_password = $('new-password').value;
         if (new TextEncoder().encode(options.new_password).length < 8) throw new Error('Use a new password of at least 8 UTF-8 bytes.');
@@ -490,8 +492,9 @@
       const encodedOptions = JSON.stringify(options);
       const optionsBody = rawForm ? encodedOptions.slice(0, -1) + ',' + JSON.stringify(rawForm.key) + ':' + rawForm.source + '}' : encodedOptions;
       const body = '{"operation":' + JSON.stringify(operation) + ',"files":' + JSON.stringify(additional[operation]?.inputs === 0 ? [] : selectedFiles().map(file => file.id)) + ',"options":' + optionsBody + '}';
-      state.job = await json('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
       $('document-password').value = ''; $('new-password').value = '';
+      for (const { input, spec } of advancedControls.values()) if (spec.secret) input.value = '';
+      state.job = await json('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
       if (operation === 'forms') $('form-values').value = '';
       if (!state.job.id) throw new Error('The server did not return a job ID.');
       rememberJob();

@@ -88,6 +88,25 @@ CI provisions these dependencies on Ubuntu; other platforms remain unqualified.
 Installing the `ocr` extra alone does not enable model downloads or satisfy the
 Docling model verification gate.
 
+Optional PDF Oxide 0.3.78 workflows use `uv sync --locked --extra oxide` on
+nonroot Linux with libseccomp. They require the existing bounded worker and
+fail if its native guards are unavailable. The `oxide-ocr` extra additionally
+installs the pinned inference runtime; OCR remains unavailable without an
+explicitly provisioned, verified compatible local model set. No models are
+downloaded automatically. For example:
+
+```sh
+uv run --locked --extra oxide pdf-multitool oxide document.pdf --include-html
+uv run --locked --extra oxide pdf-multitool oxide_format document.pdf --format markdown
+uv run --locked --extra oxide pdf-multitool oxide_create_text --content 'Invoice 001 Total -12.50'
+```
+
+See the [PDF Oxide integration and limitations](docs/PDF_OXIDE_INTEGRATION.md)
+and [complete pinned API accounting](docs/pdf-oxide-api-coverage.json). Native
+tables, text, rendering and Office conversion are not generally qualified.
+Confirmed defective editing/creation combinations fail explicitly. Existing
+engine defaults and the PR's merge hold remain unchanged.
+
 Open the printed loopback URL on the same machine. The server is single-user;
 never expose it through a public tunnel or reverse proxy. Download temporary GUI
 results before closing the server. Originals on disk are not overwritten.

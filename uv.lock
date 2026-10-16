@@ -699,6 +699,14 @@ wheels = [
 ]
 
 [[package]]
+name = "flatbuffers"
+version = "25.12.19"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl", hash = "sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4", size = 26661, upload-time = "2025-12-19T23:16:13.622Z" },
+]
+
+[[package]]
 name = "fonttools"
 version = "4.67.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1441,6 +1449,26 @@ wheels = [
 ]
 
 [[package]]
+name = "onnxruntime"
+version = "1.31.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flatbuffers" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "protobuf" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/fb/b4c52e500c6f3d00dfc22fad4d7513524f3ea2100a24a077ee3b0daf552d/onnxruntime-1.31.0-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:278e0dc922ec69b05a28f59110d5421e2ec8b1d0dd46c6b10c063069a4051e72", size = 20883462, upload-time = "2026-10-09T04:18:54.978Z" },
+    { url = "https://files.pythonhosted.org/packages/37/fb/8be04665b700cb6e874d944e9932bb3c3969d3f53e820f5c42bfd26565d0/onnxruntime-1.31.0-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:984c0a2c1ad6a41fbc101dc3949abe4a72254892d01a5e70d9b792711e0bfa54", size = 21421618, upload-time = "2026-10-09T04:18:58.1Z" },
+    { url = "https://files.pythonhosted.org/packages/30/2e/5c6ec7e26a097e97ee70f2dee68b8ca4d9d26701f2f33c3f8ab585cb89fe/onnxruntime-1.31.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:e4efa4a1a0bb0b5173c6a3292c181d518b8323f9d56e978635d0c09d38c94d1a", size = 23762993, upload-time = "2026-10-09T04:19:01.236Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/66/0bf4fdb9f58efa69cf4eddde24c72aebcc628d6ff1d67c9546145c6b9922/onnxruntime-1.31.0-cp314-cp314-win_amd64.whl", hash = "sha256:83e3dbcf6abc6189c4bdf7d329c07ba1133c88172134c266d84b4409aa3b9dbf", size = 15268709, upload-time = "2026-10-09T04:19:04.2Z" },
+    { url = "https://files.pythonhosted.org/packages/af/99/75a36172c1ed1d74ac0e91c11d642548081e2c9c63f15ee796564619556f/onnxruntime-1.31.0-cp314-cp314-win_arm64.whl", hash = "sha256:d2d5ac22f896c810be2b2b171392bb908f80b6c9a7e2d592ddb7435c928044e1", size = 15153795, upload-time = "2026-10-09T04:19:06.609Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/ec/23b7749edc7aad53bf4632de190399fda69a9195499426637ef1b02f06c6/onnxruntime-1.31.0-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:d25cd65874b75fdf16149120a04d0cd4551f860a3c8e2ecec785a1903e41d8aa", size = 21432344, upload-time = "2026-10-09T04:19:09.646Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/76/155ab0b265e9ceade28a8dd3858fdfa509b039f78010042c875940e32e58/onnxruntime-1.31.0-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:1ecc1450af28d2cf362990e188ccc81b51388f317f641ad973ab4301473200f2", size = 23772576, upload-time = "2026-10-09T04:19:12.731Z" },
+]
+
+[[package]]
 name = "opencv-python-headless"
 version = "5.0.0.93"
 source = { registry = "https://pypi.org/simple" }
@@ -1544,6 +1572,17 @@ images = [
 ocr = [
     { name = "docling", extra = ["easyocr"] },
 ]
+oxide = [
+    { name = "defusedxml" },
+    { name = "pdf-oxide" },
+    { name = "pillow" },
+]
+oxide-ocr = [
+    { name = "defusedxml" },
+    { name = "onnxruntime" },
+    { name = "pdf-oxide" },
+    { name = "pillow" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -1555,14 +1594,21 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "defusedxml", marker = "extra == 'oxide'", specifier = "==0.7.1" },
+    { name = "defusedxml", marker = "extra == 'oxide-ocr'", specifier = "==0.7.1" },
     { name = "docling", extras = ["easyocr"], marker = "extra == 'ocr'", specifier = "==2.138.0" },
+    { name = "onnxruntime", marker = "extra == 'oxide-ocr'", specifier = "==1.31.0" },
+    { name = "pdf-oxide", marker = "extra == 'oxide'", specifier = "==0.3.78" },
+    { name = "pdf-oxide", marker = "extra == 'oxide-ocr'", specifier = "==0.3.78" },
     { name = "pdfplumber", specifier = "==0.11.10" },
     { name = "pikepdf", specifier = "==10.17.0" },
     { name = "pillow", marker = "extra == 'images'", specifier = "==12.3.0" },
+    { name = "pillow", marker = "extra == 'oxide'", specifier = "==12.3.0" },
+    { name = "pillow", marker = "extra == 'oxide-ocr'", specifier = "==12.3.0" },
     { name = "pymupdf", specifier = "==1.26.7" },
     { name = "weasyprint", marker = "extra == 'html'", specifier = "==70.0" },
 ]
-provides-extras = ["html", "images", "ocr"]
+provides-extras = ["html", "images", "ocr", "oxide", "oxide-ocr"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1570,6 +1616,22 @@ dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "reportlab", specifier = ">=4.4,<5" },
     { name = "ruff", specifier = ">=0.14" },
+]
+
+[[package]]
+name = "pdf-oxide"
+version = "0.3.78"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/52/202c81a0ff60e64309dd7fc4682029f88d3fb07c827f4eaf78b53a7552ee/pdf_oxide-0.3.78.tar.gz", hash = "sha256:18fb43c7b4e390400aab51f546a7b8c6ee471b5cbec88f4cf3dd74f6c43c49f2", size = 6930468, upload-time = "2026-09-08T17:24:28.544Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7a/e0/955517da3f8249239573ecafd756f7c647984b6c2a7c67701333556cf3ce/pdf_oxide-0.3.78-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:a0c98d7753ec8593bd7e79ee41ad813b22a55fdd321cae85138e791802eac92b", size = 11084145, upload-time = "2026-09-08T17:24:11.702Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/51/cf844ffab595c22d181f219e786d7c0f80e8d2bfbee8d15a0f1b0cc88406/pdf_oxide-0.3.78-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:538a809d35d9dec07e2e7a7568352bcf4114a8fb66d12f7452c802b2304d6946", size = 10506402, upload-time = "2026-09-08T17:24:13.905Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/e9/4774d28d8a0325809e3c4b1903d777c761b9058fa5dedd47c08caf1f5253/pdf_oxide-0.3.78-cp38-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:dda4a7fb93f3b68a4b9bf52d0d314891d777c417f41993a0c2d8937325a59f2b", size = 10817714, upload-time = "2026-09-08T17:24:15.885Z" },
+    { url = "https://files.pythonhosted.org/packages/df/6c/6b5957c884fb73582851810b5f1e4660da1d414c692ab77c2e784aecd9e0/pdf_oxide-0.3.78-cp38-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:0b7e03008ca441e9183ef8f3c5d895424aca8119d5a860a205e1d16649f4f6a8", size = 11462221, upload-time = "2026-09-08T17:24:17.869Z" },
+    { url = "https://files.pythonhosted.org/packages/91/68/f3b875b44c844970ca7bb727ea417d313a89c176b0d43733267102b871f7/pdf_oxide-0.3.78-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:119c45cc16e1763440e438ab3e2d0a59ff406ed4c5bf6b78716bd2dfb2083b05", size = 11012429, upload-time = "2026-09-08T17:24:20.128Z" },
+    { url = "https://files.pythonhosted.org/packages/59/14/b0a37b598af5f57bea25e130e1f3c1bbac549ec6dd00960c14d951e865ea/pdf_oxide-0.3.78-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:e290619267875256d310ea692f2a748ddb9575d3c35ade61db51f3aaade1ddac", size = 11703260, upload-time = "2026-09-08T17:24:21.946Z" },
+    { url = "https://files.pythonhosted.org/packages/95/61/700cb40f9806df302e085a2d3b1133c21a95a54f2375bad3a04c419223ca/pdf_oxide-0.3.78-cp38-abi3-win_amd64.whl", hash = "sha256:3c2800d15e60ce1d2ec5de5ff9a605c167e0c9964bb9f6143862d282ef6b46d0", size = 11612909, upload-time = "2026-09-08T17:24:24.031Z" },
+    { url = "https://files.pythonhosted.org/packages/06/cb/ebd9574ec3a984b347347dc0e9c370ae38ad26dfafcb99e2253c9823bb8b/pdf_oxide-0.3.78-cp38-abi3-win_arm64.whl", hash = "sha256:f05e894c5d984284f56694f03a9351ea18d8c1ea081b4445007dfaa5c11dce85", size = 10813605, upload-time = "2026-09-08T17:24:26.267Z" },
 ]
 
 [[package]]
@@ -1703,6 +1765,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/85/68/7717bd9e63ed254617a7d3dc9260904fb736d6ea203e58ffddcb186c64e4/polyfactory-3.3.0.tar.gz", hash = "sha256:237258b6ff43edf362ffd1f68086bb796466f786adfa002b0ac256dbf2246e9a", size = 348668, upload-time = "2026-02-22T09:46:28.01Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dd/34/b6f19941adcdaf415b5e8a8d577499f5b6a76b59cbae37f9b125a9ffe9f2/polyfactory-3.3.0-py3-none-any.whl", hash = "sha256:686abcaa761930d3df87b91e95b26b8d8cb9fdbbbe0b03d5f918acff5c72606e", size = 62707, upload-time = "2026-02-22T09:46:25.985Z" },
+]
+
+[[package]]
+name = "protobuf"
+version = "7.36.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/89/5b8517baa72f84a67b8a307ba953c91057af618bf40bf676f3c03551f8f0/protobuf-7.36.2.tar.gz", hash = "sha256:497d0463ff3316681da6c0b9e8d06cb465d61abce00b613ab42226175644d1bb", size = 512737, upload-time = "2026-09-17T20:07:59.326Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/72/98342feb672507c8f3a69e34b4fa8961f608edba5c1a48a6f47156d92cb5/protobuf-7.36.2-cp310-abi3-macosx_10_9_universal2.whl", hash = "sha256:cbc70b17ee27e28894c7fee8bb04be1abead49e936bc70eb60052531eee2079e", size = 456039, upload-time = "2026-09-17T20:07:51.542Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/ea/91fdf7c2b8bbd49cde056f00a9df6773532987e1c00fe2830b895af95c7e/protobuf-7.36.2-cp310-abi3-manylinux2014_aarch64.whl", hash = "sha256:e11e1f0180583a2af89db6a2ecd9e8dc40aa6d2988ca175bfd0e6d12ea72d74e", size = 344219, upload-time = "2026-09-17T20:07:52.914Z" },
+    { url = "https://files.pythonhosted.org/packages/17/ab/5fd5f8ece73fad885c5a09aa849b32d70472f954ba3a92d3bb5974ea953b/protobuf-7.36.2-cp310-abi3-manylinux2014_s390x.whl", hash = "sha256:f4fee11ec330d238b34a05c9b675f693c20415d1c5bd7d5320cc2f8a798eb9cf", size = 357223, upload-time = "2026-09-17T20:07:53.985Z" },
+    { url = "https://files.pythonhosted.org/packages/db/f3/3996583dd2906297a637af12114deddf7658af6e683fedb83be061983fb5/protobuf-7.36.2-cp310-abi3-manylinux2014_x86_64.whl", hash = "sha256:89f23aa53c24553a2416fd4fd1ec06f74fa42b14b546d8883128813f775bbfd2", size = 343223, upload-time = "2026-09-17T20:07:54.931Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/1b/dcc64f358fcb51811b58ae40b3d28f820725f116d86487cc20bd4b130701/protobuf-7.36.2-cp310-abi3-win32.whl", hash = "sha256:912c1221170e16c08d1f086762f563dd61ff83c18b5fa6652952dfaded66f728", size = 442998, upload-time = "2026-09-17T20:07:55.826Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/55/b77bda4e5e5f5971fb51b07663694690e9afdb9402136c16a522bd621cad/protobuf-7.36.2-cp310-abi3-win_amd64.whl", hash = "sha256:a300819d441e078a5608c0d3c709796bb548136058fda017ae51d425b44fd353", size = 456514, upload-time = "2026-09-17T20:07:57.188Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/04/d52c7016b04b6c5108f26691f9d33ec82a9b65d041f1a9c771137693d618/protobuf-7.36.2-py3-none-any.whl", hash = "sha256:bdb3a345d48db958e6ce1f18e508beb0cc981d64f24088427549c866cd039f1e", size = 179806, upload-time = "2026-09-17T20:07:58.211Z" },
 ]
 
 [[package]]

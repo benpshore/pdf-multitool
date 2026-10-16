@@ -1,0 +1,359 @@
+{
+  "engine": "pdf-oxide",
+  "version": "0.3.78",
+  "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs",
+  "scope": "document/page/content editing, metadata/outlines/attachments/bookmarks; search/layer analysis and forms/security are other modules",
+  "owner": "oxide_editing",
+  "implementation": "src/pdf_multitool/oxide_editing.py",
+  "test_file": "tests/test_oxide_editing.py",
+  "acceptance": "Parent Ada visual and semantic review pending. Process success and structural reopening do not establish fidelity. Existing PR12 merge hold retained.",
+  "resource_contract": {
+    "source_bytes": 52428800,
+    "whole_document_pages": 2000,
+    "selected_pages": 100,
+    "output_bytes": 16777216,
+    "native_memory_bytes": 2147483648,
+    "wall_seconds": 120,
+    "native_network": "denied by inherited worker confinement",
+    "filesystem_isolation": false,
+    "snapshot_scope": "At most100 pages before/after; manifest identifies selected pages and output page counts. Full document scanning only where API needs it."
+  },
+  "capabilities": [
+    {
+      "capability": "PDF version, editable structure and page geometry inspection",
+      "python_api": [
+        "PdfDocument.version",
+        "PdfDocument.page_count",
+        "PdfDocument.page_rotation",
+        "PdfDocument.page_media_box",
+        "PdfDocument.page_crop_box",
+        "PdfDocument.page_images"
+      ],
+      "operation": "oxide_edit_inspect",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "At most100 selected pages,5000 DOM elements,500000 extracted characters; PDF coordinates retain native conventions.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "DOM text/image/element inspection",
+      "python_api": [
+        "PdfDocument.page",
+        "PdfPage.children",
+        "PdfPage.find_text_containing",
+        "PdfPage.find_images",
+        "PdfElement.is_text",
+        "PdfElement.is_image",
+        "PdfElement.is_path",
+        "PdfElement.is_table",
+        "PdfElement.is_structure",
+        "PdfElement.bbox",
+        "PdfText.value",
+        "PdfText.bbox",
+        "PdfText.font_name",
+        "PdfText.font_size",
+        "PdfImage.bbox",
+        "PdfImage.width",
+        "PdfImage.height",
+        "PdfPage.index",
+        "PdfPage.width",
+        "PdfPage.height",
+        "PdfElement.as_text",
+        "PdfElement.as_image",
+        "PdfText.text",
+        "PdfText.is_bold",
+        "PdfText.is_italic",
+        "PdfImage.aspect_ratio"
+      ],
+      "operation": "oxide_edit_inspect",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": null,
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Read outlines, layers, page labels and XMP",
+      "python_api": [
+        "PdfDocument.get_outline",
+        "PdfDocument.get_layers",
+        "PdfDocument.page_labels",
+        "PdfDocument.xmp_metadata"
+      ],
+      "operation": "oxide_edit_inspect",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "Native metadata JSON2MiB cap; source-derived values are data only.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Extract/reorder/select pages",
+      "python_api": [
+        "PdfDocument.extract_pages_to_bytes",
+        "PdfDocument.select_pages"
+      ],
+      "operation": "oxide_edit_pages",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "One-based user page selector, unique pages, at most100 selected pages.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Delete/move pages",
+      "python_api": [
+        "PdfDocument.delete_page",
+        "PdfDocument.move_page"
+      ],
+      "operation": "oxide_edit_pages",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "Cannot delete all pages. Move requires one source and in-range one-based destination.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Split page ranges",
+      "python_api": [
+        "PdfDocument.extract_page_ranges_to_bytes"
+      ],
+      "operation": "oxide_edit_ranges",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "At most100 inclusive user ranges and100 total pages; ranges cannot overlap. Native exclusive ends mapped explicitly.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Rotate and set rotation",
+      "python_api": [
+        "PdfDocument.rotate_page",
+        "PdfDocument.set_page_rotation",
+        "PdfDocument.rotate_all_pages"
+      ],
+      "operation": "oxide_edit_geometry",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "Multiples of90 only; absolute negative angles normalized to0..270 and recorded.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Set media/crop boxes and crop margins",
+      "python_api": [
+        "PdfDocument.set_page_media_box",
+        "PdfDocument.set_page_crop_box",
+        "PdfDocument.crop_margins"
+      ],
+      "operation": "oxide_edit_geometry",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "Finite PDF point coordinates bounded to14400. Positive boxes. Whole-document margins require all selected pages, at most100. Cropping does not erase content.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Set Info metadata",
+      "python_api": [
+        "PdfDocument.set_title",
+        "PdfDocument.set_author",
+        "PdfDocument.set_subject",
+        "PdfDocument.set_keywords"
+      ],
+      "operation": "oxide_edit_metadata",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "Only explicit four fields;2000 characters each. XMP may remain inconsistent.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Text-element replacement",
+      "python_api": [
+        "PdfPage.find_text_containing",
+        "PdfPage.set_text",
+        "PdfDocument.save_page"
+      ],
+      "operation": "oxide_edit_text",
+      "status": "upstream_visual_failure_blocked_before_spawn",
+      "limits_or_gap": "Pinned DOM save_page converts existing-text changes into destructive redaction with default black fill. PDFium shows black rectangles for both replacement and removal despite extracted-text checks passing. Adapter rejects these actions before creating job directory. Bad derivatives and source fixtures are preserved for review.",
+      "validation": "tests/test_oxide_editing.py::test_known_black_mask_routes_are_rejected_before_job_directory; outside-repository evidence/editing-review-v1/text-replace and text-remove",
+      "source_cause": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/editor/document_editor.rs#L4464"
+    },
+    {
+      "capability": "Text-element insertion",
+      "python_api": [
+        "PdfPage.add_text",
+        "PdfDocument.save_page"
+      ],
+      "operation": "oxide_edit_text",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "Native Helvetica only; finite placement/font size. Pinned native Japanese glyph substitution observed; adapter refuses derivative when independent text check misses requested text.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Text-element removal",
+      "python_api": [
+        "PdfPage.remove_element",
+        "PdfDocument.save_page"
+      ],
+      "operation": "oxide_edit_text",
+      "status": "upstream_visual_failure_blocked_before_spawn",
+      "limits_or_gap": "Pinned DOM save_page converts existing-text changes into destructive redaction with default black fill. PDFium shows black rectangles for both replacement and removal despite extracted-text checks passing. Adapter rejects these actions before creating job directory. Bad derivatives and source fixtures are preserved for review.",
+      "validation": "tests/test_oxide_editing.py::test_known_black_mask_routes_are_rejected_before_job_directory; outside-repository evidence/editing-review-v1/text-replace and text-remove",
+      "source_cause": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/editor/document_editor.rs#L4464"
+    },
+    {
+      "capability": "Image placement, sizing and bounds",
+      "python_api": [
+        "PdfDocument.reposition_image",
+        "PdfDocument.resize_image",
+        "PdfDocument.set_image_bounds",
+        "PdfDocument.clear_image_modifications",
+        "PdfDocument.has_image_modifications"
+      ],
+      "operation": "oxide_edit_images",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "At most100 explicit changes; exact resource name must resolve to one placement; finite dimensions; no arbitrary image paths. Explicit clear action discards pending image edits for a page within this request only.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Embed attachment bytes",
+      "python_api": [
+        "PdfDocument.embed_file"
+      ],
+      "operation": "oxide_edit_embed",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "At most10 plain basenames, unique, strict base64,64KiB total; no file reads from configuration and no execution.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Bookmark split planning and output",
+      "python_api": [
+        "plan_split_by_bookmarks",
+        "split_by_bookmarks"
+      ],
+      "operation": "oxide_edit_bookmarks",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "At most100 planned segments; native0-based exclusive ranges validated against page count; whole-document scan bounded2000 pages; app-owned output names ignore source-derived file_stem.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Merge uploaded PDFs",
+      "python_api": [
+        "PdfDocument.merge_from"
+      ],
+      "operation": "oxide_edit_merge",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "Bytes-only source,2..20 uploaded PDFs, at most2000 output pages. All source hashes retained. Cross-document destination/form/outline fidelity unqualified.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Byte serialization and compression",
+      "python_api": [
+        "PdfDocument.to_bytes"
+      ],
+      "operation": "all modifying oxide_edit operations",
+      "status": "implemented_pending_visual_review",
+      "limits_or_gap": "Existing native compress/garbage_collect defaults; output16MiB cap, independent structural reopen. Signatures invalidated; source files untouched.",
+      "validation": "tests/test_oxide_editing.py; supervised native processes and independent PyMuPDF reopens"
+    },
+    {
+      "capability": "Authenticated encrypted editor",
+      "python_api": [
+        "PdfDocument.from_bytes(password=...)",
+        "PdfDocument.to_bytes"
+      ],
+      "operation": "oxide_edit_*",
+      "status": "upstream_gap_fails_without_output",
+      "limits_or_gap": "ensure_editor reconstructs editor from raw bytes without passing authentication. AES256 metadata rewrite fails despite correct password; no derivative published.",
+      "validation": "tests/test_oxide_editing.py::test_authenticated_encrypted_editing_gap_is_not_reported_as_success; synthetic probe evidence/oxide-edit-edge-q4vipnam/probe.json"
+    },
+    {
+      "capability": "Direct element lookup",
+      "python_api": [
+        "PdfPage.get_element"
+      ],
+      "operation": null,
+      "status": "upstream_stub",
+      "limits_or_gap": "Pinned method unconditionally returns None; not exposed as working.",
+      "validation": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs#L3890"
+    },
+    {
+      "capability": "Linearized saving",
+      "python_api": [
+        "PdfDocument.to_bytes(linearize=True)",
+        "PdfDocument.save(linearize=True)"
+      ],
+      "operation": null,
+      "status": "upstream_noop",
+      "limits_or_gap": "Pinned documentation explicitly says no-op/reserved. Not exposed as working.",
+      "validation": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs#L1267"
+    },
+    {
+      "capability": "Outline/layer/XMP/page-label mutation",
+      "python_api": [],
+      "operation": null,
+      "status": "not_exposed_in_pinned_python_binding",
+      "limits_or_gap": "Read methods only. Rust APIs are not interchangeable with the installed Python surface.",
+      "validation": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs"
+    },
+    {
+      "capability": "Attachment list/export/removal",
+      "python_api": [],
+      "operation": null,
+      "status": "not_exposed_in_pinned_python_binding",
+      "limits_or_gap": "Only embed_file exposed in this family. Existing non-Oxide attachment functionality remains separate.",
+      "validation": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs"
+    },
+    {
+      "capability": "Page insertion/duplication and low-level PDF stream editing",
+      "python_api": [],
+      "operation": null,
+      "status": "not_exposed_in_pinned_python_binding",
+      "limits_or_gap": "Rust editor methods are not Python public bindings. Reordering/extraction/merging are exposed; no generic arbitrary method or content injection.",
+      "validation": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs"
+    },
+    {
+      "capability": "Gradient/pattern/extended-state consumer in editing",
+      "python_api": [
+        "LinearGradient",
+        "RadialGradient",
+        "PatternPresets",
+        "ExtGState",
+        "LineCap",
+        "LineJoin"
+      ],
+      "operation": null,
+      "status": "no_editing_binding_consumer",
+      "limits_or_gap": "Public helper types have no PdfPage/PdfDocument editing consumer; creation agent owns corresponding inventory.",
+      "validation": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs"
+    },
+    {
+      "capability": "Filesystem serialization aliases",
+      "python_api": [
+        "PdfDocument.save",
+        "PdfDocument.extract_pages"
+      ],
+      "operation": "oxide_edit_pages and all writing edit routes",
+      "status": "equivalent_bytes_workflow",
+      "limits_or_gap": "Uses to_bytes/extract_pages_to_bytes and bounded app-owned writes; no arbitrary output path accepts user input.",
+      "validation": "Actual byte-based routes tested independently."
+    },
+    {
+      "capability": "DOM identity and convenience predicates",
+      "python_api": [
+        "PdfText.id",
+        "PdfText.contains",
+        "PdfText.starts_with",
+        "PdfText.ends_with",
+        "PdfTextId.__repr__"
+      ],
+      "operation": "oxide_edit_inspect",
+      "status": "internal_or_value_convenience",
+      "limits_or_gap": "Text values exposed as inert strings. Python string predicates are not distinct document operations. IDs are library-issued transient handles; not user-configurable serialized references. Pinned PdfTextId exposes no public constructor.",
+      "validation": "Pinned src/python.rs#L3977-L4034; DOM identity used in native replacement/removal probe whose visual failure blocks editing routes."
+    }
+  ],
+  "local_verification": {
+    "command": "uv run --locked --extra html --extra ocr --extra oxide pytest -q tests/test_oxide_editing.py",
+    "result": "50 passed in9.73s after visual-failure gates; this supersedes the earlier52-pass process/text suite.",
+    "ruff": "format/check passed",
+    "review_package": "outside-repository evidence/editing-review-v1",
+    "review_cases": 14,
+    "visual_acceptance": "pending parent Ada review",
+    "visual_findings": {
+      "text_replace": "FAIL: solid black overlay",
+      "text_remove": "FAIL: solid black rectangle",
+      "text_add": "Limited visual check: requested text and baseline numbers visible",
+      "geometry": "Limited visual check: rotation/crop preserve Invoice001 Total1.25 andRetain10",
+      "page_order": "Limited visual check: first output page correctlyshowsInvoice003 Total3.25 Retain30",
+      "metadata": "Limited visual check and two frozen-table144dpi PNG byte matches; broader fidelity unqualified"
+    },
+    "review_entry": "evidence/editing-review-v1/REVIEW.html"
+  }
+}

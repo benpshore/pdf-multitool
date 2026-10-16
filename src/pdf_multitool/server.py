@@ -17,6 +17,7 @@ from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from .catalog import OPERATIONS
 from .core import (
     DEFAULT_LIMITS,
     Job,
@@ -409,9 +410,12 @@ def make_handler(app: Workbench):
                         ".jp2",
                         ".jpx",
                         ".j2k",
+                        ".docx",
+                        ".xlsx",
+                        ".pptx",
                     }:
                         raise JobError(
-                            "Choose PDF, HTML, JPEG, PNG, JPEG2000 or supported archive files"
+                            "Choose PDF, HTML, Office Open XML, supported images or archive files"
                         )
                     length = self.body_length(app.limits.max_file_bytes)
                     if not length:
@@ -496,14 +500,21 @@ def make_handler(app: Workbench):
                         app.executor.submit(app.run_job, job)
                     self.send_json({"id": job.id}, 202)
                 elif path == "/api/jobs":
-                    data = strict_json_loads(self.read_body(32 * 1024))
+                    encoded = self.read_body(256 * 1024)
+                    data = strict_json_loads(encoded)
                     if not isinstance(data, dict):
                         raise JobError("Job request must be a JSON object")
+                    if len(encoded) > 32 * 1024 and not str(data.get("operation", "")).startswith(
+                        "oxide_"
+                    ):
+                        raise JobError("Job request exceeds its 32 KiB size limit")
                     ids = data["files"]
                     if (
                         not isinstance(ids, list)
                         or not all(isinstance(v, str) for v in ids)
-                        or not (0 if data.get("operation") == "create" else 1)
+                        or not (
+                            0 if OPERATIONS.get(data.get("operation"), {}).get("inputs") == 0 else 1
+                        )
                         <= len(ids)
                         <= app.limits.max_files
                         or len(set(ids)) != len(ids)

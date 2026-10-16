@@ -1158,6 +1158,75 @@
           "warnings"
         ]
       },
+      "oxideOptions": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "default": "both",
+            "enum": [
+              "both",
+              "text",
+              "tables"
+            ],
+            "description": "Extract"
+          },
+          "include_html": {
+            "type": "boolean",
+            "default": false,
+            "description": "Additional page HTML copy"
+          },
+          "images": {
+            "type": "string",
+            "default": "none",
+            "enum": [
+              "none",
+              "inspect",
+              "export"
+            ],
+            "description": "Images (inspect keeps bytes in memory)"
+          },
+          "strategy": {
+            "type": "string",
+            "default": "both",
+            "enum": [
+              "both",
+              "lines",
+              "text"
+            ],
+            "description": "Table boundaries"
+          },
+          "cleanup": {
+            "type": "string",
+            "default": "none",
+            "enum": [
+              "none",
+              "headers",
+              "footers",
+              "both"
+            ],
+            "description": "Additional cleanup copy"
+          },
+          "threshold": {
+            "type": "number",
+            "default": 0.8,
+            "minimum": 0.5,
+            "maximum": 1,
+            "description": "Cleanup repetition fraction"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
       "recolorOptions": {
         "type": "object",
         "properties": {
@@ -1529,6 +1598,1193 @@
         },
         "additionalProperties": false
       },
+      "oxide_formatOptions": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "default": "markdown",
+            "enum": [
+              "text",
+              "markdown",
+              "html"
+            ],
+            "description": "Format"
+          },
+          "preserve_layout": {
+            "type": "boolean",
+            "default": false,
+            "description": "Native layout preservation"
+          },
+          "detect_headings": {
+            "type": "boolean",
+            "default": true,
+            "description": "Native heading detection"
+          },
+          "include_artifacts": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include tagged artifacts"
+          },
+          "include_form_fields": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include fields (Markdown/HTML)"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_create_textOptions": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "default": "text",
+            "enum": [
+              "text",
+              "markdown",
+              "html",
+              "html_css"
+            ],
+            "description": "Source format"
+          },
+          "content": {
+            "type": "string",
+            "default": "",
+            "maxLength": 40000,
+            "description": "Content"
+          },
+          "title": {
+            "type": "string",
+            "default": "",
+            "maxLength": 500,
+            "description": "Title"
+          },
+          "author": {
+            "type": "string",
+            "default": "",
+            "maxLength": 500,
+            "description": "Author"
+          },
+          "header": {
+            "type": "string",
+            "default": "",
+            "maxLength": 500,
+            "description": "Markdown header"
+          },
+          "footer": {
+            "type": "string",
+            "default": "",
+            "maxLength": 500,
+            "description": "Markdown footer"
+          },
+          "header_left": {
+            "type": "string",
+            "default": "",
+            "maxLength": 500,
+            "description": "Markdown left header"
+          },
+          "footer_left": {
+            "type": "string",
+            "default": "",
+            "maxLength": 500,
+            "description": "Markdown left footer"
+          },
+          "css": {
+            "type": "string",
+            "default": "",
+            "maxLength": 20000,
+            "description": "CSS (no resource URLs)"
+          },
+          "fonts": {
+            "type": "string",
+            "default": "[]",
+            "maxLength": 160000,
+            "description": "Font assets JSON (name, base64 data)"
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_create_documentOptions": {
+        "type": "object",
+        "properties": {
+          "document": {
+            "type": "string",
+            "default": "{\"pages\":[{\"size\":\"a4\",\"elements\":[{\"type\":\"text\",\"text\":\"Hello\",\"x\":72,\"y\":740}]}]}",
+            "maxLength": 200000,
+            "description": "Document JSON"
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_create_barcodeOptions": {
+        "type": "object",
+        "properties": {
+          "symbology": {
+            "type": "string",
+            "default": "qr",
+            "enum": [
+              "code128",
+              "code39",
+              "ean13",
+              "ean8",
+              "upca",
+              "itf",
+              "code93",
+              "codabar",
+              "qr"
+            ],
+            "description": "Symbology"
+          },
+          "data": {
+            "type": "string",
+            "default": "",
+            "maxLength": 1024,
+            "description": "Barcode data"
+          },
+          "error_correction": {
+            "type": "string",
+            "default": "medium",
+            "enum": [
+              "low",
+              "medium",
+              "quartile",
+              "high"
+            ],
+            "description": "QR error correction"
+          },
+          "size": {
+            "type": "integer",
+            "default": 256,
+            "minimum": 21,
+            "maximum": 1024,
+            "description": "QR size (pixels)"
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_create_patternOptions": {
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": "string",
+            "default": "checkerboard",
+            "enum": [
+              "horizontal_stripes",
+              "vertical_stripes",
+              "checkerboard",
+              "dots",
+              "diagonal_lines",
+              "crosshatch"
+            ],
+            "description": "Pattern"
+          },
+          "size": {
+            "type": "number",
+            "default": 24,
+            "minimum": 2,
+            "maximum": 256,
+            "description": "Pattern size"
+          },
+          "detail": {
+            "type": "number",
+            "default": 2,
+            "minimum": 0.25,
+            "maximum": 128,
+            "description": "Stripe width / dot radius / line width"
+          },
+          "color": {
+            "type": "string",
+            "default": "#2255aa",
+            "maxLength": 7,
+            "description": "Primary RGB hex"
+          },
+          "secondary": {
+            "type": "string",
+            "default": "#eeeeee",
+            "maxLength": 7,
+            "description": "Checkerboard secondary RGB hex"
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_inspectOptions": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_pagesOptions": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "default": "extract",
+            "enum": [
+              "extract",
+              "select",
+              "delete",
+              "move"
+            ],
+            "description": "Page action"
+          },
+          "destination": {
+            "type": "integer",
+            "default": 1,
+            "minimum": 1,
+            "maximum": 2000,
+            "description": "Move destination page"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_rangesOptions": {
+        "type": "object",
+        "properties": {
+          "ranges": {
+            "type": "string",
+            "default": "[[1,1]]",
+            "maxLength": 4096,
+            "description": "Ranges JSON"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_geometryOptions": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "default": "rotate",
+            "enum": [
+              "rotate",
+              "set_rotation",
+              "crop_box",
+              "media_box",
+              "crop_margins"
+            ],
+            "description": "Geometry action"
+          },
+          "degrees": {
+            "type": "integer",
+            "default": 90,
+            "enum": [
+              -270,
+              -180,
+              -90,
+              0,
+              90,
+              180,
+              270
+            ],
+            "description": "Degrees"
+          },
+          "box": {
+            "type": "string",
+            "default": "[0,0,612,792]",
+            "maxLength": 256,
+            "description": "Box JSON"
+          },
+          "margins": {
+            "type": "string",
+            "default": "[0,0,0,0]",
+            "maxLength": 256,
+            "description": "Left,right,top,bottom margins JSON"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_metadataOptions": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "type": "string",
+            "default": "{\"title\":\"\"}",
+            "maxLength": 12000,
+            "description": "Metadata JSON"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_textOptions": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "default": "add",
+            "enum": [
+              "add",
+              "replace",
+              "remove"
+            ],
+            "description": "Text action"
+          },
+          "find": {
+            "type": "string",
+            "default": "",
+            "maxLength": 1024,
+            "description": "Literal text to find"
+          },
+          "text": {
+            "type": "string",
+            "default": "",
+            "maxLength": 4000,
+            "description": "Replacement or added text"
+          },
+          "x": {
+            "type": "number",
+            "default": 72,
+            "minimum": -14400,
+            "maximum": 14400,
+            "description": "X points"
+          },
+          "y": {
+            "type": "number",
+            "default": 72,
+            "minimum": -14400,
+            "maximum": 14400,
+            "description": "Y points"
+          },
+          "font_size": {
+            "type": "number",
+            "default": 12,
+            "minimum": 1,
+            "maximum": 144,
+            "description": "Added text size"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_imagesOptions": {
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "string",
+            "default": "[]",
+            "maxLength": 32000,
+            "description": "Image changes JSON"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_embedOptions": {
+        "type": "object",
+        "properties": {
+          "attachments": {
+            "type": "string",
+            "default": "[]",
+            "maxLength": 96000,
+            "description": "Attachments JSON"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_bookmarksOptions": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "default": "plan",
+            "enum": [
+              "plan",
+              "split"
+            ],
+            "description": "Bookmark action"
+          },
+          "title_prefix": {
+            "type": "string",
+            "default": "",
+            "maxLength": 256,
+            "description": "Optional title prefix"
+          },
+          "ignore_case": {
+            "type": "boolean",
+            "default": false,
+            "description": "Ignore prefix case"
+          },
+          "level": {
+            "type": "integer",
+            "default": 1,
+            "minimum": 0,
+            "maximum": 32,
+            "description": "Maximum outline depth (zero: all)"
+          },
+          "include_front_matter": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include front matter"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_edit_mergeOptions": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_form_inspectOptions": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_form_fillOptions": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "string",
+            "default": "{}",
+            "maxLength": 32768,
+            "description": "Field values (JSON object)"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_form_exportOptions": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "default": "xfdf",
+            "enum": [
+              "fdf",
+              "xfdf"
+            ],
+            "description": "Format"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_form_flattenOptions": {
+        "type": "object",
+        "properties": {
+          "allow_flatten": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow form flattening and appearance changes"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_annotation_inspectOptions": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_annotation_editOptions": {
+        "type": "object",
+        "properties": {
+          "actions": {
+            "type": "string",
+            "default": "[]",
+            "maxLength": 32768,
+            "description": "Annotation actions (JSON array)"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_annotation_flattenOptions": {
+        "type": "object",
+        "properties": {
+          "allow_flatten": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow annotation flattening and appearance changes"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_flattenOptions": {
+        "type": "object",
+        "properties": {
+          "dpi": {
+            "type": "integer",
+            "default": 72,
+            "minimum": 36,
+            "maximum": 300,
+            "description": "Resolution (DPI)"
+          },
+          "allow_rasterization": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow loss of text and interactive structure"
+          },
+          "allow_page_relayout": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow default paper and margins"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_renderOptions": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "default": "png",
+            "enum": [
+              "png",
+              "jpeg",
+              "pixmap",
+              "separations",
+              "separation"
+            ],
+            "description": "Output"
+          },
+          "sizing": {
+            "type": "string",
+            "default": "dpi",
+            "enum": [
+              "dpi",
+              "fit"
+            ],
+            "description": "Size"
+          },
+          "dpi": {
+            "type": "integer",
+            "default": 72,
+            "minimum": 36,
+            "maximum": 300,
+            "description": "Resolution (DPI)"
+          },
+          "width": {
+            "type": "integer",
+            "default": 1024,
+            "minimum": 1,
+            "maximum": 4096,
+            "description": "Fit width (pixels)"
+          },
+          "height": {
+            "type": "integer",
+            "default": 1024,
+            "minimum": 1,
+            "maximum": 4096,
+            "description": "Fit height (pixels)"
+          },
+          "background": {
+            "type": "string",
+            "default": "[1,1,1,1]",
+            "maxLength": 100,
+            "description": "Background RGBA"
+          },
+          "transparent": {
+            "type": "boolean",
+            "default": false,
+            "description": "Transparent background"
+          },
+          "annotations": {
+            "type": "boolean",
+            "default": true,
+            "description": "Render annotations"
+          },
+          "jpeg_quality": {
+            "type": "integer",
+            "default": 85,
+            "minimum": 1,
+            "maximum": 100,
+            "description": "JPEG quality"
+          },
+          "excluded_layers": {
+            "type": "string",
+            "default": "[]",
+            "maxLength": 8192,
+            "description": "Hidden layer names (JSON)"
+          },
+          "ink": {
+            "type": "string",
+            "default": "Black",
+            "maxLength": 256,
+            "description": "Single ink name"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_office_exportOptions": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "default": "docx",
+            "enum": [
+              "docx",
+              "xlsx",
+              "pptx"
+            ],
+            "description": "Office format"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_office_importOptions": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "default": "auto",
+            "enum": [
+              "auto",
+              "docx",
+              "xlsx",
+              "pptx"
+            ],
+            "description": "Input format"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_image_pdfOptions": {
+        "type": "object",
+        "properties": {
+          "normalize_cmyk": {
+            "type": "boolean",
+            "default": false,
+            "description": "Convert CMYK images to RGB in the derivative"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_images_pdfOptions": {
+        "type": "object",
+        "properties": {
+          "normalize_cmyk": {
+            "type": "boolean",
+            "default": false,
+            "description": "Convert CMYK images to RGB in the derivative"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_securityOptions": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "default": "inspect",
+            "enum": [
+              "inspect",
+              "encrypt",
+              "decrypt"
+            ],
+            "description": "Operation"
+          },
+          "new_password": {
+            "type": "string",
+            "default": "",
+            "maxLength": 127,
+            "description": "New password",
+            "writeOnly": true
+          },
+          "owner_password": {
+            "type": "string",
+            "default": "",
+            "maxLength": 127,
+            "description": "Optional distinct owner password",
+            "writeOnly": true
+          },
+          "allow_print": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allow printing"
+          },
+          "allow_copy": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allow copying"
+          },
+          "allow_modify": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allow modification and assembly"
+          },
+          "allow_annotate": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allow annotations and form filling"
+          },
+          "crypto_policy": {
+            "type": "string",
+            "default": "compat",
+            "enum": [
+              "compat",
+              "strict",
+              "fips-strict"
+            ],
+            "description": "Worker crypto policy"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_redactOptions": {
+        "type": "object",
+        "properties": {
+          "regions": {
+            "type": "string",
+            "default": "[]",
+            "maxLength": 16000,
+            "description": "JSON rectangles: [{\"page\":1,\"rect\":[x0,y0,x1,y1]}] in PDF user space"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_sanitizeOptions": {
+        "type": "object",
+        "properties": {
+          "scrub_metadata": {
+            "type": "boolean",
+            "default": true,
+            "description": "Remove document Info and catalog XMP"
+          },
+          "remove_javascript": {
+            "type": "boolean",
+            "default": true,
+            "description": "Remove document action carriers"
+          },
+          "remove_embedded_files": {
+            "type": "boolean",
+            "default": true,
+            "description": "Remove attachment name trees"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_complianceOptions": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "default": "validate",
+            "enum": [
+              "validate",
+              "convert_pdf_a"
+            ],
+            "description": "Operation"
+          },
+          "standard": {
+            "type": "string",
+            "default": "pdf_a",
+            "enum": [
+              "pdf_a",
+              "pdf_ua",
+              "pdf_x"
+            ],
+            "description": "Validation standard"
+          },
+          "pdf_a_level": {
+            "type": "string",
+            "default": "2b",
+            "enum": [
+              "1a",
+              "1b",
+              "2a",
+              "2b",
+              "2u",
+              "3a",
+              "3b",
+              "3u"
+            ],
+            "description": "PDF/A level"
+          },
+          "pdf_x_level": {
+            "type": "string",
+            "default": "4",
+            "enum": [
+              "1a_2001",
+              "3_2002",
+              "4"
+            ],
+            "description": "PDF/X level"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_extract_maskOptions": {
+        "type": "object",
+        "properties": {
+          "actions_json": {
+            "type": "string",
+            "default": "[]",
+            "maxLength": 32768,
+            "description": "Mask actions (JSON)"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_analyzeOptions": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "default": "all",
+            "enum": [
+              "all",
+              "text",
+              "chars",
+              "spans",
+              "words",
+              "text_lines",
+              "page_text",
+              "paths",
+              "rects",
+              "lines",
+              "layout",
+              "layers_inks",
+              "classification",
+              "structured",
+              "rich_text",
+              "tables",
+              "images"
+            ],
+            "description": "Analysis"
+          },
+          "span_order": {
+            "type": "string",
+            "default": "top_to_bottom",
+            "enum": [
+              "top_to_bottom",
+              "column_aware",
+              "structure"
+            ],
+            "description": "Span order"
+          },
+          "profile": {
+            "type": "string",
+            "default": "native",
+            "enum": [
+              "native",
+              "conservative",
+              "aggressive",
+              "balanced",
+              "academic",
+              "policy",
+              "form",
+              "government",
+              "scanned_ocr",
+              "adaptive"
+            ],
+            "description": "Word/line profile"
+          },
+          "include_artifacts": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include tagged artifacts"
+          },
+          "filters_json": {
+            "type": "string",
+            "default": "{}",
+            "maxLength": 8192,
+            "description": "Optional region or layer filters (JSON)"
+          },
+          "document_classification": {
+            "type": "boolean",
+            "default": false,
+            "description": "Also classify whole document"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_searchOptions": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "default": "",
+            "maxLength": 512,
+            "description": "Search pattern"
+          },
+          "literal": {
+            "type": "boolean",
+            "default": true,
+            "description": "Literal text"
+          },
+          "case_insensitive": {
+            "type": "boolean",
+            "default": false,
+            "description": "Ignore case"
+          },
+          "whole_word": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whole word"
+          },
+          "scope": {
+            "type": "string",
+            "default": "selected_pages",
+            "enum": [
+              "selected_pages",
+              "document"
+            ],
+            "description": "Scope"
+          },
+          "prepare_index": {
+            "type": "boolean",
+            "default": false,
+            "description": "Prepare document index"
+          },
+          "max_results": {
+            "type": "integer",
+            "default": 1000,
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Maximum matches"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
+      "oxide_ocrOptions": {
+        "type": "object",
+        "properties": {
+          "det_threshold": {
+            "type": "number",
+            "default": 0.3,
+            "minimum": 0.01,
+            "maximum": 1,
+            "description": "Detection threshold"
+          },
+          "rec_threshold": {
+            "type": "number",
+            "default": 0.5,
+            "minimum": 0.01,
+            "maximum": 1,
+            "description": "Recognition threshold"
+          },
+          "num_threads": {
+            "type": "integer",
+            "default": 2,
+            "minimum": 1,
+            "maximum": 2,
+            "description": "CPU threads"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 127,
+            "writeOnly": true
+          },
+          "pages": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "One-based pages, e.g. 1,3-5; empty selects all."
+          }
+        },
+        "additionalProperties": false
+      },
       "JobRequest": {
         "oneOf": [
           {
@@ -1689,6 +2945,31 @@
               "operation",
               "files"
             ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxideOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Extract native text and candidate table cells with optional PDF Oxide. Compare numbers, missing cells and wrapped rows with the original. No OCR. Optional header/footer cleanup keeps both text copies but can remove meaningful repeated prose, citations and table headers."
           },
           {
             "type": "object",
@@ -2012,6 +3293,898 @@
               "files"
             ],
             "description": "Combine identical objects and stream bytes while retaining every page. Repeated page content is not deleted. Signatures become invalid and file size may increase."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_format"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_formatOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Convert selected pages with native format controls; keep original native text separately. Reading order, headings and tables require source comparison. HTML includes an inert original and restricted review copy. No OCR or image export."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_create_text"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_create_textOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Create a PDF from text, Markdown or resource-free HTML. CSS mode requires embedded font bytes. Original content is retained in the request; outputs include its hash. Review all text, layout and glyphs."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_create_document"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_create_documentOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Build bounded pages, text, graphics, supported forms and barcodes from a strict JSON declaration. Images/fonts use embedded bytes; no paths, scripts or external resources. Native tables and broken annotation types are blocked. Tagged output needs accessibility review."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_create_barcode"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_create_barcodeOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Generate a bounded inert barcode SVG. Verify the decoded payload before use."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_create_pattern"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 0
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_create_patternOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Export a generated PDF pattern content fragment as text. This is a building block, not a complete PDF or a rendered page pattern."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_inspect"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_inspectOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Report selected page geometry, text elements, images, outlines, layers, labels and XMP. Element indices identify this report only; extraction is not a fidelity guarantee."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_pages"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_pagesOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Produces a new PDF; the original remains unchanged. Rewriting invalidates signatures. Review text, graphics, links and forms in the output. Select, extract, delete or move pages. Page numbers are one-based."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_ranges"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_rangesOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Produces a new PDF; the original remains unchanged. Rewriting invalidates signatures. Review text, graphics, links and forms in the output. Each JSON pair is an inclusive one-based range; ranges must not overlap."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_geometry"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_geometryOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Produces a new PDF; the original remains unchanged. Rewriting invalidates signatures. Review text, graphics, links and forms in the output. Boxes use PDF [left,bottom,right,top] points. Cropping hides content; it does not erase it."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_metadata"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_metadataOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Produces a new PDF; the original remains unchanged. Rewriting invalidates signatures. Review text, graphics, links and forms in the output. Set title, author, subject or keywords in the Info dictionary. Existing XMP can disagree."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_text"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_textOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Produces a new PDF; the original remains unchanged. Rewriting invalidates signatures. Review text, graphics, links and forms in the output. Added text uses Helvetica; unsupported glyphs are rejected. Replacement/removal are unavailable in 0.3.78 because native saving paints black masks over the affected text. These actions return an explicit error."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_images"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_imagesOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Produces a new PDF; the original remains unchanged. Rewriting invalidates signatures. Review text, graphics, links and forms in the output. Use page and image names from the structure report. Changes affect image placement, not encoded pixels."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_embed"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_embedOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Produces a new PDF; the original remains unchanged. Rewriting invalidates signatures. Review text, graphics, links and forms in the output. Embed at most ten named files and 64 KiB total from explicit base64 data. Attachments are not executed."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_bookmarks"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_bookmarksOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Produces a new PDF; the original remains unchanged. Rewriting invalidates signatures. Review text, graphics, links and forms in the output. Plan or export bookmark segments with deterministic output names. Missing outlines are an error."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_edit_merge"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_edit_mergeOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Produces a new PDF; the original remains unchanged. Rewriting invalidates signatures. Review text, graphics, links and forms in the output. Append up to 20 supplied PDFs in upload order. Cross-document forms, outlines and destinations need review."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_form_inspect"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_form_inspectOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Read AcroForm fields and widget page identities; detect XFA presence. XFA content and form appearance are not interpreted."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_form_fill"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_form_fillOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Set existing AcroForm values in a new PDF and check saved values. Review appearances; scripts are not executed. XFA and signature fields are unsupported."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_form_export"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_form_exportOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Export existing AcroForm values as FDF or XFDF plus the exact JSON field report. Exports contain data, not form appearances. XFA export is unsupported. FDF Unicode and XFDF array/empty-string values fail because pinned exports lose fidelity."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_form_flatten"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_form_flattenOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Make selected form widgets noninteractive in a new PDF. Values without usable appearances may disappear; inspect the original and result. XFA is unsupported and signatures become invalid."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_annotation_inspect"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_annotation_inspectOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Read annotation metadata and native rectangles by source page. Links remain inert JSON strings; destinations are not fetched."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_annotation_edit"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_annotation_editOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Add a note or HTTP(S)/mailto link, or remove a non-widget annotation in a new PDF using a bounded JSON action list. Coordinates use native PDF user space. Removal fails closed when the saved annotation remains. New highlights are unsupported because pinned output disappears in PDFium."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_annotation_flatten"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_annotation_flattenOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Flatten selected page annotations into a new PDF. Links and interactivity are removed; missing appearances may lose visible content. Widget-bearing pages require the form flattening operation first."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_flatten"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_flattenOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Place rendered page images on PDF Oxide's default paper with margins. Original page dimensions and placement change; text, forms, links and signatures lose their interactive structure. This is not verified redaction."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_render"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_renderOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Render selected pages as PNG, JPEG, raw premultiplied pixels or ink plates. Resolution is bounded; compare each derivative with its source."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_office_export"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_office_exportOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Convert all pages to DOCX, XLSX or PPTX. Layout, tables, images and reading order may change. Positioned exports do not guarantee real spreadsheet cells. Sources above 30 pages (DOCX/PPTX) or 200 pages (XLSX) use upstream flow mode."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_office_import"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_office_importOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Convert bounded DOCX, XLSX or PPTX files to PDF. Macros, embedded objects, external relationships and encrypted Office inputs are rejected. Compare text, numbers, tables and fonts with the original."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_image_pdf"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_image_pdfOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Create one PDF per bounded PNG or JPEG, centered on native default paper with margins. CMYK needs explicit RGB normalization. Source files are preserved."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_images_pdf"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_images_pdfOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Center each PNG or JPEG on native default paper with margins, in input order. At most 100 images and 64 million decoded pixels per document."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_security"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_securityOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Inspect advisory permissions and existing signatures, or create an AES-256 encrypted/decrypted copy. Signature checks do not establish certificate trust or revocation status. Rewriting invalidates existing signatures. The pinned wheel's encrypted and decrypted rewrites currently fail independent checks; failed copies are discarded."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_redact"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_redactOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Remove text in explicit unrotated PDF user-space rectangles and create a copy. Selected pages with images, forms, vector paint, annotations or layers fail: the pinned engine does not fully remove those content types. Review the copy."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_sanitize"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_sanitizeOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Strip selected catalog metadata, document JavaScript and attachment name trees in a copy. Page/field actions and shared attachment annotations can remain. This is limited cleanup, not a guarantee that a PDF is safe or anonymous."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_compliance"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_complianceOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Run native PDF/A, PDF/UA-1 and PDF/X checks, or attempt a PDF/A copy. Results are engine findings, not independent standards certification. Conversion may change appearance and requires source/output review."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_extract_mask"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_extract_maskOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Apply explicit page/region extraction masks to a separate document instance. Retain original and derived text/spans. This does not redact or rewrite the PDF."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_analyze"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_analyzeOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Inspect native text geometry, vectors, layout, layers, inks and classification. Results retain source/page identity; inferred reading order and classification require review. No OCR or model downloads."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_search"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_searchOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Search native text with page identity and coordinates; OCR is not run."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "const": "oxide_ocr"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 200,
+                "uniqueItems": true
+              },
+              "options": {
+                "$ref": "#/components/schemas/oxide_ocrOptions"
+              }
+            },
+            "required": [
+              "operation",
+              "files"
+            ],
+            "description": "Use an explicitly provisioned, hash-checked local detector/recognizer/dictionary. Native text is retained separately. No downloads or fallback to unverified models."
           }
         ]
       }

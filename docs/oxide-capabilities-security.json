@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "distribution": "pdf-oxide",
+  "version": "0.3.78",
+  "scope": "Python wheel security, redaction, compliance and cryptographic configuration",
+  "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs",
+  "verification": "Real bounded workers and independent pikepdf/PyMuPDF inspection; no blanket accuracy qualification",
+  "capabilities": [
+    {
+      "id": "security.permissions",
+      "python_apis": ["PdfDocument.authenticate", "PdfDocument.permissions"],
+      "operation": "oxide_security",
+      "mode": "inspect",
+      "status": "implemented_tested",
+      "limits": "Authenticated bounded input; passwords travel only in worker stdin; flags remain advisory, not enforced by native engine",
+      "tests": ["test_known_native_encryption_rejected_and_input_permissions_inspected"]
+    },
+    {
+      "id": "security.encryption",
+      "python_apis": ["PdfDocument.to_bytes_encrypted", "PdfDocument.save_encrypted"],
+      "operation": "oxide_security",
+      "mode": "encrypt",
+      "status": "implemented_fail_closed_known_upstream_failure",
+      "failure": "0.3.78 AES-256 V=5/R=6 output is rejected by qpdf: some encryption dictionary parameters are missing or wrong type. MuPDF accepts it. Independent rejection prevents publishing it as successful encryption.",
+      "configuration": ["user password", "optional owner password", "allow_print", "allow_copy", "allow_modify", "allow_annotate"],
+      "mapping": "Native allow_print also sets high-quality print; allow_modify also sets assembly; allow_annotate also sets form filling; accessibility is always true. The binding does not expose independent controls for those flags.",
+      "tests": ["test_known_native_encryption_rejected_and_input_permissions_inspected"]
+    },
+    {
+      "id": "security.decryption",
+      "python_apis": ["PdfDocument.from_bytes(password=...)", "PdfDocument.to_bytes"],
+      "operation": "oxide_security",
+      "mode": "decrypt",
+      "status": "implemented_fail_closed_known_upstream_failure",
+      "failure": "Authenticated reader state is not transferred when ensure_editor reopens encrypted source bytes. A valid encrypted input can be inspected but plain rewrite fails; no output is kept.",
+      "tests": ["test_known_native_encryption_rejected_and_input_permissions_inspected"]
+    },
+    {
+      "id": "security.signatures",
+      "python_apis": ["PdfDocument.signature_count", "PdfDocument.signatures", "Signature.signer_name", "Signature.reason", "Signature.location", "Signature.contact_info", "Signature.signing_time", "Signature.covers_whole_document", "Signature.pades_level", "Signature.verify", "Signature.verify_detached"],
+      "operation": "oxide_security",
+      "mode": "inspect",
+      "status": "implemented_tested_with_limits",
+      "limits": "100 signatures; native enumeration only visits AcroForm-linked fields. Independent object inventory reports unlinked signature dictionaries and produces partial status. verify_detached uses original full bytes; verify alone is not substituted because it omits document-digest validation.",
+      "tested_algorithms": ["RSA PKCS#1 v1.5 SHA-256", "RSA-PSS SHA-256", "ECDSA P-256 SHA-256", "ECDSA P-384 SHA-384"],
+      "unsupported": ["Trust-chain validation", "revocation checking", "timestamp trust", "unknown digest or absent signed attributes"],
+      "known_failure": "Ordinary zero-padded /Contents is rejected as trailing DER data; this cryptographically valid fixture remains an explicit partial/unverifiable result. Exact-DER-length linked fixtures verify and same-length document mutation fails for all four tested algorithm paths.",
+      "tests": ["test_signature_detached_verification_distinguishes_tampering_from_trust"]
+    },
+    {
+      "id": "security.dss",
+      "python_apis": ["PdfDocument.dss", "Dss.certs", "Dss.crls", "Dss.ocsps", "Dss.vri", "has_document_timestamp"],
+      "operation": "oxide_security",
+      "mode": "inspect",
+      "status": "implemented_tested_bounded_inventory",
+      "limits": "100 blobs/category and 1 MiB total; report hashes/sizes only, no certificate or revocation blobs exported. Presence and PAdES classification are not cryptographic trust validation. has_document_timestamp is a presence signal.",
+      "tests": ["test_document_security_store_inventory_is_bounded_and_does_not_export_blobs", "test_signature_count_limit_prevents_large_verification_fanout"]
+    },
+    {
+      "id": "security.public_certificate_metadata",
+      "python_apis": ["Certificate.load", "Certificate.subject", "Certificate.issuer", "Certificate.serial", "Certificate.validity", "Certificate.is_valid"],
+      "operation": "oxide_security",
+      "mode": "inspect",
+      "status": "implemented_tested_bounded_public_metadata",
+      "limits": "Only public DER certificates already embedded in the input PDF DSS are parsed. No arbitrary certificate-file or credential-store access. is_valid checks the time window only; trust chains and revocation remain not checked. Certificate has no public direct constructor in the binding; loading occurs through the static loader.",
+      "tests": ["test_document_security_store_inventory_is_bounded_and_does_not_export_blobs", "test_signature_detached_verification_distinguishes_tampering_from_trust"]
+    },
+    {
+      "id": "security.timestamp_inspection",
+      "python_apis": ["pdf_oxide.pdf_oxide.Timestamp.parse", "Timestamp.time", "Timestamp.serial", "Timestamp.policy_oid", "Timestamp.tsa_name", "Timestamp.hash_algorithm", "Timestamp.message_imprint", "Timestamp.verify"],
+      "operation": "oxide_security",
+      "mode": "inspect",
+      "status": "implemented_tested_metadata_and_unwrapped_verification_failure",
+      "limits": "At most 100 existing PDF DocTimeStamp dictionaries and 1 MiB token bytes. Read-only parse and token selfcheck, without TSA/network access. Bare TSTInfo metadata parsing is tested; its signature verification remains unsupported without a CMS wrapper. Even a valid token signature does not verify the PDF byte-range imprint, certificate trust or revocation. Positive CMS timestamp-token selfcheck remains unqualified. No direct Timestamp constructor is provided; parse is the factory.",
+      "binding_export_note": "Timestamp and TsaClient are present in the extension pdf_oxide.pdf_oxide but are omitted from the 0.3.78 top-level pdf_oxide.__init__ exports.",
+      "tests": ["test_timestamp_metadata_is_not_a_trusted_document_timestamp"]
+    },
+    {
+      "id": "security.timestamp_requests",
+      "python_apis": ["pdf_oxide.pdf_oxide.TsaClient", "TsaClient.request_timestamp", "TsaClient.request_timestamp_hash"],
+      "status": "gated_external_service_access",
+      "reason": "Client construction and timestamp requests belong to the separately reviewed external-service/signing workflow. The bounded adapter neither creates a client nor permits network access. No persistent service is installed."
+    },
+    {
+      "id": "security.signing",
+      "python_apis": ["Certificate.load_pem", "Certificate.load_pkcs12", "sign_pdf_bytes", "sign_pdf_bytes_pades", "PadesLevel", "RevocationMaterial"],
+      "status": "gated_credentials_and_external_timestamp_workflow",
+      "reason": "No real key/certificate credential ingestion, signing or timestamp request is authorized by this integration. Ephemeral synthetic keys are used only in tests, never stored. Certificate.load_pem/load_pkcs12 and RevocationMaterial construction are not exposed outside that gated workflow. PadesLevel values are read for classification, not permission to sign. B_T/B_LT require separately reviewed timestamp service access; B_LTA is reserved upstream. No product signing stub is represented as complete.",
+      "observed_failure": "Native sign_pdf_bytes emits an unlinked signature dictionary invisible to native AcroForm enumeration; independent inventory records this limitation."
+    },
+    {
+      "id": "security.crypto_configuration",
+      "python_apis": ["crypto_active_provider", "crypto_available_providers", "crypto_use_fips", "crypto_set_policy", "crypto_policy", "crypto_inventory", "crypto_cbom"],
+      "operation": "oxide_security",
+      "status": "implemented_tested_with_platform_gap",
+      "configuration": ["compat (default unchanged)", "strict (opt-in, worker-local)", "fips-strict (requires compiled provider)"],
+      "limits": "Published Linux wheel exposes only rust-crypto. fips-strict fails explicitly, with no fallback. No global application or repository security setting is modified. Individual allow/deny grammar clauses are not exposed as arbitrary user strings.",
+      "tests": ["test_no_fips_fallback_and_plaintext_decrypt_rejected", "test_security_inspection_preserves_original_and_admits_trust_gap"]
+    },
+    {
+      "id": "security.destructive_text_redaction",
+      "python_apis": ["PdfDocument.add_redaction", "PdfDocument.redaction_count", "PdfDocument.apply_redactions_destructive", "PdfDocument.to_bytes"],
+      "operation": "oxide_redact",
+      "status": "implemented_tested_restricted_text_path",
+      "limits": "100 pages and 100 explicit rectangles, unrotated PDF user-space xyxy coordinates. Independent preflight rejects images, Form XObjects, painted vectors, layers, forms, annotations, active actions and embedded files. The wired native engine removes text only; image/path-prune modules are not wired into this API. Unsupported font encodings fail rather than yielding an overlay-only result. Full nonincremental rewrite and explicit document sanitizer follow.",
+      "qualification": "Synthetic original target text and numbers disappear from extracted text and content streams while unrelated numbers remain. Complete secure redaction and every font/geometry representation remain unqualified.",
+      "tests": ["test_text_redaction_removes_content_and_preserves_other_numbers", "test_redaction_refuses_unqualified_content_and_keeps_no_overlay_copy", "test_invalid_regions_before_spawn", "test_redaction_resolves_inherited_rotation_before_any_output"]
+    },
+    {
+      "id": "security.legacy_redaction_masks",
+      "python_apis": ["PdfDocument.apply_page_redactions", "PdfDocument.apply_all_redactions", "PdfDocument.is_page_marked_for_redaction", "PdfDocument.unmark_page_for_redaction", "PdfDocument.clear_erase_regions"],
+      "status": "not_exposed_as_secure_redaction",
+      "reason": "Mask/mark state does not independently demonstrate underlying content removal. Product route uses explicit destructive text API plus bounded preflight instead."
+    },
+    {
+      "id": "security.catalog_sanitization",
+      "python_apis": ["PdfDocument.sanitize_document"],
+      "operation": "oxide_sanitize",
+      "status": "implemented_tested_partial_scope",
+      "configuration": ["scrub_metadata", "remove_javascript", "remove_embedded_files"],
+      "limits": "Only documented Info/catalog XMP/action/name-tree cleanup is claimed. Associated-file /AF arrays, page/field actions and shared attachments may retain content. Independent residual inventory reports these carriers and produces partial status. Not a safe-document or anonymization guarantee.",
+      "tests": ["test_catalog_cleanup_removes_catalog_carriers_and_reports_remaining_scope"]
+    },
+    {
+      "id": "compliance.validation",
+      "python_apis": ["PdfDocument.validate_pdf_a", "PdfDocument.validate_pdf_ua", "PdfDocument.validate_pdf_x"],
+      "operation": "oxide_compliance",
+      "mode": "validate",
+      "status": "implemented_tested_negative_findings",
+      "supported_levels": {"pdf_a": ["1a", "1b", "2a", "2b", "2u", "3a", "3b", "3u"], "pdf_ua": ["1"], "pdf_x": ["1a_2001", "3_2002", "4"]},
+      "limits": "100 pages; preserve all native errors and warnings. No independent standards certification or accessibility assurance.",
+      "tests": ["test_native_compliance_negative_is_inspection_result_not_certification"]
+    },
+    {
+      "id": "compliance.pdf_a_conversion",
+      "python_apis": ["PdfDocument.convert_to_pdf_a"],
+      "operation": "oxide_compliance",
+      "mode": "convert_pdf_a",
+      "status": "implemented_tested_candidate_output",
+      "limits": "100 pages; reopen actual serialized copy and rerun validation. Conversion success can downgrade missing Symbol/ZapfDingbats fonts to warnings. Incomplete conversion produces partial candidate status; source and independent visual review remain required. PDF/UA and PDF/X conversion are not provided by this binding.",
+      "tests": ["test_pdfa_conversion_reopens_actual_output_and_retains_numbers"]
+    }
+  ],
+  "cross_cutting_tests": ["test_output_overflow_does_not_publish_partial_artifacts", "test_security_password_rules"],
+  "acceptance_hold": "Parent Ada's source/output visual and numeric checks remain required; no merge/release qualification is granted by these tests."
+}

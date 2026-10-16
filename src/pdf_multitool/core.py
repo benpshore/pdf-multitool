@@ -215,6 +215,9 @@ def _binary(name: str, version_arg: str) -> dict:
 
 
 def engines() -> dict:
+    from .oxide import availability
+    from .oxide_analysis import ocr_availability
+
     docling = _package("docling")
     docling["installed"] = docling["available"]
     if docling["available"]:
@@ -242,6 +245,8 @@ def engines() -> dict:
             pillow.update(available=False, reason="Pillow codec inspection failed")
     return {
         "pymupdf": _package("PyMuPDF"),
+        "pdf_oxide": availability(),
+        "pdf_oxide_ocr": ocr_availability(),
         "pillow": pillow,
         "poppler": poppler,
         "ghostscript": _binary("gs", "--version"),
@@ -306,6 +311,7 @@ def run_worker(
         "TMP",
         "TMPDIR",
         "PDF_MULTITOOL_MODELS",
+        "PDF_MULTITOOL_OXIDE_MODELS",
     }
     env = {key: value for key, value in os.environ.items() if key in allowed_env}
     env["HOME"] = str(workdir.resolve())
@@ -499,7 +505,9 @@ class Job:
             self.state, self.message = "running", "Starting"
         groups = (
             [self.files]
-            if self.operation in {"merge", "bundle", "imagepdf", "create"}
+            if self.operation
+            in {"merge", "bundle", "imagepdf", "create", "oxide_edit_merge", "oxide_images_pdf"}
+            or not self.files
             else [[f] for f in self.files]
         )
         try:
@@ -629,5 +637,5 @@ class Job:
     def clear_secrets(self) -> None:
         """Drop retained references; Python does not promise memory zeroization."""
         with self.lock:
-            for key in ("password", "new_password", "fields", "create_fields"):
+            for key in ("password", "new_password", "owner_password", "fields", "create_fields"):
                 self.options.pop(key, None)

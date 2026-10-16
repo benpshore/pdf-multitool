@@ -1,0 +1,402 @@
+{
+  "schema": "pdf-multitool.oxide-capabilities.v1",
+  "owner": "oxide_creation",
+  "distribution": "pdf-oxide",
+  "version": "0.3.78",
+  "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs",
+  "native_wheel_sha256": "0b7e03008ca441e9183ef8f3c5d895424aca8119d5a860a205e1d16649f4f6a8",
+  "qualification": "Implementation and synthetic regressions do not establish visual fidelity, accessibility conformance or general document accuracy. Parent visual review and the existing merge hold remain in force.",
+  "operations": [
+    "oxide_create_text",
+    "oxide_create_document",
+    "oxide_create_barcode",
+    "oxide_create_pattern"
+  ],
+  "limits": {
+    "declaration_utf8_bytes": 200000,
+    "content_characters": 40000,
+    "pages": 40,
+    "elements": 1000,
+    "table_rows_per_element": 1000,
+    "total_table_cells": 10000,
+    "embedded_asset_bytes_total": 120000,
+    "image_pixels_each": 4000000,
+    "image_pixels_total": 8000000,
+    "output_bytes_total": 16777216,
+    "additional_bounds": "Existing supervised worker memory, CPU, wall time, output, process-tree cancellation and native network filter; unavailable required guards fail closed."
+  },
+  "capabilities": [
+    {
+      "id": "oxide-create-text",
+      "apis": [
+        "Pdf.from_text",
+        "Pdf.to_bytes",
+        "Pdf.__len__"
+      ],
+      "route": "oxide_create_text format=text",
+      "status": "implemented",
+      "verification": "Synthetic exact numbers/text, metadata, independent PyMuPDF rendering and source/output hashes.",
+      "limits": "Pinned plain-text writer does not wrap lines or embed Unicode fonts. Adapter rejects overflowing lines and non-WinAnsi text; explicit embedded-font document creation supports additional glyphs."
+    },
+    {
+      "id": "oxide-create-markdown",
+      "apis": [
+        "Pdf.from_markdown",
+        "Pdf.from_markdown_with_template",
+        "PageTemplate.header",
+        "PageTemplate.footer",
+        "Header.center",
+        "Footer.center",
+        "Artifact.center",
+        "Artifact.with_left"
+      ],
+      "route": "oxide_create_text format=markdown",
+      "status": "implemented",
+      "verification": "Headings, emphasis, numeric literals, centered headers/footers and left/centered Artifact templates independently read and rendered.",
+      "limits": "Raw HTML and resource/image/link syntax rejected; use explicit declarative links/images. Native Unicode fallback and Markdown layout remain visually unqualified."
+    },
+    {
+      "id": "oxide-create-basic-html",
+      "apis": [
+        "Pdf.from_html"
+      ],
+      "route": "oxide_create_text format=html",
+      "status": "implemented",
+      "verification": "Basic headings, emphasis and numbers checked.",
+      "limits": "Pinned API performs basic HTML-to-Markdown substitution, not browser layout. Table elements, active/resource constructs and unsafe URLs rejected; HTML/CSS tables also blocked by known native overlap."
+    },
+    {
+      "id": "oxide-create-html-css",
+      "apis": [
+        "Pdf.from_html_css",
+        "Pdf.from_html_css_with_fonts"
+      ],
+      "route": "oxide_create_text format=html_css",
+      "status": "implemented",
+      "verification": "Single and two-family supplied font calls retain paragraph text/numbers on separate rendered lines. All requested glyphs checked against supplied font bytes.",
+      "limits": "Table HTML is blocked: all cells overlap in PDFium even with explicit display/width/height CSS. Script/resource HTML, external URLs/imports/font-face/paths rejected. Metadata/template combinations unsupported by pinned API are rejected. Other CSS layouts remain unqualified."
+    },
+    {
+      "id": "oxide-create-document-and-pages",
+      "apis": [
+        "DocumentBuilder",
+        "DocumentBuilder.title",
+        "DocumentBuilder.author",
+        "DocumentBuilder.subject",
+        "DocumentBuilder.keywords",
+        "DocumentBuilder.creator",
+        "DocumentBuilder.a4_page",
+        "DocumentBuilder.letter_page",
+        "DocumentBuilder.page",
+        "DocumentBuilder.build",
+        "FluentPageBuilder.done",
+        "FluentPageBuilder.new_page_same_size"
+      ],
+      "route": "oxide_create_document metadata/pages",
+      "status": "implemented",
+      "verification": "Actual page count, dimensions, metadata and independent structural reopen. File save variants are represented by to-bytes/build plus confined app-owned output writing."
+    },
+    {
+      "id": "oxide-create-embedded-fonts",
+      "apis": [
+        "EmbeddedFont.from_bytes",
+        "EmbeddedFont.name",
+        "DocumentBuilder.register_embedded_font",
+        "FluentPageBuilder.font"
+      ],
+      "route": "oxide_create_document fonts/elements.font",
+      "status": "implemented",
+      "verification": "Public Bitstream Vera fixture: accented text/numbers retained, missing CJK glyph rejected.",
+      "limits": "No arbitrary font paths. Assets capped and independently checked; upstream handles consumed once. Base-14 Symbol/ZapfDingbats encoding is not exposed by this contract."
+    },
+    {
+      "id": "oxide-create-text-layout",
+      "apis": [
+        "FluentPageBuilder.at",
+        "FluentPageBuilder.text",
+        "FluentPageBuilder.heading",
+        "FluentPageBuilder.paragraph",
+        "FluentPageBuilder.space",
+        "FluentPageBuilder.horizontal_rule",
+        "FluentPageBuilder.columns",
+        "FluentPageBuilder.footnote",
+        "FluentPageBuilder.inline",
+        "FluentPageBuilder.inline_bold",
+        "FluentPageBuilder.inline_italic",
+        "FluentPageBuilder.inline_color",
+        "FluentPageBuilder.newline",
+        "FluentPageBuilder.text_in_rect",
+        "Align"
+      ],
+      "route": "oxide_create_document pages[].elements[]",
+      "status": "implemented",
+      "verification": "Mixed text/inline/headings/columns/footnote/rectangle fixture independently read and rendered. Complex layout overlap and clipping remain review requirements."
+    },
+    {
+      "id": "oxide-create-measurements",
+      "apis": [
+        "FluentPageBuilder.measure",
+        "FluentPageBuilder.remaining_space"
+      ],
+      "route": "oxide-creation.json text_metrics",
+      "status": "implemented",
+      "limits": "Native measure falls back to Helvetica for embedded fonts. remaining_space is a buffered client estimate, not authoritative page layout; report explicitly labels both."
+    },
+    {
+      "id": "oxide-create-vector-primitives",
+      "apis": [
+        "FluentPageBuilder.rect",
+        "FluentPageBuilder.filled_rect",
+        "FluentPageBuilder.line",
+        "FluentPageBuilder.stroke_rect",
+        "FluentPageBuilder.stroke_line",
+        "FluentPageBuilder.stroke_rect_dashed",
+        "FluentPageBuilder.stroke_line_dashed"
+      ],
+      "route": "oxide_create_document shape elements",
+      "status": "implemented",
+      "verification": "Independent vector drawing count, bounded geometry/RGB/dash validation and page renders."
+    },
+    {
+      "id": "oxide-create-tables",
+      "apis": [
+        "Column",
+        "Column.header",
+        "Column.width",
+        "Column.align",
+        "Table",
+        "FluentPageBuilder.table"
+      ],
+      "route": "oxide_create_document type=table",
+      "status": "blocked-upstream-visual-layout-error",
+      "verification": "All tested numeric text and cell values were extractable, but PDFium renders place text across cell borders/header above the grid. Extraction success did not establish correctness. Pre-spawn gates preserve the failure.",
+      "limits": "Widths constrained to page content area; native wrapped/long-cell behavior still requires visual review.",
+      "evidence": "evidence/creation-visual-review/test_table_rows_numbers_and_mi0 and mi1: original output.pdf and PDFium renders; original fixture source preserved alongside."
+    },
+    {
+      "id": "oxide-create-streaming-tables",
+      "apis": [
+        "FluentPageBuilder.streaming_table",
+        "StreamingTable.push_row",
+        "StreamingTable.push_row_span",
+        "StreamingTable.flush",
+        "StreamingTable.finish",
+        "StreamingTable.column_count",
+        "StreamingTable.pending_row_count",
+        "StreamingTable.batch_count"
+      ],
+      "route": "oxide_create_document type=streaming_table mode=fixed|sample",
+      "status": "blocked-upstream-visual-layout-error",
+      "verification": "All tested numeric text and cell values were extractable, but PDFium renders place text across cell borders/header above the grid. Extraction success did not establish correctness. Pre-spawn gates preserve the failure.",
+      "limits": "Python retains all rows until finish/done. Introspection helpers exist but are not offered as standalone RPC while table rendering is blocked.",
+      "evidence": "evidence/creation-visual-review/test_table_rows_numbers_and_mi0 and mi1: original output.pdf and PDFium renders; original fixture source preserved alongside."
+    },
+    {
+      "id": "oxide-create-auto-all-tables",
+      "apis": [
+        "FluentPageBuilder.streaming_table(mode='auto_all')"
+      ],
+      "status": "blocked-upstream-data-loss",
+      "reason": "Pinned0.3.78 emitted a blank PDF for a 3-row numeric table; all headers/cells missing in independent extraction. Original failing PDF and renders retained under evidence/creation-pinned-failures/streaming-auto-all-blank. Adapter rejects mode before spawn."
+    },
+    {
+      "id": "oxide-create-barcodes",
+      "apis": [
+        "FluentPageBuilder.barcode_1d",
+        "FluentPageBuilder.barcode_qr"
+      ],
+      "route": "oxide_create_document type=barcode symbology=code128|code39|ean13|ean8|upca|itf|code93|codabar|qr",
+      "status": "implemented",
+      "verification": "Each supported symbology produces a nonblank embedded image with independent pixel decoding.",
+      "limits": "Independent payload decoding of every 1D symbology is not yet qualified; printing/scanner reliability remains unqualified."
+    },
+    {
+      "id": "oxide-create-images",
+      "apis": [
+        "FluentPageBuilder.image_with_alt",
+        "FluentPageBuilder.image_artifact"
+      ],
+      "route": "oxide_create_document images and type=image",
+      "status": "implemented",
+      "verification": "Alpha PNG embedded twice as semantic/decorative image; image occurrences, pixels and original-byte hash checked.",
+      "limits": "Single-frame PNG/JPEG/WebP bounded embedded bytes. Unsupported format/frame count/invalid image/decoded pixel count fails. No arbitrary path or remote URL."
+    },
+    {
+      "id": "oxide-create-annotations",
+      "apis": [
+        "FluentPageBuilder.link_url",
+        "FluentPageBuilder.link_page",
+        "FluentPageBuilder.link_named",
+        "FluentPageBuilder.highlight",
+        "FluentPageBuilder.underline",
+        "FluentPageBuilder.strikeout",
+        "FluentPageBuilder.squiggly",
+        "FluentPageBuilder.sticky_note",
+        "FluentPageBuilder.sticky_note_at",
+        "FluentPageBuilder.watermark",
+        "FluentPageBuilder.watermark_confidential",
+        "FluentPageBuilder.watermark_draft",
+        "FluentPageBuilder.stamp",
+        "FluentPageBuilder.freetext"
+      ],
+      "route": "oxide_create_document annotation elements",
+      "status": "implemented-supported-subset-with-explicit-blocks",
+      "limits": "highlight/underline/strikeout/squiggly are blocked: malformed QuadPoints render as tiny marks. Stamp blocked: no visible PDFium appearance. Named links blocked: no pinned Python destination-creation API. Watermark fixed-font/rotation extents checked before invocation; clipping cases fail. Synthetic note icon intentionally overlays its default text anchor; explicit placement supported.",
+      "verification": "External URI and internal /Dest exact page-reference checks, note/free-text contents; PDFium-visible note icons/free-text and complete watermark samples. Glyph/layout review remains mandatory.",
+      "evidence": "evidence/creation-annotation-probe/source.json, output.pdf and page-1.png through page-11.png retain failures; evidence/creation-visual-review-selected retains working bounded samples, with no acceptance claim."
+    },
+    {
+      "id": "oxide-create-form-fields",
+      "apis": [
+        "FluentPageBuilder.text_field",
+        "FluentPageBuilder.checkbox",
+        "FluentPageBuilder.combo_box",
+        "FluentPageBuilder.push_button",
+        "FluentPageBuilder.signature_field"
+      ],
+      "route": "oxide_create_document field elements",
+      "status": "implemented",
+      "verification": "Independent field dictionary/current value checks; unsigned signature placeholder has no signature /V.",
+      "limits": "Native builder writes text defaults as /DV without /V; adapter uses pinned PdfDocument.set_form_field_value and to_bytes, then verifies current value independently. Visual form appearances still require review. Buttons have no scripts. No signing/private keys."
+    },
+    {
+      "id": "oxide-create-radio-group",
+      "apis": [
+        "FluentPageBuilder.radio_group"
+      ],
+      "status": "blocked-upstream-structure-error",
+      "reason": "Pinned builder produced radio widgets without /Parent and no parent /Kids, included unnamed widgets as AcroForm.Fields, and independent reader could not render appearances or identify the Group widget. Adapter rejects before spawn; failing native output preserved."
+    },
+    {
+      "id": "oxide-create-tagged-document",
+      "apis": [
+        "DocumentBuilder.tagged_pdf_ua1",
+        "DocumentBuilder.language",
+        "DocumentBuilder.role_map"
+      ],
+      "route": "oxide_create_document tagged/language/role_map",
+      "status": "implemented",
+      "verification": "Independent /MarkInfo /StructTreeRoot /Lang /RoleMap checks.",
+      "limits": "Not certified PDF/UA accessibility conformance; screen-reader behavior and semantic structure require separate review."
+    },
+    {
+      "id": "oxide-create-active-actions",
+      "apis": [
+        "DocumentBuilder.on_open",
+        "FluentPageBuilder.link_javascript",
+        "FluentPageBuilder.on_open",
+        "FluentPageBuilder.on_close",
+        "FluentPageBuilder.field_keystroke",
+        "FluentPageBuilder.field_format",
+        "FluentPageBuilder.field_validate",
+        "FluentPageBuilder.field_calculate"
+      ],
+      "status": "gated-active-content",
+      "reason": "Current contract deliberately refuses arbitrary embedded scripts. Full engine integration does not authorize active document code or persistent services."
+    },
+    {
+      "id": "oxide-create-unconsumable-style-values",
+      "apis": [
+        "BlendMode",
+        "ExtGState",
+        "ExtGState.alpha",
+        "ExtGState.fill_alpha",
+        "ExtGState.stroke_alpha",
+        "ExtGState.blend_mode",
+        "ExtGState.semi_transparent",
+        "LinearGradient",
+        "LinearGradient.start",
+        "LinearGradient.end",
+        "LinearGradient.add_stop",
+        "LinearGradient.horizontal",
+        "LinearGradient.vertical",
+        "RadialGradient",
+        "RadialGradient.inner_circle",
+        "RadialGradient.outer_circle",
+        "RadialGradient.add_stop",
+        "RadialGradient.centered",
+        "LineCap",
+        "LineJoin",
+        "ArtifactStyle",
+        "ArtifactStyle.font",
+        "ArtifactStyle.bold"
+      ],
+      "status": "upstream-python-binding-gap",
+      "reason": "Value objects are constructible, but pinned Python document/page APIs expose no rendering consumer. No arbitrary object-construction RPC or content injection is used to pretend gradient, alpha, blending, cap/join or template-style rendering exists. Pattern content generation is a separate supported standalone capability below."
+    },
+    {
+      "id": "oxide-create-other-output-path-variants",
+      "apis": [
+        "Pdf.save",
+        "DocumentBuilder.save",
+        "EmbeddedFont.from_file",
+        "DocumentBuilder.save_encrypted",
+        "DocumentBuilder.to_bytes_encrypted"
+      ],
+      "status": "confined-equivalent-or-separate-security-route",
+      "reason": "Save variants use to_bytes/build then app-owned worker paths. Font file paths become bounded explicit font bytes. Encryption is owned by the separate security adapter; no password in arbitrary paths, argv or creation reports."
+    },
+    {
+      "id": "oxide-create-image-pdf-and-merge",
+      "apis": [
+        "Pdf.from_image",
+        "Pdf.from_images",
+        "Pdf.from_image_bytes",
+        "Pdf.from_bytes",
+        "Pdf.merge"
+      ],
+      "status": "owned-by-conversion-or-editing-adapter",
+      "reason": "Source-input image-to-PDF, source PDF roundtrip and merge workflows are implemented and verified by their respective owners, not duplicated in zero-input declarations."
+    },
+    {
+      "id": "oxide-create-standalone-barcode-svg",
+      "apis": [
+        "generate_barcode_svg",
+        "generate_qr_svg"
+      ],
+      "route": "oxide_create_barcode",
+      "status": "implemented",
+      "verification": "All eight 1D symbologies and QR produce independently rendered vector geometry; all four QR error-correction levels decode exact synthetic payload through OpenCV.",
+      "limits": "Native 1D SVG omits xmlns; exact native bytes retained as oxide-barcode-native.txt, fixed app-owned namespace added to browser SVG and transformation/hash reported. Strict geometric XML allowlist and 2MiB cap. Every 1D payload is not independently decoded; no scanner/print certification."
+    },
+    {
+      "id": "oxide-create-pattern-content",
+      "apis": [
+        "PatternPresets.horizontal_stripes",
+        "PatternPresets.vertical_stripes",
+        "PatternPresets.checkerboard",
+        "PatternPresets.dots",
+        "PatternPresets.diagonal_lines",
+        "PatternPresets.crosshatch",
+        "Color.from_hex",
+        "Color.r",
+        "Color.g",
+        "Color.b"
+      ],
+      "route": "oxide_create_pattern",
+      "status": "implemented-standalone-fragment",
+      "verification": "All six presets return bounded nonempty actual native PDF content bytes and exact input/output hashes; output explicitly states complete_pdf=false, page_pattern_applied=false.",
+      "limits": "No pinned Python method applies these pattern cells to a page. Export is the useful native helper result, not a fake rendered-page implementation. Color constructor/named-color helpers are value aliases for RGB; no individual method-complete claim."
+    }
+  ],
+  "usage_examples": {
+    "oxide_create_text": {
+      "format": "text",
+      "content": "Invoice 001\nTotal -12.50"
+    },
+    "oxide_create_document": {
+      "document": "{\"pages\": [{\"size\": \"a4\", \"elements\": [{\"type\": \"text\", \"text\": \"Hello 001 -12.50\", \"x\": 72, \"y\": 740}]}]}"
+    },
+    "oxide_create_barcode": {
+      "symbology": "qr",
+      "data": "Synthetic 001 -12.50",
+      "error_correction": "high"
+    },
+    "oxide_create_pattern": {
+      "preset": "checkerboard",
+      "size": 24,
+      "color": "#2255aa",
+      "secondary": "#eeeeee"
+    }
+  }
+}

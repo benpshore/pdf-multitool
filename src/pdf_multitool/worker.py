@@ -835,6 +835,11 @@ def main() -> None:
 
         isolation = install()
         sys.addaudithook(_deny_network)
+        if request["operation"] == "oxide" or request["operation"].startswith("oxide_"):
+            from .oxide import initialize_guard
+
+            initialize_guard(isolation, request["limits"])
+            request["_oxide_output_budget"] = {"bytes": 0, "files": 0}
         result = process(request)
         result["isolation"] = isolation
     except Exception as exc:

@@ -170,8 +170,12 @@ def build():
     for name, contract in OPERATIONS.items():
         properties = {}
         for key, spec in contract["options"].items():
-            properties[key] = {k: v for k, v in spec.items() if k not in {"label", "multiline"}}
+            properties[key] = {
+                k: v for k, v in spec.items() if k not in {"label", "multiline", "secret"}
+            }
             properties[key]["description"] = spec["label"]
+            if spec.get("secret"):
+                properties[key]["writeOnly"] = True
         if contract["inputs"]:
             properties["password"] = {"type": "string", "maxLength": 127, "writeOnly": True}
         if contract["pages"]:

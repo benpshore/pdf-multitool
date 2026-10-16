@@ -1,0 +1,13 @@
+{
+  "phase": "before_new_fixture_native_capture",
+  "files": {
+    "build_fixtures.py": "c1a0ac5167e677dab9a5b877954a8a0cfd348b5c4ac81a0d80d729f3e751eed2",
+    "contracts.json": "c89128a13088de5455c826e15c5e0de982c3a9580db07c13e48a940c14124298",
+    "fixtures/cleanup_mixed_tagged.pdf": "b5e7673ea260b609715cb66f913f3ccaad7d79946602b25632eef8c0b8325925",
+    "fixtures/cleanup_repeated.pdf": "981b5419db847d2b133d016b6c299013cdd2aa4518b005079a1d737ee8d5c7e2",
+    "fixtures/images_cmyk.pdf": "b37d886b8f7b5727a4ac8016207ab86cfc9fba0c94f24d5c7d3fbc8cf874b329",
+    "fixtures/images_inline.pdf": "67e75df1bdd204a46650814f40305d973f8d9ef2b055a73b3d1ab8c4fa28e14e",
+    "fixtures/images_malformed.pdf": "935005bc6c73a1bd8d75492a3d7516e9fa3fa6c5a086d07abc294e7d20fa9db0",
+    "fixtures/images_rgba_repeated.pdf": "381ec5a3774f1cb5e00bb3193080856ec554e304e5db4831014472bcbbb887fa"
+  }
+}

@@ -151,9 +151,12 @@ def parser() -> argparse.ArgumentParser:
         if contract["pages"]:
             cmd.add_argument("--pages", default="")
         for key, spec in contract["options"].items():
+            if spec.get("secret"):
+                cmd.add_argument("--ask-" + key.replace("_", "-"), action="store_true")
+                continue
             kwargs = {"default": spec["default"], "help": spec["label"]}
             if spec["type"] == "boolean":
-                kwargs["action"] = "store_true"
+                kwargs["action"] = argparse.BooleanOptionalAction
             else:
                 kwargs["type"] = {"number": float, "integer": int}.get(spec["type"], str)
                 if "enum" in spec:
@@ -211,13 +214,19 @@ def main(argv: list[str] | None = None) -> int:
                             ".jp2",
                             ".jpx",
                             ".j2k",
+                            ".docx",
+                            ".xlsx",
+                            ".pptx",
                         }:
                             candidates.append(path)
                             if len(candidates) > Limits().max_files:
                                 raise JobError("Folder intake exceeds the file-count limit")
             else:
                 candidates.append(candidate)
-        paths = [] if args.command == "create" and not candidates else validate_inputs(candidates)
+        from .catalog import OPERATIONS
+
+        creates = args.command in OPERATIONS and OPERATIONS[args.command]["inputs"] == 0
+        paths = [] if creates and not candidates else validate_inputs(candidates)
         args.output.mkdir(parents=True, exist_ok=True)
         files = [
             {"id": str(i), "name": path.name, "path": str(path)} for i, path in enumerate(paths)
@@ -274,6 +283,9 @@ def main(argv: list[str] | None = None) -> int:
 
         if options.pop("ask_password", False):
             options["password"] = getpass.getpass("Document password: ")
+        for key, spec in OPERATIONS.get(args.command, {}).get("options", {}).items():
+            if spec.get("secret") and options.pop("ask_" + key, False):
+                options[key] = getpass.getpass(spec["label"] + ": ")
         if args.command == "protect":
             options["new_password"] = getpass.getpass("New PDF password (8-127 UTF-8 bytes): ")
             if options["new_password"] != getpass.getpass("Confirm new PDF password: "):

@@ -10,7 +10,7 @@ import pymupdf
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
-from pdf_multitool.catalog import OPERATIONS
+from pdf_multitool.catalog import OPERATIONS, validate_options
 from pdf_multitool.core import Job, JobError, Limits
 
 
@@ -199,14 +199,46 @@ def test_no_tables_or_no_ocr_text_is_partial(tmp_path):
         assert job.results
 
 
-@pytest.mark.parametrize("operation", [name for name in OPERATIONS if name != "create"])
+MALFORMED_OPTIONS = {
+    "oxide_edit_text": {"action": "add", "text": "Fixture"},
+    "oxide_edit_images": {"changes": '[{"page":1,"action":"clear"}]'},
+    "oxide_edit_embed": {"attachments": '[{"name":"fixture.txt","data_base64":"eA=="}]'},
+    "oxide_form_fill": {"values": '{"fixture":"001"}'},
+    "oxide_form_flatten": {"allow_flatten": True},
+    "oxide_annotation_edit": {
+        "actions": '[{"type":"note","page":1,"x":20,"y":20,"text":"Fixture"}]'
+    },
+    "oxide_annotation_flatten": {"allow_flatten": True},
+    "oxide_flatten": {"allow_rasterization": True, "allow_page_relayout": True},
+    "oxide_redact": {"regions": '[{"page":1,"rect":[10,10,20,20]}]'},
+    "oxide_extract_mask": {"actions_json": '[{"action":"clear","page":1}]'},
+    "oxide_search": {"pattern": "Fixture"},
+}
+
+
+@pytest.mark.parametrize(
+    "operation", [name for name, contract in OPERATIONS.items() if contract["inputs"] > 0]
+)
 def test_malformed_input_never_publishes_part(tmp_path, operation):
-    source = tmp_path / "malformed.pdf"
-    source.write_bytes(b"%PDF-1.7\n malformed synthetic data")
-    job = run(tmp_path, operation, source)
+    # Supply a valid operation contract so failure cannot be explained by missing
+    # new-route options or by sending an input to a zero-input creation operation.
+    options = MALFORMED_OPTIONS.get(operation, {})
+    validate_options(operation, options)
+    suffix = ".docx" if operation == "oxide_office_import" else ".pdf"
+    if operation in {"oxide_image_pdf", "oxide_images_pdf"}:
+        suffix = ".png"
+    files = []
+    malformed = b"%PDF-1.7\n malformed synthetic data"
+    for index in range(OPERATIONS[operation]["inputs"]):
+        source = tmp_path / f"malformed-{index}{suffix}"
+        source.write_bytes(malformed)
+        files.append({"id": str(index), "name": source.name, "path": str(source)})
+    job = Job(operation, files, options, tmp_path / "jobs")
+    job.run()
     assert job.state == "failed", job.snapshot()
     assert job.results == []
     assert list(job.directory.iterdir()) == []
+    assert all(Path(file["path"]).read_bytes() == malformed for file in files)
 
 
 @pytest.mark.parametrize(

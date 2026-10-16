@@ -15,6 +15,17 @@ dependencies = [
 images = ["Pillow==12.3.0"]
 html = ["weasyprint==70.0"]
 ocr = ["docling[easyocr]==2.138.0"]
+oxide = [
+    "defusedxml==0.7.1",
+    "pdf-oxide==0.3.78",
+    "pillow==12.3.0",
+]
+oxide-ocr = [
+    "defusedxml==0.7.1",
+    "onnxruntime==1.31.0",
+    "pdf-oxide==0.3.78",
+    "pillow==12.3.0",
+]
 
 [project.scripts]
 pdf-multitool = "pdf_multitool.cli:main"

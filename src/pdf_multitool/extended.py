@@ -464,7 +464,15 @@ def process(request):
         outputs.append({"file": path.name, "name": safe_name(name or f"{stem}-{path.name}")})
         return outputs[-1]["name"]
 
-    if operation == "create":
+    if operation == "oxide":
+        from .oxide import extract
+
+        warnings, partial = extract(request, options, add)
+    elif operation.startswith("oxide_"):
+        from .oxide_routes import process as oxide_process
+
+        warnings, partial = oxide_process(request, options, add)
+    elif operation == "create":
         if request["inputs"]:
             raise JobError("Create expects no input files")
         out = workdir / "created.pdf"

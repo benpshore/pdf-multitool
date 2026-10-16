@@ -21,13 +21,13 @@
       <div class="workspace">
         <section class="panel files-panel" aria-labelledby="files-heading">
           <div class="panel-heading"><div><span class="eyebrow">01 / SOURCE</span><h2 id="files-heading">Your files <span id="file-count" class="count">0</span></h2></div><span id="total-size" class="subtle">Nothing added yet</span></div>
-          <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Add PDF, HTML, images or supported archives, or drag and drop them here">
+          <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Add PDF, HTML, Office documents, images or supported archives, or drag and drop them here">
             <span class="upload-icon" aria-hidden="true"></span>
-            <div><strong>Drop documents or archives</strong><p>PDF · HTML · JPEG / PNG / JPEG2000 · archives</p></div>
+            <div><strong>Drop documents or archives</strong><p>PDF · HTML · DOCX / XLSX / PPTX · images · archives</p></div>
             <div class="upload-actions"><button id="choose-files" class="button small" type="button">Choose files</button><button id="choose-folder" class="text-button small" type="button">Add folder</button></div>
           </div>
-          <input id="file-input" type="file" accept=".pdf,.html,.htm,.jpg,.jpeg,.png,.jp2,.jpx,.j2k,.zip,.tar,.gz,.tgz,application/pdf,text/html,application/zip,application/gzip" multiple hidden>
-          <input id="folder-input" type="file" accept=".pdf,.html,.htm,.jpg,.jpeg,.png,.jp2,.jpx,.j2k,.zip,.tar,.gz,.tgz,application/pdf,text/html,application/zip,application/gzip" webkitdirectory multiple hidden>
+          <input id="file-input" type="file" accept=".pdf,.html,.htm,.docx,.xlsx,.pptx,.jpg,.jpeg,.png,.jp2,.jpx,.j2k,.zip,.tar,.gz,.tgz,application/pdf,text/html,application/zip,application/gzip" multiple hidden>
+          <input id="folder-input" type="file" accept=".pdf,.html,.htm,.docx,.xlsx,.pptx,.jpg,.jpeg,.png,.jp2,.jpx,.j2k,.zip,.tar,.gz,.tgz,application/pdf,text/html,application/zip,application/gzip" webkitdirectory multiple hidden>
           <div class="list-toolbar"><label class="check-label"><input id="select-all" type="checkbox" disabled><span id="selection-label">Select all</span></label><div><button id="remove-selected" class="text-button small" type="button" disabled>Remove selected</button></div></div>
           <div id="file-list" class="file-list" aria-label="Files in processing order"><div class="empty-files"><span class="empty-glyph" aria-hidden="true"></span><p>A little less paperwork.</p><span>Add a document or a whole stack to get started.</span></div></div>
           <div class="panel-foot"><span id="limits-label">Up to 200 files · 50 MB each</span><span>Use Up and Down to set merge order</span></div>
