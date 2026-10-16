@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import html
 import importlib.metadata
@@ -51,7 +52,10 @@ def availability():
 
 def validate_selection(value):
     # Validate syntax and absolute bounds before spawning; no unbounded range expansion.
-    if value.strip() and len(parse_pages(value, MAX_DOCUMENT_PAGES)) > MAX_PAGES:
+    # "all" depends on the actual source count, which only the bounded worker reads.
+    if value.strip().lower() in {"", "all"}:
+        return
+    if len(parse_pages(value, MAX_DOCUMENT_PAGES)) > MAX_PAGES:
         raise JobError(f"PDF Oxide selects at most {MAX_PAGES} pages per input")
 
 
@@ -152,7 +156,7 @@ def _warnings(doc, source_hash, phase):
     ]
 
 
-def _images(doc, index, digest, budget, workdir, mode, add):
+def _images(doc, index, digest, budget, workdir, mode, add, review_images=None):
     # The metadata call itself is native parsing, already under hard AS/CPU limits.
     metadata = _native(f"page {index + 1} image metadata", lambda: doc.extract_images(index))
     budget.images += len(metadata)
@@ -200,24 +204,35 @@ def _images(doc, index, digest, budget, workdir, mode, add):
             out.write_bytes(data)
             add(out)
             record["file"] = out.name
+            if review_images is not None:
+                review_images.append(data)
         records.append(record)
     return records
 
 
-def _review(page):
+def _review(page, image_previews=()):
     parts = [
         '<!doctype html><meta charset="utf-8">',
         '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; '
-        "style-src 'unsafe-inline'\">",
+        "style-src 'unsafe-inline'; img-src data:\">",
         "<title>PDF Oxide extraction review</title>",
         "<style>body{font:16px system-ui;margin:2rem;max-width:90rem}"
         "table{border-collapse:collapse}td{border:1px solid;padding:.5rem;white-space:pre-wrap}"
-        "pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>",
+        "pre{white-space:pre-wrap;overflow-wrap:anywhere}"
+        ".image-preview{display:inline-block;max-width:100%;border:1px solid #555;"
+        "background:repeating-conic-gradient(#fff 0% 25%,#ddd 0% 50%) 0/24px 24px}"
+        ".image-preview img{display:block;max-width:100%;height:auto}"
+        "figcaption{overflow-wrap:anywhere}</style>",
         f"<h1>Page {page['page']} · extraction candidates</h1>",
         "<p>Compare against the original PDF. Text, numbers, cell boundaries and reading order "
         "are unverified. This is a content review, not a reproduction of page layout.</p>",
         "<h2>Original native text</h2><pre>" + html.escape(page["text"] or "") + "</pre>",
     ]
+    if page.get("partial"):
+        parts.append(
+            "<p><strong>Incomplete extraction:</strong> native diagnostics report omitted "
+            "content, truncation or a missing text layer. Review the page JSON and source.</p>"
+        )
     for index, table in enumerate(page["tables"], 1):
         parts.append(f"<h2>Candidate table {index}</h2><table>")
         for row in table["rows"]:
@@ -225,6 +240,39 @@ def _review(page):
             parts.extend("<td>" + html.escape(cell["text"]) + "</td>" for cell in row["cells"])
             parts.append("</tr>")
         parts.append("</table>")
+    if "images" in page:
+        parts.extend(
+            [
+                "<h2>Native image extraction</h2>",
+                "<p>These are native PNG conversions. Image completeness, color, masks and "
+                "transparency are unverified. Compare against the original PDF; an empty "
+                "result does not establish that the source has no images.</p>",
+            ]
+        )
+        exported = [record for record in page["images"] if record["persisted"]]
+        if len(exported) != len(image_previews):
+            raise JobError("PDF Oxide image review does not match its explicit exports")
+        for record, data in zip(exported, image_previews, strict=True):
+            if len(data) != record["bytes"] or hashlib.sha256(data).hexdigest() != record["sha256"]:
+                raise JobError("PDF Oxide image review bytes differ from the recorded export")
+            info = record["native_metadata"]
+            number = record["image_index"]
+            parts.extend(
+                [
+                    '<figure><div class="image-preview">',
+                    f'<img alt="Native exported image {number}" src="data:image/png;base64,',
+                    base64.b64encode(data).decode("ascii"),
+                    '"></div><figcaption>',
+                    f"Image {number}: {info['width']} x {info['height']} pixels. "
+                    "Exact exported PNG bytes; checkerboard indicates transparent pixels. "
+                    "SHA-256: " + html.escape(record["sha256"]),
+                    "</figcaption></figure>",
+                ]
+            )
+        if page["images"] and not exported:
+            parts.append("<p>Inspect-only mode: image bytes were not persisted or embedded.</p>")
+        elif not page["images"]:
+            parts.append("<p>The native extractor returned no images.</p>")
     if "cleanup" in page:
         parts.extend(
             [
@@ -305,6 +353,7 @@ def extract(request, options, add):
         "missing text, numbers, empty cells and wrapped rows. Process success is not correctness."
     ]
     partial = False
+    image_previews = {}
     if options["images"] != "none":
         warnings.append(
             "Images are native PNG conversions, not guaranteed original compressed bytes. "
@@ -388,9 +437,16 @@ def extract(request, options, add):
             budget.write(out, native_html)
             add(out)
         if options["images"] != "none":
-            page["images"] = _images(doc, index, digest, budget, workdir, options["images"], add)
+            image_previews[number] = []
+            page["images"] = _images(
+                doc, index, digest, budget, workdir, options["images"], add, image_previews[number]
+            )
             page["image_status"] = "extracted" if page["images"] else "none_returned"
             page["image_completeness_verified"] = False
+            page["image_fidelity_verified"] = False
+            page["image_review"] = (
+                "exact_exported_png_previews" if options["images"] == "export" else "metadata_only"
+            )
         budget.json(workdir / f"page-{number:04d}.json", page)
         if text is not None:
             budget.write(workdir / f"page-{number:04d}.txt", text)
@@ -450,12 +506,41 @@ def extract(request, options, add):
         ]
         page["ocr_required"] = True if "no_text_layer" in applicable else None
         page["truncated"] = "operator_cap_exceeded" in applicable
+        page["omitted_content_categories"] = sorted(
+            set(applicable) & {"glyph_dropped", "image_suppressed"}
+        )
         page["diagnostic_status"] = "warnings_present" if applicable else "none_reported"
-        partial = partial or page["truncated"] or page["ocr_required"] is True
+        page["partial"] = bool(
+            page["truncated"] or page["ocr_required"] or page["omitted_content_categories"]
+        )
+        if "cleanup" in page:
+            cleanup_categories = {
+                entry["native"]["category"]
+                for entry in report.get("cleanup_structured_warnings", [])
+                if entry["page"] in {None, page["page"]}
+            }
+            page["cleanup"].update(
+                truncated="operator_cap_exceeded" in cleanup_categories,
+                ocr_required=True if "no_text_layer" in cleanup_categories else None,
+                omitted_content_categories=sorted(
+                    cleanup_categories & {"glyph_dropped", "image_suppressed"}
+                ),
+                partial=bool(
+                    cleanup_categories
+                    & {
+                        "operator_cap_exceeded",
+                        "no_text_layer",
+                        "glyph_dropped",
+                        "image_suppressed",
+                    }
+                ),
+            )
+            page["partial"] = page["partial"] or page["cleanup"]["partial"]
+        partial = partial or page["partial"]
         budget.json(path, page)
         add(path)
         out = path.with_suffix(".html")
-        budget.write(out, _review(page))
+        budget.write(out, _review(page, image_previews.pop(page["page"], ())))
         add(out)
         reference.update(
             {
@@ -465,11 +550,19 @@ def extract(request, options, add):
                     "table_status",
                     "ocr_required",
                     "truncated",
+                    "partial",
+                    "omitted_content_categories",
                     "diagnostic_status",
                 )
             }
         )
-    if report["structured_warnings"]:
+        if "cleanup" in page:
+            reference["cleanup_truncated"] = page["cleanup"]["truncated"]
+    report["partial"] = partial
+    report["truncated"] = any(
+        entry["truncated"] or entry.get("cleanup_truncated") for entry in report["pages"]
+    )
+    if report["structured_warnings"] or report.get("cleanup_structured_warnings"):
         warnings.append(
             "PDF Oxide reported structured diagnostics; inspect the extraction manifest."
         )

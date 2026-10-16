@@ -422,7 +422,8 @@ def capabilities(engine_status):
         "operations": {
             name: {
                 **spec,
-                "available": bool(engine_status.get(spec["engine"], {}).get("available")),
+                "available": bool(engine_status.get(spec["engine"], {}).get("available"))
+                and not bool(spec.get("blocked_reason")),
             }
             for name, spec in OPERATIONS.items()
         },

@@ -15,6 +15,7 @@ import html
 import io
 import math
 import re
+from collections import Counter
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
@@ -30,6 +31,7 @@ MAX_ASSETS = 16
 MAX_ASSET_BYTES = 120_000
 MAX_IMAGE_PIXELS = 4_000_000
 MAX_TOTAL_PIXELS = 8_000_000
+MAX_VERIFICATION_TEXT = 200_000
 BASE_FONTS = (
     "Helvetica",
     "Helvetica-Bold",
@@ -1228,6 +1230,233 @@ def _create_text(options, oxide, native):
     return bytes(pdf.to_bytes())
 
 
+class _VisibleHTML(HTMLParser):
+    """Independent text expectations, with entities decoded and metadata excluded."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts, self.hidden = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in {"head", "title"}:
+            self.hidden += 1
+        elif tag not in {"span", "b", "strong", "i", "em", "u", "s", "del", "a", "sub", "sup"}:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag in {"head", "title"}:
+            self.hidden = max(self.hidden - 1, 0)
+        else:
+            self.handle_starttag(tag, [])
+
+    def handle_data(self, data):
+        if not self.hidden:
+            self.parts.append(data)
+
+
+def _markdown_visible(content):
+    """Read the bounded native Markdown subset without consulting its output."""
+    result, fenced, table = [], False, False
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if line.startswith("```"):
+            fenced = not fenced
+            continue
+        if fenced:
+            result.append(line)
+            continue
+        # GFM table separators and block markers carry layout, not cell values.
+        if "|" not in line:
+            table = False
+        elif index + 1 < len(lines) and re.fullmatch(r"[\s|:\-]+", lines[index + 1]):
+            table = "|" in lines[index + 1]
+        if table:
+            if re.fullmatch(r"[\s|:\-]+", line):
+                continue
+            line = line.replace("|", " ")
+        line = re.sub(r"^(?:#{1,6} |[-*] |> )", "", line)
+        # Code spans preserve literal stars. Only paired emphasis is removed;
+        # unmatched markers and underscores remain literal in this binding.
+        parts = re.split(r"(`[^`]*`)", line)
+        result.append(
+            "".join(
+                part[1:-1]
+                if part.startswith("`") and part.endswith("`") and len(part) >= 2
+                else re.sub(r"(\*{1,3})(.+?)\1", r"\2", part)
+                for part in parts
+            )
+        )
+    return "\n".join(result)
+
+
+def _content_tokens(text):
+    # Keep case, Unicode, signs, decimal separators and repeated occurrences.
+    # Layout whitespace is ignored; this is not an order or table-cell oracle.
+    return Counter(
+        re.findall(
+            r"[+-]?\d+(?:[.,]\d+)*(?:[eE][+-]?\d+)?|[^\W\d]+(?:['\u2019][^\W\d]+)*|[^\w\s]",
+            text,
+        )
+    )
+
+
+def _expected_content(options, document):
+    if document is None:
+        kind, content = options["format"], options["content"]
+        if kind in {"html", "html_css"}:
+            parser = _VisibleHTML()
+            parser.feed(content)
+            parser.close()
+            content = "".join(parser.parts)
+        elif kind == "markdown":
+            content = _markdown_visible(content)
+        return content
+    parts, inline = [], ""
+    for declaration in document["pages"]:
+        for item in declaration.get("elements", []):
+            kind = item["type"]
+            if kind.startswith("inline"):
+                inline += item.get("text", "")
+                continue
+            parts.append(inline)
+            inline = ""
+            if kind in TEXT_TYPES:
+                parts.append(item.get("text", ""))
+                if kind == "footnote":
+                    parts.append(item.get("reference", "1"))
+        parts.append(inline)
+        inline = ""
+    return "\n".join(parts)
+
+
+def _verify_created_pdf(data, count, options, document=None):
+    """Reject independently observable loss before publishing any generated file."""
+    import pymupdf
+
+    from .oxide_runtime import validate_pdf_bytes
+
+    pymupdf.TOOLS.mupdf_warnings(reset=True)
+    validate_pdf_bytes(data, expected_pages=count)
+    expected = _content_tokens(_expected_content(options, document))
+    actual, chars, image_count, fields, notes = Counter(), 0, 0, {}, Counter()
+    with pymupdf.open(stream=data, filetype="pdf") as check:
+        if check.is_repaired:
+            raise JobError("Created PDF needed independent structural repair; no output published")
+        for number, page in enumerate(check, 1):
+            if not all(math.isfinite(v) and 0 < v <= 2000 for v in page.rect[2:]):
+                raise JobError("Created PDF has invalid independent page geometry")
+            text = page.get_text()
+            chars += len(text)
+            if chars > MAX_VERIFICATION_TEXT:
+                raise JobError("Created PDF exceeds its independent text verification limit")
+            actual.update(_content_tokens(text))
+            image_count += len(page.get_image_info())
+            for widget in page.widgets() or ():
+                if widget.field_name in fields:
+                    raise JobError("Created PDF contains duplicate independent form-field names")
+                fields[widget.field_name] = (
+                    widget.field_type,
+                    widget.field_value,
+                    widget.choice_values,
+                )
+            notes.update((a.type[0], a.info.get("content", "")) for a in page.annots() or ())
+            # Small render exercises content streams, fonts and image decoders.
+            # No pixel heuristic is used to claim visibility or visual fidelity.
+            scale = min(1, 384 / max(page.rect.width, page.rect.height))
+            page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), colorspace=pymupdf.csGRAY)
+            if document is None and options["format"] == "markdown":
+                for key in ("header", "footer", "header_left", "footer_left"):
+                    template = options.get(key, "")
+                    for name, value in (
+                        ("page", str(number)),
+                        ("pages", str(count)),
+                        ("title", options["title"]),
+                        ("author", options["author"]),
+                    ):
+                        template = template.replace("{" + name + "}", value)
+                    # The native clock is not independently reproducible. Verify
+                    # the surrounding literal text; report this limited scope.
+                    template = template.replace("{date}", "").replace("{time}", "")
+                    expected.update(_content_tokens(template))
+        metadata = (
+            document.get("metadata", {})
+            if document
+            else {key: options[key] for key in ("title", "author") if options[key]}
+        )
+        if any(check.metadata.get(key) != value for key, value in metadata.items()):
+            raise JobError("Created PDF did not retain requested metadata independently")
+        if document is not None:
+            elements = [e for p in document["pages"] for e in p.get("elements", [])]
+            minimum_pages = len(document["pages"]) + sum(e["type"] == "new_page" for e in elements)
+            if count < minimum_pages:
+                raise JobError("Created PDF lost a declared page or explicit page break")
+            if image_count != sum(e["type"] in {"image", "barcode"} for e in elements):
+                raise JobError("Created PDF did not retain every requested image/barcode placement")
+            wanted_fields = [e for e in elements if e["type"] in FORM_TYPES]
+            if len(fields) != len(wanted_fields):
+                raise JobError("Created PDF did not retain every requested form field")
+            types = {
+                "text_field": pymupdf.PDF_WIDGET_TYPE_TEXT,
+                "checkbox": pymupdf.PDF_WIDGET_TYPE_CHECKBOX,
+                "combo_box": pymupdf.PDF_WIDGET_TYPE_COMBOBOX,
+                "push_button": pymupdf.PDF_WIDGET_TYPE_BUTTON,
+                "signature_field": pymupdf.PDF_WIDGET_TYPE_SIGNATURE,
+            }
+            for item in wanted_fields:
+                kind = item["type"]
+                field_type, value, choices = fields.get(item["name"], (None, None, None))
+                if field_type != types[kind]:
+                    raise JobError("Created PDF form field has the wrong independent name/type")
+                if (
+                    (kind == "text_field" and value != item.get("value", ""))
+                    or (kind == "checkbox" and value != ("Yes" if item.get("checked") else "Off"))
+                    or (
+                        kind == "combo_box"
+                        and (
+                            choices != item["choices"]
+                            or (item.get("selected") is not None and value != item["selected"])
+                        )
+                    )
+                ):
+                    raise JobError("Created PDF lost a requested form value or choice")
+            wanted_notes = Counter(
+                (
+                    pymupdf.PDF_ANNOT_FREE_TEXT
+                    if e["type"] == "freetext"
+                    else pymupdf.PDF_ANNOT_TEXT,
+                    e.get("text", ""),
+                )
+                for e in elements
+                if e["type"] in {"sticky_note", "sticky_note_at", "freetext"}
+            )
+            if wanted_notes - notes:
+                raise JobError("Created PDF lost requested note/free-text annotation content")
+    if pymupdf.TOOLS.mupdf_warnings(reset=True):
+        raise JobError("Independent PDF decoding reported errors; no output published")
+    if expected - actual:
+        raise JobError(
+            "Independent PDF check found missing requested text/numbers; no output published"
+        )
+    return {
+        "parser": "PyMuPDF",
+        "pages_checked": count,
+        "expected_text_tokens": expected.total(),
+        "extracted_characters": chars,
+        "image_placements": image_count,
+        "form_fields": len(fields),
+        "text_check": "document-wide case/Unicode/number-sensitive token occurrence counts",
+        "limitations": [
+            "Text order, exact spacing, page/cell association and visual fidelity "
+            "are not verified.",
+            "Image placements and decodability are checked, "
+            "not pixel equivalence or barcode payloads.",
+            "Form/annotation values are checked, not appearance or interaction fidelity.",
+            "Header/footer date and time substitutions are not independently verified.",
+        ],
+        "visual_fidelity_verified": False,
+    }
+
+
 def _standalone(request, options, add, oxide, native, write_bytes, write_json):
     import json
 
@@ -1349,6 +1578,7 @@ def process(request, options, add):
     validate_options(request["operation"], options)
     if request["operation"] in {"oxide_create_barcode", "oxide_create_pattern"}:
         return _standalone(request, options, add, oxide, native, write_bytes, write_json)
+    document = None
     if request["operation"] == "oxide_create_document":
         document, fonts, images = _document(options["document"])
         data, details, warnings = native(
@@ -1362,8 +1592,12 @@ def process(request, options, add):
         raise JobError("Created PDF exceeds its output limit; no output published")
     output = native("created PDF validation", lambda: oxide.PdfDocument.from_bytes(data))
     count = native("created page count", lambda: int(output.page_count))
-    if not 1 <= count <= MAX_PAGES:
+    if not 1 <= count <= min(MAX_PAGES, request["limits"]["max_pages"]):
         raise JobError("Created PDF exceeds its page limit; no output published")
+    details["independent_validation"] = native(
+        "independent created PDF validation",
+        lambda: _verify_created_pdf(data, count, options, document),
+    )
     warnings.append(
         "Generated PDF requires visual/text checks; creation does not certify fidelity."
     )

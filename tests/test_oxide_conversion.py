@@ -123,9 +123,280 @@ def test_flatten_is_explicit_preserves_color_and_removes_text_structure(tmp_path
     assert not list(job.directory.rglob("oxide-flatten-*"))
     report = json.loads(output(job, ".json").read_text())
     assert report["redaction_verified"] is False
+    assert report["output_structure_validation"]["independent_parser"] == "PyMuPDF"
     assert report["partial"] is True
     assert report["source_page_dimensions"] != report["output_page_dimensions"]
     assert "text layer" in report["lost_structure"]
+
+
+def flatten_geometry_fixture(path, rotation=0, cropped=False, sizes=None, user_unit=None):
+    """Distinct corners and numeric/table content authored directly in PDF user space."""
+    with pikepdf.new() as document:
+        font = document.make_indirect(
+            pikepdf.Dictionary(
+                Type=pikepdf.Name.Font, Subtype=pikepdf.Name.Type1, BaseFont=pikepdf.Name.Helvetica
+            )
+        )
+        for width, height in sizes or [(260, 180)]:
+            page = document.add_blank_page(page_size=(width, height))
+            page.Resources.Font = pikepdf.Dictionary(F1=font)
+            x0, y0 = (40, 60) if cropped else (0, 0)
+            page.MediaBox = pikepdf.Array([x0, y0, x0 + width, y0 + height])
+            if cropped:
+                x0, y0, width, height = x0 + 20, y0 + 15, width - 40, height - 30
+                page.CropBox = pikepdf.Array([x0, y0, x0 + width, y0 + height])
+            page.Rotate = rotation
+            if user_unit is not None:
+                page.UserUnit = user_unit
+            content = (
+                f"1 0 0 rg {x0} {y0 + height - 25} 25 25 re f\n"
+                f"0 1 0 rg {x0 + width - 25} {y0 + height - 25} 25 25 re f\n"
+                f"0 0 1 rg {x0} {y0} 25 25 re f\n"
+                f"1 0 1 rg {x0 + width - 25} {y0} 25 25 re f\n"
+                f"0 g BT /F1 10 Tf {x0 + 35} {y0 + height - 35} Td "
+                "(012   0.15   -2.00) Tj ET\n"
+                f"0 G 1 w {x0 + 35} {y0 + 35} 140 45 re S\n"
+                f"{x0 + 35} {y0 + 57} m {x0 + 175} {y0 + 57} l S\n"
+                f"{x0 + 105} {y0 + 35} m {x0 + 105} {y0 + 80} l S\n"
+                f"BT /F1 10 Tf {x0 + 40} {y0 + 63} Td (A1) Tj ET\n"
+                f"BT /F1 10 Tf {x0 + 110} {y0 + 63} Td (B1) Tj ET\n"
+                f"BT /F1 10 Tf {x0 + 40} {y0 + 41} Td (A2) Tj ET\n"
+                f"BT /F1 10 Tf {x0 + 110} {y0 + 41} Td (B2) Tj ET\n"
+            )
+            page.Contents = document.make_stream(content.encode("ascii"))
+        document.save(path)
+    return path
+
+
+def pdfium_page_image(path, index=0, dpi=144):
+    import pypdfium2 as pdfium
+
+    with pdfium.PdfDocument(path) as document:
+        page = document[index]
+        bitmap = page.render(scale=dpi / 72)
+        result = bitmap.to_pil().convert("RGB").copy()
+        bitmap.close()
+        page.close()
+    return result
+
+
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270, -90])
+@pytest.mark.parametrize("cropped", [False, True])
+def test_explicit_native_flatten_preserves_visible_geometry_and_pdfium_pixels(
+    tmp_path, rotation, cropped
+):
+    from PIL import ImageChops, ImageStat
+
+    source = flatten_geometry_fixture(tmp_path / "geometry.pdf", rotation, cropped)
+    job = run(
+        tmp_path,
+        "oxide_flatten",
+        source,
+        {
+            "layout": "preserve_visible_page",
+            "allow_rasterization": True,
+            "dpi": 144,
+        },
+    )
+    assert job.state == "completed", job.errors
+    derivative = output(job, ".pdf")
+    with pymupdf.open(source) as before, pymupdf.open(derivative) as after:
+        assert before[0].rect == after[0].rect
+        assert after[0].rotation == 0
+        assert after[0].mediabox.x0 == after[0].mediabox.y0 == 0
+        assert "012" in before[0].get_text() and after[0].get_text() == ""
+    original, actual = pdfium_page_image(source), pdfium_page_image(derivative)
+    assert original.size == actual.size
+    for point in (
+        (12, 12),
+        (original.width - 12, 12),
+        (12, original.height - 12),
+        (original.width - 12, original.height - 12),
+    ):
+        assert original.getpixel(point) == actual.getpixel(point)
+    # Independent PDFium render differences are confined to font/raster edges;
+    # no full-page padding, crop loss, rotation or marker color changes survive.
+    difference = ImageStat.Stat(ImageChops.difference(original, actual))
+    assert max(difference.mean) < 3.0
+    report = json.loads(output(job, ".json").read_text())
+    assert report["operation"] == "render_page+DocumentBuilder"
+    assert report["container_writer"] == report["renderer"] == "PDF Oxide"
+    assert report["engine_fallback"] is False
+    assert report["physical_dimensions_checked"] is True
+    assert report["output_structure_validation"]["content_fidelity_checked"] is False
+    assert report["fidelity_verified"] is False
+    assert report["partial"] is False
+    assert report["source_page_dimensions"] == report["output_page_dimensions"]
+    assert report["source_geometry"][0]["output_rotation_degrees"] == 0
+    assert (
+        report["page_rasters"][0]["source_sha256"]
+        == hashlib.sha256(source.read_bytes()).hexdigest()
+    )
+    assert not list(job.directory.rglob("oxide-flatten-*"))
+
+
+@pytest.mark.parametrize("dpi", [72, 144])
+def test_preserve_visible_page_handles_mixed_fractional_page_sizes(tmp_path, dpi):
+    source = flatten_geometry_fixture(
+        tmp_path / "mixed.pdf", sizes=[(240, 160), (320.5, 220.25), (210, 300)]
+    )
+    job = run(
+        tmp_path,
+        "oxide_flatten",
+        source,
+        {
+            "layout": "preserve_visible_page",
+            "allow_rasterization": True,
+            "dpi": dpi,
+        },
+    )
+    assert job.state == "completed", job.errors
+    with pymupdf.open(source) as before, pymupdf.open(output(job, ".pdf")) as after:
+        assert len(before) == len(after) == 3
+        for index in range(3):
+            assert tuple(before[index].rect) == pytest.approx(tuple(after[index].rect), abs=0.01)
+            assert (
+                pdfium_page_image(source, index, dpi).size
+                == pdfium_page_image(output(job, ".pdf"), index, dpi).size
+            )
+
+
+def test_preserve_visible_page_embeds_every_native_raster_pixel_unchanged(tmp_path):
+    source = flatten_geometry_fixture(tmp_path / "geometry.pdf", rotation=270, cropped=True)
+    reference = run(tmp_path, "oxide_render", source, {"dpi": 144})
+    flattened = run(
+        tmp_path,
+        "oxide_flatten",
+        source,
+        {"layout": "preserve_visible_page", "allow_rasterization": True, "dpi": 144},
+    )
+    assert reference.state == flattened.state == "completed"
+    png = output(reference, ".png").read_bytes()
+    with Image.open(io.BytesIO(png)) as image:
+        expected = image.convert("RGB")
+    with pymupdf.open(output(flattened, ".pdf")) as document:
+        images = document[0].get_images(full=True)
+        assert len(images) == 1
+        actual = pymupdf.Pixmap(document, images[0][0])
+        assert (actual.width, actual.height) == expected.size
+        assert actual.samples == expected.tobytes()
+    report = json.loads(output(flattened, ".json").read_text())
+    assert report["page_rasters"][0]["png_sha256"] == hashlib.sha256(png).hexdigest()
+    assert report["fidelity_verified"] is False
+
+
+def test_preserve_visible_page_fails_on_unsupported_units_and_output_quota(tmp_path):
+    source = flatten_geometry_fixture(tmp_path / "scaled.pdf", user_unit=2)
+    job = run(
+        tmp_path,
+        "oxide_flatten",
+        source,
+        {"layout": "preserve_visible_page", "allow_rasterization": True},
+    )
+    assert job.state == "failed" and not job.results
+    assert "geometry" in str(job.errors).lower()
+    assert not list(job.directory.iterdir())
+    source = flatten_geometry_fixture(tmp_path / "regular.pdf")
+    job = run(
+        tmp_path,
+        "oxide_flatten",
+        source,
+        {"layout": "preserve_visible_page", "allow_rasterization": True},
+        limits=replace(Limits(), max_output_bytes=128),
+    )
+    assert job.state == "failed" and not job.results
+    assert not list(job.directory.iterdir())
+
+
+def operator_cap_fixture(path):
+    """Visible trailing text beyond the native one-million-operator cap."""
+    with pymupdf.open() as document:
+        page = document.new_page(width=300, height=240)
+        page.insert_text((40, 40), "Before cap 012 0.15")
+        reference = page.get_contents()[0]
+        document.update_stream(
+            reference,
+            document.xref_stream(reference)
+            + b"BT /helv 11 Tf 0 TL 1 0 0 1 40 160 Tm\n"
+            + b"T*\n" * 1_000_010
+            + b"(After cap 036 0.00) Tj ET\n",
+        )
+        document.save(path, deflate=True)
+    return path
+
+
+@pytest.mark.parametrize(
+    ("operation", "options"),
+    [
+        ("oxide_render", {}),
+        ("oxide_office_export", {"format": "docx"}),
+        ("oxide_office_export", {"format": "xlsx"}),
+        ("oxide_office_export", {"format": "pptx"}),
+        ("oxide_flatten", {"allow_rasterization": True, "allow_page_relayout": True}),
+        ("oxide_flatten", {"layout": "preserve_visible_page", "allow_rasterization": True}),
+    ],
+)
+def test_native_operator_cap_cannot_silently_complete_conversion(tmp_path, operation, options):
+    source = operator_cap_fixture(tmp_path / "operators.pdf")
+    with pymupdf.open(source) as document:
+        text = document[0].get_text()
+        assert "Before cap 012 0.15" in text and "After cap 036 0.00" in text
+    job = run(tmp_path, operation, source, options)
+    assert job.state == "partial", job.errors
+    report = json.loads(output(job, ".json").read_text())
+    assert report["partial"] is True and report["truncated"] is True
+    assert report["fidelity_verified"] is False
+    assert any(
+        record["category"] == "operator_cap_exceeded" and record["page"] is None
+        for record in report["structured_warnings"]
+    )
+    assert any("truncated" in warning for warning in job.warnings)
+    if operation == "oxide_render":
+        assert report["pages"][0]["truncated"] is True
+    elif operation == "oxide_office_export":
+        assert report["page_diagnostics"][0]["truncated"] is True
+        with zipfile.ZipFile(output(job, "." + options["format"])) as package:
+            xml = b" ".join(
+                package.read(name) for name in package.namelist() if name.endswith(".xml")
+            )
+        assert b"Before cap 012 0.15" in xml and b"After cap 036 0.00" not in xml
+    elif options.get("layout") == "preserve_visible_page":
+        assert report["page_rasters"][0]["truncated"] is True
+
+
+def test_conversion_diagnostics_respect_page_scope_and_raster_only_scans():
+    from pdf_multitool.oxide_conversion import _diagnostic_status
+
+    scoped = [{"category": "operator_cap_exceeded", "page": 0}]
+    assert _diagnostic_status(scoped, {0})["truncated"] is True
+    assert _diagnostic_status(scoped, {1})["partial"] is False
+    global_warning = [{"category": "operator_cap_exceeded", "page": None}]
+    assert _diagnostic_status(global_warning, {1})["truncated"] is True
+    scan = [{"category": "no_text_layer", "page": 0}]
+    assert _diagnostic_status(scan, {0})["partial"] is False
+    text_conversion = _diagnostic_status(scan, {0}, needs_text=True)
+    assert text_conversion["partial"] is True and text_conversion["ocr_required"] is True
+    assert _diagnostic_status([{"category": "glyph_dropped", "page": 0}], {0})["partial"] is True
+
+
+@pytest.mark.parametrize("problem", ["truncated_pdf", "page_count_disagreement"])
+def test_generated_pdf_reopen_rejects_native_success_claim_for_invalid_output(tmp_path, problem):
+    from types import SimpleNamespace
+
+    from pdf_multitool.oxide_conversion import _pdf_summary
+
+    # Fault-inject only the native success claim. The independent parser sees
+    # real malformed bytes or a real two-page PDF with a false native count.
+    data = (
+        b"%PDF-1.7\ntruncated native converter output\n"
+        if problem == "truncated_pdf"
+        else pdf_fixture(tmp_path / "two-pages.pdf", pages=2).read_bytes()
+    )
+    module = SimpleNamespace(
+        PdfDocument=SimpleNamespace(from_bytes=lambda data: SimpleNamespace(page_count=1))
+    )
+    with pytest.raises(JobError, match=r"independent converted|page count differs"):
+        _pdf_summary(module, data)
 
 
 @pytest.mark.parametrize("mode", ["separation", "separations"])
@@ -189,6 +460,7 @@ def test_image_pdf_preserves_pixels_and_source(tmp_path, kind):
         assert red > 240 and green < 15 and blue < 15
     report = json.loads(output(job, ".json").read_text())
     assert report["sources"][0]["sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
+    assert report["output_structure_validation"]["independent_parser"] == "PyMuPDF"
 
 
 def test_multiple_images_preserve_input_order_and_remove_snapshots(tmp_path):
@@ -345,6 +617,9 @@ def test_office_native_import_independent_docx(tmp_path):
     assert job.state == "completed", job.errors
     with pymupdf.open(output(job, ".pdf")) as document:
         assert "Original 012 0.15 -2.00" in " ".join(page.get_text() for page in document)
+    report = json.loads(output(job, ".json").read_text())
+    assert report["output_structure_validation"]["independent_parser"] == "PyMuPDF"
+    assert report["output_structure_validation"]["content_fidelity_checked"] is False
 
 
 def minimal_other_office(kind):

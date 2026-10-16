@@ -2,6 +2,15 @@
   "package": "pdf-oxide==0.3.78",
   "scope": "Native per-page formatted text, Markdown and HTML",
   "qualification": "Bounded tested adapters, not general semantic or visual qualification",
+  "diagnostic_policy": {
+    "source_records": "Complete bounded native diagnostics retain source SHA256, original native page/category/message/spec_section and one-based page attribution. Records are not drained or discarded.",
+    "operator_cap_exceeded": "Affected pages and the file manifest set truncated=true and partial=true; the Job is partial with an explicit content-omission warning. A native diagnostic with page=null applies conservatively to every selected page. Both native extraction baselines and formatted outputs can be incomplete.",
+    "no_text_layer": "Affected pages set ocr_required=true and partial=true. The file and Job are partial because this route does not run OCR. This diagnostic alone does not claim truncation.",
+    "glyph_dropped_and_image_suppressed": "If these native loss categories occur, preserve them in page/file omitted_content_categories and mark the affected pages, file and Job partial. They do not imply operator truncation. Synthetic diagnostic contract tests cover these signals; the current no-image/no-rasterization formatter does not naturally emit them.",
+    "other_warnings": "Preserved in structured_warnings and surfaced in the Job warnings; warnings alone do not imply a truncation category.",
+    "budget_failure": "Character, diagnostic and output budget failures abort the file; no partial files are published.",
+    "regression": "Real synthetic PDF with 1,000,010 T* operators and independently visible numeric tail reproduces native truncation in text, Markdown and HTML. Tests require partial state, page/file flags, raw diagnostics, intact source hashes, omitted-tail evidence and correct page-selection scope. Mixed text/scan pages verify page-specific OCR status."
+  },
   "capabilities": [
     {
       "api": ["PdfDocument.to_plain_text"],
@@ -35,6 +44,7 @@
   ],
   "tests": "tests/test_oxide_format.py",
   "preserved_native_failure": "Isolated cloud evidence/format-artifact-probe retains original.pdf and plain-text outputs with both artifact flag values; original files are not overwritten.",
+  "preserved_diagnostic_failure": "Isolated cloud evidence/format-diagnostics-20261016-v1 retains the original operator-cap PDF, independent extraction/render, baseline completed/truncated=false report and distinct corrected partial reports. This is synthetic evidence, not broader acceptance.",
   "parent_ada_acceptance": "pending for this new route; existing extraction failures already confirmed independently",
   "merge_hold": true
 }

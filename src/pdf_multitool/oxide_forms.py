@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import math
 from pathlib import Path
@@ -83,8 +84,9 @@ OPERATIONS = {
         "Edit annotations with PDF Oxide",
         "Add a note or HTTP(S)/mailto link, or remove a non-widget annotation "
         "in a new PDF using a bounded JSON action list. Coordinates use native PDF user space. "
-        "Removal fails closed when the saved annotation remains. New highlights are unsupported "
-        "because pinned output disappears in PDFium.",
+        "Removal fails closed when the saved annotation remains. Native highlights stay blocked. "
+        "Optional pikepdf correction builds the requested rectangular highlight appearance; "
+        "both the defective native copy and corrected copy are retained for comparison.",
         pdf=True,
         options={
             "actions": _field(
@@ -92,7 +94,12 @@ OPERATIONS = {
                 default="[]",
                 multiline=True,
                 maxLength=MAX_CONFIG,
-            )
+            ),
+            "allow_highlight_repair": _field(
+                "Correct new highlight appearances with pikepdf and retain native comparison",
+                "boolean",
+                False,
+            ),
         },
     ),
     "oxide_annotation_flatten": _operation(
@@ -146,7 +153,7 @@ def _validate_values(text):
     return values
 
 
-def _validate_actions(text):
+def _validate_actions(text, allow_highlight_repair=False):
     actions = _json_config(text, list)
     if not 1 <= len(actions) <= MAX_EDITS:
         raise JobError("Provide between 1 and 100 annotation actions")
@@ -188,10 +195,14 @@ def _validate_actions(text):
                 or not all(_number(channel) and 0 <= channel <= 1 for channel in color)
             ):
                 raise JobError("Annotation color must contain three numbers from zero to one")
-            raise JobError(
-                "PDF Oxide 0.3.78 new highlights are unsupported: "
-                "the saved appearance disappears in PDFium"
-            )
+            if allow_highlight_repair is not True:
+                raise JobError(
+                    "PDF Oxide 0.3.78 new highlights are unsupported: "
+                    "the saved appearance disappears in PDFium. "
+                    "Explicit allow_highlight_repair uses a separate pikepdf correction"
+                )
+            if min(action["width"], action["height"]) < 0.5:
+                raise JobError("Corrected highlight dimensions must be at least 0.5 PDF points")
         else:
             url = action["url"]
             if not _text(url, 2048) or any(ord(char) < 32 for char in url):
@@ -208,6 +219,8 @@ def _validate_actions(text):
                 valid = False
             if not valid:
                 raise JobError("Annotation links require HTTP(S) or mailto without credentials")
+    if allow_highlight_repair and not any(a["type"] == "highlight" for a in actions):
+        raise JobError("Highlight repair requires an explicit new highlight action")
     return actions
 
 
@@ -216,7 +229,7 @@ def validate_options(operation, options):
     if operation == "oxide_form_fill":
         _validate_values(options["values"])
     elif operation == "oxide_annotation_edit":
-        _validate_actions(options["actions"])
+        _validate_actions(options["actions"], options.get("allow_highlight_repair", False))
     if operation.endswith("_flatten") and options.get("allow_flatten") is not True:
         raise JobError("Explicit allow_flatten is required for PDF Oxide flattening")
 
@@ -538,14 +551,380 @@ def _fill(doc, options, before, count, source_bytes):
     )
 
 
-def _edit_annotations(doc, options, count):
+def _inherited_pdf_value(page, key, default):
+    node, seen = page.obj, set()
+    for _ in range(64):
+        if key in node:
+            return node[key]
+        identity = node.objgen
+        if identity in seen or "/Parent" not in node:
+            return default
+        seen.add(identity)
+        node = node["/Parent"]
+    raise JobError("Highlight correction page inheritance exceeds its limit")
+
+
+def _page_snapshots(pdf):
+    """Compare geometry and decoded content without mutating page coordinate systems."""
+    import pikepdf
+
+    snapshots, decoded_bytes = [], 0
+    for page in pdf.pages:
+        media, crop = list(map(float, page.mediabox)), list(map(float, page.cropbox))
+        rotation = float(_inherited_pdf_value(page, "/Rotate", 0))
+        unit = float(page.obj.get("/UserUnit", 1))
+        if (
+            len(media) != 4
+            or len(crop) != 4
+            or not all(math.isfinite(value) for value in [*media, *crop, rotation, unit])
+        ):
+            raise JobError("Highlight correction requires finite page geometry")
+        contents = page.obj.get("/Contents", [])
+        if isinstance(contents, pikepdf.Stream):
+            contents = [contents]
+        hashes = []
+        for content in contents:
+            data = content.read_bytes()
+            decoded_bytes += len(data)
+            if decoded_bytes > 16 * 1024**2:
+                raise JobError("Highlight correction decoded page-content limit exceeded")
+            hashes.append(hashlib.sha256(data).hexdigest())
+        snapshots.append(
+            {
+                "media_box": media,
+                "crop_box": crop,
+                "rotation": rotation,
+                "user_unit": unit,
+                "decoded_content_sha256": hashes,
+            }
+        )
+    # Identical page commands can render differently if their resources changed.
+    resources = _pdf_graph_fingerprints(
+        pdf,
+        [
+            pikepdf.Dictionary(
+                Resources=_inherited_pdf_value(page, "/Resources", pikepdf.Dictionary()),
+                Group=page.obj.get("/Group", pikepdf.Dictionary()),
+            )
+            for page in pdf.pages
+        ],
+        budget={"nodes": 0, "decoded_bytes": decoded_bytes},
+    )
+    for snapshot, resource in zip(snapshots, resources, strict=True):
+        snapshot["inherited_resources_and_page_group_sha256"] = hashlib.sha256(
+            json.dumps(resource, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+    return snapshots
+
+
+def _pdf_graph_matches(actual, expected):
+    if isinstance(expected, dict):
+        return (
+            isinstance(actual, dict)
+            and actual.keys() == expected.keys()
+            and all(_pdf_graph_matches(actual[key], value) for key, value in expected.items())
+        )
+    if isinstance(expected, list):
+        return (
+            isinstance(actual, list)
+            and len(actual) == len(expected)
+            and all(_pdf_graph_matches(a, b) for a, b in zip(actual, expected, strict=True))
+        )
+    return _metadata_matches(actual, expected)
+
+
+def _pdf_graph_fingerprints(pdf, values, *, budget=None):
+    """Bounded saved-object graphs independent of native parsing/object numbers."""
+    import decimal
+
+    import pikepdf
+
+    pages = {page.obj.objgen: index for index, page in enumerate(pdf.pages)}
+    budget = budget if budget is not None else {"nodes": 0, "decoded_bytes": 0}
+
+    def describe(value, seen, depth=0):
+        budget["nodes"] += 1
+        if depth > 64 or budget["nodes"] > 100_000:
+            raise JobError("PDF preservation graph exceeds its validation limit")
+        if value is None or type(value) in {bool, int}:
+            return value
+        if isinstance(value, float | decimal.Decimal):
+            number = float(value)
+            if not math.isfinite(number):
+                raise JobError("PDF preservation requires finite PDF numbers")
+            return number
+        if isinstance(value, pikepdf.Name):
+            return {"name": str(value)}
+        if isinstance(value, pikepdf.String):
+            return {"string_bytes": bytes(value).hex()}
+        identity = value.objgen
+        if identity in pages:
+            return {"page_reference": pages[identity]}
+        marker = None
+        if identity != (0, 0):
+            if identity in seen:
+                return {"reference": seen[identity]}
+            marker = len(seen)
+            seen[identity] = marker
+        if isinstance(value, pikepdf.Array):
+            content = [describe(item, seen, depth + 1) for item in value]
+        elif isinstance(value, pikepdf.Dictionary | pikepdf.Stream):
+            stream = isinstance(value, pikepdf.Stream)
+            content = {
+                key: describe(item, seen, depth + 1)
+                for key, item in sorted(value.items())
+                if not (stream and key in {"/Length", "/Filter", "/DecodeParms"})
+            }
+            if stream:
+                decoded = value.read_bytes()
+                budget["decoded_bytes"] += len(decoded)
+                if budget["decoded_bytes"] > 16 * 1024**2:
+                    raise JobError("PDF preservation decoded-stream limit exceeded")
+                content["decoded_stream_sha256"] = hashlib.sha256(decoded).hexdigest()
+        else:
+            raise JobError("Unsupported PDF object in preservation check")
+        return {"object": marker, "content": content}
+
+    return [describe(value, {}) for value in values]
+
+
+def _annotation_fingerprints(pdf, *, exclude_widgets=False, original_counts=None):
+    import pikepdf
+
+    values = []
+    for index, page in enumerate(pdf.pages):
+        raw_annotations = page.obj.get("/Annots", [])
+        if original_counts is not None:
+            raw_annotations = list(raw_annotations)[: original_counts[index]]
+        annotations = [
+            annotation
+            for annotation in raw_annotations
+            if not (exclude_widgets and annotation.get("/Subtype") == pikepdf.Name.Widget)
+        ]
+        values.append(pikepdf.Array(annotations))
+    return _pdf_graph_fingerprints(pdf, values)
+
+
+def _verify_flatten_saved(source_bytes, data, indices, *, forms=False):
+    """Do not equate a native flatten mark with persisted removal or preservation."""
+    import pikepdf
+
+    try:
+        with (
+            pikepdf.open(io.BytesIO(source_bytes)) as source,
+            pikepdf.open(io.BytesIO(data)) as saved,
+        ):
+            before, after = _page_snapshots(source), _page_snapshots(saved)
+            original_annotations = _annotation_fingerprints(source)
+            saved_annotations = _annotation_fingerprints(saved)
+            if forms:
+                original_nonwidgets = _annotation_fingerprints(source, exclude_widgets=True)
+                saved_nonwidgets = _annotation_fingerprints(saved, exclude_widgets=True)
+            if len(before) != len(after):
+                raise JobError("Flattening changed page count; no output kept")
+            counts = []
+            for index, page in enumerate(saved.pages):
+                annotations = page.obj.get("/Annots", [])
+                count = sum(
+                    not forms or annotation.get("/Subtype") == pikepdf.Name.Widget
+                    for annotation in annotations
+                )
+                counts.append(count)
+                if index in indices:
+                    if count:
+                        raise JobError(
+                            f"PDF Oxide flatten failed: {count} "
+                            f"{'widget ' if forms else ''}annotations remain on page {index + 1}; "
+                            "no output kept"
+                        )
+                    if forms and not _pdf_graph_matches(
+                        saved_nonwidgets[index], original_nonwidgets[index]
+                    ):
+                        raise JobError(
+                            "Form flatten changed non-widget annotations; no output kept"
+                        )
+                    if any(
+                        before[index][key] != after[index][key]
+                        for key in ("media_box", "crop_box", "rotation", "user_unit")
+                    ):
+                        raise JobError("Flattening changed page geometry; no output kept")
+                elif before[index] != after[index] or not _pdf_graph_matches(
+                    saved_annotations[index], original_annotations[index]
+                ):
+                    raise JobError("Flattening changed an unselected page; no output kept")
+    except JobError:
+        raise
+    except Exception as exc:
+        raise JobError(f"Independent flatten verification failed ({type(exc).__name__})") from None
+    return {
+        "engine": "pikepdf",
+        "selected_pages_have_no_widgets" if forms else "selected_pages_have_no_annotations": True,
+        "unselected_page_geometry_content_resources_annotations_unchanged": True,
+        "annotation_numeric_tolerance_pdf_points": 0.001,
+        "saved_widget_counts" if forms else "saved_annotation_counts": counts,
+        "visual_accuracy_verified": False,
+    }
+
+
+def _repair_native_highlights(source_bytes, native_bytes, actions, before):
+    """Explicit pikepdf correction for the measured native QuadPoints/no-AP defect only."""
+    import pikepdf
+
+    if pikepdf.__version__ != "10.17.0":
+        raise JobError("Highlight correction requires pinned pikepdf 10.17.0")
+    with (
+        pikepdf.open(io.BytesIO(source_bytes)) as source,
+        pikepdf.open(io.BytesIO(native_bytes)) as pdf,
+    ):
+        source_pages, native_pages = _page_snapshots(source), _page_snapshots(pdf)
+        if source_pages != native_pages:
+            raise JobError(
+                "Native annotation editing changed page geometry/content; correction refused"
+            )
+        original_counts = [len(page.obj.get("/Annots", [])) for page in source.pages]
+        original_annotations = _annotation_fingerprints(source)
+        if not _pdf_graph_matches(
+            _annotation_fingerprints(pdf, original_counts=original_counts), original_annotations
+        ):
+            raise JobError("Native editing changed original annotations; correction refused")
+        corrections = []
+        for page_number, page in enumerate(pdf.pages, 1):
+            page_actions = [action for action in actions if action["page"] == page_number]
+            added = [action for action in page_actions if action["type"] != "remove"]
+            if not any(action["type"] == "highlight" for action in added):
+                continue
+            if any(action["type"] == "remove" for action in page_actions):
+                raise JobError("Highlight correction cannot be combined with annotation removal")
+            original_count = len(before[page_number - 1]["annotations"])
+            annotations = page.obj.get("/Annots", [])
+            if len(annotations) != original_count + len(added):
+                raise JobError("Native annotation identities are ambiguous; correction refused")
+            layout = native_pages[page_number - 1]
+            if layout["rotation"] not in {0, 90, 180, 270} or layout["user_unit"] != 1:
+                raise JobError("Highlight correction requires right-angle rotation and UserUnit 1")
+            media, crop = layout["media_box"], layout["crop_box"]
+            visible = [
+                max(media[0], crop[0]),
+                max(media[1], crop[1]),
+                min(media[2], crop[2]),
+                min(media[3], crop[3]),
+            ]
+            for offset, action in enumerate(added):
+                if action["type"] != "highlight":
+                    continue
+                index = original_count + offset
+                annotation = annotations[index]
+                x, y, width, height = (action[k] for k in ("x", "y", "width", "height"))
+                rect = [x, y, x + width, y + height]
+                if not (
+                    visible[0] <= x < x + width <= visible[2]
+                    and visible[1] <= y < y + height <= visible[3]
+                ):
+                    raise JobError("Corrected highlight must fit fully inside the visible crop")
+                old_rect = list(map(float, annotation.get("/Rect", [])))
+                old_quad = list(map(float, annotation.get("/QuadPoints", [])))
+                expected_bad_quad = [x, y, x + width, y, x + width, y + height, x, y + height]
+                if (
+                    annotation.get("/Subtype") != pikepdf.Name.Highlight
+                    or not _metadata_matches(old_rect, rect)
+                    or not _metadata_matches(old_quad, expected_bad_quad)
+                    or not _metadata_matches(
+                        list(map(float, annotation.get("/C", []))), action["color"]
+                    )
+                    or annotation.get("/AP") is not None
+                ):
+                    raise JobError(
+                        "Highlight differs from the known native defect; correction refused"
+                    )
+                quad = [x, y + height, x + width, y + height, x, y, x + width, y]
+                numbers = [*action["color"], width, height]
+                red, green, blue, wide, high = [
+                    format(n, ".10f").rstrip("0").rstrip(".") or "0" for n in numbers
+                ]
+                appearance_bytes = (
+                    f"q /HighlightRepair gs {red} {green} {blue} rg 0 0 {wide} {high} re f Q\n"
+                ).encode("ascii")
+                appearance = pikepdf.Stream(pdf, appearance_bytes)
+                appearance["/Type"] = pikepdf.Name.XObject
+                appearance["/Subtype"] = pikepdf.Name.Form
+                appearance["/FormType"] = 1
+                appearance["/BBox"] = pikepdf.Array([0, 0, width, height])
+                appearance["/Matrix"] = pikepdf.Array([1, 0, 0, 1, 0, 0])
+                appearance["/Resources"] = pikepdf.Dictionary(
+                    ExtGState=pikepdf.Dictionary(
+                        HighlightRepair=pikepdf.Dictionary(
+                            Type=pikepdf.Name.ExtGState, BM=pikepdf.Name.Multiply, ca=1, CA=1
+                        )
+                    )
+                )
+                annotation["/QuadPoints"] = pikepdf.Array(quad)
+                annotation["/Rect"] = pikepdf.Array(rect)
+                annotation["/AP"] = pikepdf.Dictionary(N=appearance)
+                corrections.append(
+                    {
+                        "page": page_number,
+                        "annotation_index": index,
+                        "requested_rectangle": rect,
+                        "native_rectangle": old_rect,
+                        "native_quadpoints": old_quad,
+                        "corrected_quadpoints": quad,
+                        "native_appearance": None,
+                        "appearance_bbox": [0, 0, width, height],
+                        "appearance_sha256": hashlib.sha256(appearance_bytes).hexdigest(),
+                        "blend_mode": "Multiply",
+                        "opacity": 1,
+                        "page_geometry": layout,
+                    }
+                )
+        if not corrections:
+            raise JobError("No known native highlights were found for explicit correction")
+        output = io.BytesIO()
+        pdf.save(output)
+        corrected = output.getvalue()
+    if len(corrected) > 16 * 1024**2:
+        raise JobError("Corrected highlight PDF exceeds its output limit")
+    with pikepdf.open(io.BytesIO(corrected)) as saved:
+        if _page_snapshots(saved) != source_pages:
+            raise JobError("Highlight correction changed page geometry/content; no output kept")
+        if not _pdf_graph_matches(
+            _annotation_fingerprints(saved, original_counts=original_counts), original_annotations
+        ):
+            raise JobError("Highlight correction changed original annotations; no output kept")
+        for record in corrections:
+            annotation = saved.pages[record["page"] - 1].obj.Annots[record["annotation_index"]]
+            if (
+                list(map(float, annotation.QuadPoints)) != record["corrected_quadpoints"]
+                or hashlib.sha256(annotation.AP.N.read_bytes()).hexdigest()
+                != record["appearance_sha256"]
+            ):
+                raise JobError("Corrected highlight appearance did not persist; no output kept")
+    return corrected, {
+        "engine": "pikepdf",
+        "version": pikepdf.__version__,
+        "explicit_opt_in": True,
+        "native_defect_fixed_upstream": False,
+        "native_comparison_file": "native-unverified.pdf",
+        "native_sha256": hashlib.sha256(native_bytes).hexdigest(),
+        "corrected_sha256": hashlib.sha256(corrected).hexdigest(),
+        "source_page_geometry_decoded_content_and_resources_unchanged": True,
+        "source_annotation_graphs_unchanged": True,
+        "annotation_numeric_tolerance_pdf_points": 0.001,
+        "coordinates": "Native PDF coordinates retained; PDF viewers apply CropBox/Rotate",
+        "appearance_policy": "Explicit rectangle with Multiply blending; no layout inference",
+        "changes": corrections,
+    }
+
+
+def _edit_annotations(doc, options, count, source_bytes):
     from .oxide_runtime import native
 
-    actions = _validate_actions(options["actions"])
+    repair = options.get("allow_highlight_repair", False)
+    actions = _validate_actions(options["actions"], repair)
     indices = sorted({action["page"] - 1 for action in actions})
     if any(index >= count for index in indices):
         raise JobError("Annotation action page exceeds the document page count")
     before = _annotations(doc, range(count))
+    fields_before = _fields(doc) if repair else None
     text_before = _page_text(doc, count)
     for index in indices:
         page = native("annotation page access", lambda i=index: doc.page(i))
@@ -597,6 +976,25 @@ def _edit_annotations(doc, options, count):
     _verify_annotations(before, after, actions)
     if _page_text(saved, count) != text_before:
         raise JobError("PDF Oxide annotation rewrite changed extracted page text; no output kept")
+    changes = {}
+    native_comparison = None
+    if repair:
+        native_fields = _fields(saved)
+        if not _metadata_matches(native_fields, fields_before):
+            raise JobError("Native editing changed source form fields; correction refused")
+        native_comparison = data
+        try:
+            data, correction = _repair_native_highlights(source_bytes, data, actions, before)
+        except JobError:
+            raise
+        except Exception as exc:
+            raise JobError(f"pikepdf highlight correction failed ({type(exc).__name__})") from None
+        saved = _reopen(data, count)
+        after = _annotations(saved, range(count))
+        _verify_annotations(before, after, actions)
+        if _page_text(saved, count) != text_before or _fields(saved) != native_fields:
+            raise JobError("Highlight correction changed text/form values; no output kept")
+        changes["highlight_correction"] = correction
     return (
         data,
         saved,
@@ -607,7 +1005,9 @@ def _edit_annotations(doc, options, count):
             "saved_annotation_metadata_match": True,
             "native_page_text_unchanged": True,
             "visual_accuracy_verified": False,
+            **changes,
         },
+        native_comparison,
     )
 
 
@@ -709,7 +1109,16 @@ def process(request, options, add):
             data = native("saving flattened forms", doc.to_bytes)
             report["flatten_warnings"] = native("form flatten diagnostics", doc.flatten_warnings)
             warnings.extend(report["flatten_warnings"])
+            if report["flatten_warnings"]:
+                _bounded_report(report["flatten_warnings"])
+                raise JobError(
+                    "PDF Oxide reported form-flatten loss; no output kept: "
+                    + json.dumps(report["flatten_warnings"], ensure_ascii=False)
+                )
             saved = _reopen(data, count)
+            report["independent_flatten_verification"] = _verify_flatten_saved(
+                source_bytes, data, indices, forms=True
+            )
             report["fields_after"] = _fields(saved)
             report["pages_after"] = _annotations(saved, indices)
             warnings.append(
@@ -719,8 +1128,17 @@ def process(request, options, add):
     elif operation == "oxide_annotation_inspect":
         report["pages"] = _annotations(doc, indices)
     elif operation == "oxide_annotation_edit":
-        data, saved, changes = _edit_annotations(doc, options, count)
+        data, saved, changes, native_comparison = _edit_annotations(
+            doc, options, count, source_bytes
+        )
         report.update(changes)
+        if native_comparison is not None:
+            write_bytes(request, add, "native-unverified.pdf", native_comparison)
+            warnings.append(
+                "pikepdf explicitly corrected new highlight geometry/appearances. "
+                "native-unverified.pdf retains PDF Oxide's defective result; use modified.pdf "
+                "for the corrected candidate and compare both with the source"
+            )
         warnings.append(
             "Annotation edits require visual review for geometry, preserved content "
             "and link destinations"
@@ -751,6 +1169,11 @@ def process(request, options, add):
         data = native("saving flattened annotations", doc.to_bytes)
         saved = _reopen(data, count)
         report["pages_after"] = _annotations(saved, indices)
+        if any(page["annotations"] for page in report["pages_after"]):
+            raise JobError("PDF Oxide flatten failed: annotations remain; no output kept")
+        report["independent_flatten_verification"] = _verify_flatten_saved(
+            source_bytes, data, indices
+        )
         warnings.append(
             "Flattened annotations can lose content without usable appearance streams; "
             "links are removed"

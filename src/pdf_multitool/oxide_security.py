@@ -14,6 +14,10 @@ MAX_SIGNATURES = 100
 MAX_REGIONS = 100
 MAX_DOCUMENT_PAGES = 100
 MAX_REPORT_BYTES = 1024 * 1024
+REDACTION_BLOCKED = (
+    "PDF Oxide redaction is unavailable: the pinned engine can retain recoverable "
+    "content beneath black rectangles. No redacted copy is published."
+)
 
 
 def field(label, kind="string", default="", **kwargs):
@@ -48,15 +52,12 @@ OPERATIONS = {
         },
     },
     "oxide_redact": {
-        "label": "PDF Oxide text redaction",
+        "label": "PDF Oxide text redaction (unavailable)",
         "engine": "pdf_oxide",
         "inputs": 1,
         "pages": False,
-        "description": (
-            "Remove text in explicit unrotated PDF user-space rectangles and create a copy. "
-            "Selected pages with images, forms, vector paint, annotations or layers fail: "
-            "the pinned engine does not fully remove those content types. Review the copy."
-        ),
+        "description": REDACTION_BLOCKED,
+        "blocked_reason": REDACTION_BLOCKED,
         "outputs": ["application/pdf", "application/json"],
         "options": {
             "regions": field(
@@ -321,6 +322,77 @@ def _independent_pdf(data, password=""):
     return native("independent PDF open", lambda: pikepdf.open(io.BytesIO(data), password=password))
 
 
+def _signature_identity_coverage(pdf, signature_ids, direct_signatures):
+    """Compare AcroForm value identities with independently discovered objects.
+
+    The native binding returns field records without PDF object identities. A
+    repeated reference therefore cannot count as coverage of a different object.
+    Direct dictionaries and malformed/repeated field links remain ambiguous.
+    """
+    import pikepdf
+
+    linked = {}
+    seen_fields = set()
+    coverage = {
+        "signature_field_references": 0,
+        "duplicate_signature_references": 0,
+        "unresolved_signature_fields": 0,
+        "repeated_field_links": 0,
+        "direct_signature_dictionaries": direct_signatures,
+    }
+    visited = 0
+
+    def walk(field, depth=0):
+        nonlocal visited
+        visited += 1
+        if visited > 200_000 or depth > 64:
+            raise JobError("PDF Oxide signature-field traversal limit exceeded")
+        if not isinstance(field, pikepdf.Dictionary):
+            coverage["unresolved_signature_fields"] += 1
+            return
+        if field.is_indirect:
+            if field.objgen in seen_fields:
+                coverage["repeated_field_links"] += 1
+                return
+            seen_fields.add(field.objgen)
+        if field.get("/FT") == pikepdf.Name.Sig and field.get("/V") is not None:
+            coverage["signature_field_references"] += 1
+            value = field["/V"]
+            if (
+                isinstance(value, pikepdf.Dictionary)
+                and value.is_indirect
+                and value.objgen in signature_ids
+            ):
+                linked[value.objgen] = linked.get(value.objgen, 0) + 1
+            else:
+                coverage["unresolved_signature_fields"] += 1
+        kids = field.get("/Kids")
+        if kids is not None:
+            if not isinstance(kids, pikepdf.Array):
+                coverage["unresolved_signature_fields"] += 1
+            else:
+                for child in kids:
+                    walk(child, depth + 1)
+
+    acroform = pdf.Root.get("/AcroForm")
+    if acroform is not None:
+        if not isinstance(acroform, pikepdf.Dictionary):
+            coverage["unresolved_signature_fields"] += 1
+        else:
+            fields = acroform.get("/Fields")
+            if fields is not None:
+                if not isinstance(fields, pikepdf.Array):
+                    coverage["unresolved_signature_fields"] += 1
+                else:
+                    for field in fields:
+                        walk(field)
+    coverage["duplicate_signature_references"] = sum(count - 1 for count in linked.values())
+    coverage["signature_object_ids"] = sorted(signature_ids)
+    coverage["linked_signature_object_ids"] = sorted(linked)
+    coverage["unlinked_signature_object_ids"] = sorted(signature_ids - linked.keys())
+    return coverage
+
+
 def _independent_inventory(data, password=""):
     """Count residual carriers without returning action text or credential material."""
     import pikepdf
@@ -337,9 +409,11 @@ def _independent_inventory(data, password=""):
             raise JobError("PDF Oxide independent object inventory limit exceeded")
         seen = set()
         visited = 0
+        signature_ids = set()
+        direct_signatures = 0
 
         def visit(obj, depth=0):
-            nonlocal visited
+            nonlocal visited, direct_signatures
             visited += 1
             if visited > 200_000:
                 raise JobError("PDF Oxide independent object traversal limit exceeded")
@@ -359,6 +433,10 @@ def _independent_inventory(data, password=""):
                 "/ByteRange" in obj and "/Contents" in obj
             ):
                 report["signature_dictionaries"] += 1
+                if obj.is_indirect:
+                    signature_ids.add(obj.objgen)
+                else:
+                    direct_signatures += 1
             if obj.get("/Type") == pikepdf.Name.EmbeddedFile:
                 report["embedded_file_streams"] += 1
             if obj.get("/Type") == pikepdf.Name.Metadata:
@@ -377,6 +455,9 @@ def _independent_inventory(data, password=""):
 
         for obj in pdf.objects:
             visit(obj)
+        report["signature_identity_coverage"] = _signature_identity_coverage(
+            pdf, signature_ids, direct_signatures
+        )
     return report
 
 
@@ -392,6 +473,18 @@ def _security(request, options, add):
     doc, data, source = open_source(request, options)
     independent = _independent_inventory(data, options["password"])
     signatures = _signatures(doc, data)
+    coverage = independent["signature_identity_coverage"]
+    coverage["native_signature_records"] = len(signatures)
+    coverage["complete"] = not any(
+        (
+            coverage["unlinked_signature_object_ids"],
+            coverage["duplicate_signature_references"],
+            coverage["unresolved_signature_fields"],
+            coverage["repeated_field_links"],
+            coverage["direct_signature_dictionaries"],
+            coverage["signature_field_references"] != len(signatures),
+        )
+    )
     permissions = native("permissions", doc.permissions)
     report = {
         "source": source,
@@ -408,17 +501,17 @@ def _security(request, options, add):
         "document_timestamp_verified": False,
         "enumeration_scope": "AcroForm-linked signature fields",
         "independent_object_inventory": independent,
-        "unlinked_signature_dictionaries": max(
-            0, independent["signature_dictionaries"] - len(signatures)
-        ),
+        "unlinked_signature_dictionaries": len(coverage["unlinked_signature_object_ids"]),
+        "signature_identity_coverage_complete": coverage["complete"],
     }
     warnings = ["Permission flags are advisory; signature verification does not establish trust."]
     partial = any(item["detached_verification"]["status"] != "valid" for item in signatures)
-    if report["unlinked_signature_dictionaries"]:
+    if not coverage["complete"]:
         partial = True
         warnings.append(
-            "Signature dictionaries outside native enumeration were found; "
-            "verification is incomplete."
+            "Signature object identities do not have unambiguous complete coverage: "
+            "unlinked dictionaries, duplicate references or unresolved fields remain. "
+            "Verification is incomplete."
         )
     if options["mode"] != "inspect":
         if source["pages"] > MAX_DOCUMENT_PAGES:
@@ -463,124 +556,9 @@ def _security(request, options, add):
     return warnings, partial
 
 
-def _redaction_preflight(data, options, regions):
-    """Reject content the pinned text-only destructive engine leaves recoverable."""
-    import pikepdf
-
-    inventory = _independent_inventory(data, options["password"])
-    if any(
-        inventory[key]
-        for key in ("embedded_file_streams", "action_dictionaries", "associated_file_arrays")
-    ):
-        raise JobError("PDF Oxide text redaction does not qualify active content or embedded files")
-    with _independent_pdf(data, options["password"]) as pdf:
-        if pdf.Root.get("/OCProperties") is not None or pdf.Root.get("/AcroForm") is not None:
-            raise JobError("PDF Oxide text redaction does not qualify layers or forms")
-        for number in sorted({region["page"] for region in regions}):
-            if number > len(pdf.pages):
-                raise JobError("Redaction page is outside the document")
-            page = pdf.pages[number - 1]
-            if (
-                int(_inherited(page.obj, "/Rotate") or 0) % 360
-                or float(page.obj.get("/UserUnit", 1)) != 1
-            ):
-                raise JobError("PDF Oxide text redaction requires unrotated unit-scale pages")
-            if page.obj.get("/Annots"):
-                raise JobError("PDF Oxide text redaction does not qualify annotated pages")
-            resources = _inherited(page.obj, "/Resources") or {}
-            if any(
-                resources.get(key) for key in ("/XObject", "/Shading", "/Pattern", "/Properties")
-            ):
-                raise JobError("PDF Oxide text redaction does not remove images, forms or layers")
-            instructions = native(
-                "redaction content preflight", lambda p=page: pikepdf.parse_content_stream(p)
-            )
-            if len(instructions) > 100_000:
-                raise JobError("PDF Oxide redaction content limit exceeded")
-            for instruction in instructions:
-                operator = str(instruction.operator)
-                if operator in {
-                    "Do",
-                    "BI",
-                    "ID",
-                    "EI",
-                    "INLINE IMAGE",
-                    "S",
-                    "s",
-                    "f",
-                    "F",
-                    "f*",
-                    "B",
-                    "B*",
-                    "b",
-                    "b*",
-                    "sh",
-                }:
-                    raise JobError("PDF Oxide text redaction does not remove image or vector paint")
-            media = [float(value) for value in page.mediabox]
-            for region in (item for item in regions if item["page"] == number):
-                x0, y0, x1, y1 = region["rect"]
-                if not media[0] <= x0 < x1 <= media[2] or not media[1] <= y0 < y1 <= media[3]:
-                    raise JobError("Redaction rectangle lies outside the page MediaBox")
-
-
-def _inherited(page, key):
-    """Resolve page-tree inheritance with a finite depth and cycle check."""
-    seen = set()
-    for _ in range(64):
-        if key in page:
-            return page[key]
-        if page.is_indirect:
-            if page.objgen in seen:
-                raise JobError("PDF Oxide redaction found a cyclic page tree")
-            seen.add(page.objgen)
-        page = page.get("/Parent")
-        if page is None:
-            return None
-    raise JobError("PDF Oxide page-tree inheritance limit exceeded")
-
-
 def _redact(request, options, add):
-    require_runtime(request)
-    regions = _regions(options["regions"])
-    doc, data, source = open_source(request, options)
-    if source["pages"] > MAX_DOCUMENT_PAGES:
-        raise JobError("PDF Oxide text redaction is limited to 100 pages")
-    _redaction_preflight(data, options, regions)
-    for item in regions:
-        native(
-            "queue text redaction",
-            lambda r=item: doc.add_redaction(r["page"] - 1, tuple(r["rect"])),
-        )
-    for number in {item["page"] for item in regions}:
-        queued = native("redaction count", lambda page=number: doc.redaction_count(page - 1))
-        if queued != sum(item["page"] == number for item in regions):
-            raise JobError("PDF Oxide queued redaction count does not match the request")
-    result = native("destructive text redaction", doc.apply_redactions_destructive)
-    cleanup = native("redaction document cleanup", doc.sanitize_document)
-    output = _serialize(doc)
-    with _independent_pdf(output) as verified:
-        if len(verified.pages) != source["pages"]:
-            raise JobError("Redacted output page count changed")
-    write_bytes(request, add, "oxide-text-redacted.pdf", output)
-    write_json(
-        request,
-        add,
-        "oxide-text-redacted.json",
-        {
-            "source": source,
-            "regions": regions,
-            "native_redaction": result,
-            "native_document_cleanup": cleanup,
-            "output_sha256": hashlib.sha256(output).hexdigest(),
-            "scope": "selected-page text; catalog cleanup only",
-            "secure_redaction_certified": False,
-            "signature_validity_preserved": False,
-        },
-    )
-    return [
-        "Text redaction requires source/output review; complete sanitization is not certified."
-    ], False
+    # Native success and an opaque rectangle do not prove irreversible removal.
+    raise JobError(REDACTION_BLOCKED)
 
 
 def _sanitize(request, options, add):

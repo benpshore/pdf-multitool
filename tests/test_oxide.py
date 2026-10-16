@@ -1,7 +1,9 @@
 """Pinned native adapter: exact cells, honest failures and bounded worker behavior."""
 
+import base64
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import threading
@@ -42,6 +44,28 @@ def test_invalid_page_selection_rejected_before_job_directory(tmp_path, pages):
     with pytest.raises(JobError):
         Job("oxide", [{"id": "x"}], {"pages": pages}, tmp_path / "jobs")
     assert not (tmp_path / "jobs").exists()
+
+
+@NATIVE
+@pytest.mark.parametrize("pages", ["all", " ALL "])
+def test_all_pages_uses_actual_bounded_document_count(tmp_path, pages):
+    source = fixture("representation_v1", "table_column_operators")
+    job = run(tmp_path, "oxide", source, {"pages": pages})
+    assert job.state == "completed", job.errors
+    manifest = json.loads(result(job, "oxide-manifest.json").read_text())
+    assert manifest["source"]["pages"] == 1
+    assert [page["page"] for page in manifest["pages"]] == [1]
+    assert "A1" in page_result(job)["text"]
+
+    over_limit = tmp_path / "101-pages.pdf"
+    with pymupdf.open() as document:
+        for _ in range(101):
+            document.new_page()
+        document.save(over_limit)
+    rejected = run(tmp_path, "oxide", over_limit, {"pages": pages})
+    assert rejected.state == "failed"
+    assert "100 pages" in json.dumps(rejected.errors)
+    assert not rejected.results and not list(rejected.directory.iterdir())
 
 
 def test_cleanup_options_fail_closed():
@@ -355,6 +379,8 @@ def test_image_bytes_inspection_is_memory_only_export_is_explicit(tmp_path):
         assert page["image_completeness_verified"] is False
     assert not list(inspected.directory.rglob("*.png"))
     assert page_result(inspected)["images"][0]["persisted"] is False
+    assert "<img" not in result(inspected, ".html").read_text()
+    assert "data:image/png" not in result(inspected, ".html").read_text()
     png = result(exported, ".png")
     assert (
         hashlib.sha256(png.read_bytes()).hexdigest()
@@ -363,6 +389,74 @@ def test_image_bytes_inspection_is_memory_only_export_is_explicit(tmp_path):
     with Image.open(png) as image:
         image.load()
         assert image.size == (1500, 800)
+    review = result(exported, ".html").read_text()
+    embedded = re.findall(r'src="data:image/png;base64,([A-Za-z0-9+/=]+)"', review)
+    assert len(embedded) == 1
+    assert base64.b64decode(embedded[0], validate=True) == png.read_bytes()
+    assert page_result(exported)["images"][0]["sha256"] in review
+    assert "img-src data:" in review
+    assert page_result(exported)["image_fidelity_verified"] is False
+
+
+@NATIVE
+def test_image_preview_expansion_stays_within_cumulative_output_budget(tmp_path):
+    source = scan_fixture(tmp_path / "scan.pdf")
+    baseline = run(tmp_path, "oxide", source, {"images": "export"})
+    png_size = result(baseline, ".png").stat().st_size
+    # Explicit PNG export alone fits; its extra HTML preview must also be counted.
+    job = run(
+        tmp_path,
+        "oxide",
+        source,
+        {"images": "export"},
+        limits=replace(Limits(), max_output_bytes=png_size * 2),
+    )
+    assert job.state == "failed"
+    assert not job.results and not list(job.directory.iterdir())
+
+
+def test_image_preview_rejects_missing_or_changed_export_bytes():
+    data = b"synthetic PNG bytes"
+    page = {
+        "page": 1,
+        "text": "",
+        "tables": [],
+        "images": [
+            {"persisted": True, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+        ],
+    }
+    with pytest.raises(JobError, match="explicit exports"):
+        oxide._review(page)
+    with pytest.raises(JobError, match="differ"):
+        oxide._review(page, [data + b"changed"])
+
+
+@NATIVE
+@pytest.mark.parametrize("cleanup", ["none", "headers"])
+def test_actual_truncation_flags_retain_original_and_cleanup_diagnostics(tmp_path, cleanup):
+    from tests.test_oxide_format import operator_cap_source
+
+    source = operator_cap_source(tmp_path / "operator-cap.pdf")
+    job = run(tmp_path, "oxide", source, {"mode": "text", "cleanup": cleanup})
+    assert job.state == "partial", job.errors
+    page = page_result(job)
+    manifest = json.loads(result(job, "oxide-manifest.json").read_text())
+    assert page["partial"] is True and page["truncated"] is True
+    assert manifest["partial"] is True and manifest["truncated"] is True
+    assert "Before cap 001 -12.50" in page["text"]
+    assert "After cap 036 0.00" not in page["text"]
+    assert any(
+        item["native"]["category"] == "operator_cap_exceeded"
+        for item in manifest["structured_warnings"]
+    )
+    assert "Incomplete extraction" in result(job, ".html").read_text()
+    if cleanup != "none":
+        assert page["cleanup"]["partial"] is True and page["cleanup"]["truncated"] is True
+        assert manifest["pages"][0]["cleanup_truncated"] is True
+        assert any(
+            item["native"]["category"] == "operator_cap_exceeded"
+            for item in manifest["cleanup_structured_warnings"]
+        )
 
 
 def test_image_limits_precede_png_conversion_and_reject_mismatch(tmp_path):

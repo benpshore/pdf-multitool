@@ -4,7 +4,7 @@ import base64
 import hashlib
 import io
 import json
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import pikepdf
@@ -67,6 +67,10 @@ def test_markup_retains_numbers_and_hashes(tmp_path, kind, content, expected):
     assert report["output_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
     assert report["truncated"] is False
     assert report["review_required"] is True
+    integrity = report["independent_validation"]
+    assert integrity["pages_checked"] >= 1
+    assert integrity["expected_text_tokens"] > 0
+    assert integrity["visual_fidelity_verified"] is False
 
 
 def test_markdown_template_is_present(tmp_path):
@@ -174,7 +178,6 @@ def test_declarative_text_graphics_geometry_and_tagging(tmp_path):
             "title": "Synthetic layout",
             "author": "Fixture",
             "subject": "Creation",
-            "keywords": "test",
             "creator": "pytest",
         },
     )
@@ -598,3 +601,223 @@ def test_html_tables_and_oversized_images_fail_explicitly(tmp_path, font_asset):
         ),
     )
     assert job.state == "failed" and job.results == []
+
+
+@pytest.mark.parametrize(
+    "kind,content,missing",
+    [
+        ("markdown", "Invoice 001\n\n`Résumé 漢 123.45`", "漢"),
+        ("html", "<p>Amount &#x31;&#x32;&#x33;.45 &apos;retained&apos;</p>", "123.45"),
+        ("markdown", "# " + "Total 001 -12.50 " * 40, None),
+    ],
+)
+def test_native_markup_loss_is_reproduced_and_not_published(tmp_path, kind, content, missing):
+    import pdf_oxide
+
+    options = validate_options("oxide_create_text", {"format": kind, "content": content})
+    native = (
+        pdf_oxide.Pdf.from_markdown(content)
+        if kind == "markdown"
+        else pdf_oxide.Pdf.from_html(content)
+    )
+    raw = bytes(native.to_bytes())
+    # Keep actual native bytes and exact synthetic input even though the Job
+    # correctly refuses to publish them. These are native defects, not mocks.
+    (tmp_path / "native-output.pdf").write_bytes(raw)
+    (tmp_path / "source.json").write_text(json.dumps(options, ensure_ascii=False, indent=2))
+    with pymupdf.open(stream=raw, filetype="pdf") as pdf:
+        assert len(pdf) == int(pdf_oxide.PdfDocument.from_bytes(raw).page_count)
+        assert not pdf.is_repaired
+        text = "\n".join(page.get_text() for page in pdf)
+        pdf[0].get_pixmap().save(tmp_path / "native-render.png")
+    (tmp_path / "extracted.txt").write_text(text)
+    if missing:
+        assert missing not in text
+    else:
+        assert text.count("-12.50") < content.count("-12.50")
+    job = create(tmp_path, options=options)
+    assert job.state == "failed" and job.results == []
+    assert "missing requested text/numbers" in str(job.errors)
+    assert list(job.directory.iterdir()) == []
+
+
+@pytest.mark.parametrize("failure", ["off-page", "columns", "keywords"])
+def test_native_declarative_loss_is_preserved_and_rejected(tmp_path, failure):
+    import pdf_oxide
+
+    document = declaration([{"type": "text", "text": "Retained 001", "x": 72, "y": 740}])
+    if failure == "off-page":
+        document["pages"][0]["elements"].append(
+            {"type": "text", "text": "MISSING 123.45", "x": 1950, "y": 650}
+        )
+    elif failure == "columns":
+        document["pages"] = [
+            {
+                "size": [180, 180],
+                "elements": [
+                    {
+                        "type": "columns",
+                        "count": 2,
+                        "text": " ".join(f"ROW{i:03d} {i}.25" for i in range(80)),
+                    }
+                ],
+            }
+        ]
+    else:
+        document["metadata"] = {"keywords": "Requested keyword 001"}
+    raw, _, _ = oxide_creation._build(document, {}, {}, pdf_oxide, lambda stage, call: call())
+    (tmp_path / "native-output.pdf").write_bytes(raw)
+    (tmp_path / "source.json").write_text(json.dumps(document, indent=2))
+    with pymupdf.open(stream=raw, filetype="pdf") as pdf:
+        assert not pdf.is_repaired and len(pdf) == 1
+        text = pdf[0].get_text()
+        assert (
+            pdf.metadata["keywords"] == ""
+            if failure == "keywords"
+            else "123.45" not in text
+            if failure == "off-page"
+            else "79.25" not in text
+        )
+        pdf[0].get_pixmap().save(tmp_path / "native-render.png")
+    (tmp_path / "extracted.txt").write_text(text)
+    job = create(tmp_path, document)
+    assert job.state == "failed" and job.results == []
+    assert ("metadata" if failure == "keywords" else "missing requested text/numbers") in str(
+        job.errors
+    )
+    assert list(job.directory.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "damage", ["repaired-xref", "bad-content-stream", "missing-repetition", "wrong-number"]
+)
+def test_independent_integrity_checks_block_injected_output_before_write(
+    tmp_path, monkeypatch, damage
+):
+    import pdf_oxide
+
+    from pdf_multitool import oxide_runtime
+
+    source = "Invoice 001 -12.50\nInvoice 001 -12.50"
+    raw = bytes(pdf_oxide.Pdf.from_text(source).to_bytes())
+    if damage == "repaired-xref":
+        raw = raw[: raw.rfind(b"startxref")] + b"startxref\n1\n%%EOF\n"
+        reason = "structural repair"
+    elif damage == "bad-content-stream":
+        with pikepdf.open(io.BytesIO(raw)) as pdf:
+            content = pdf.pages[0].Contents.read_bytes()
+            pdf.pages[0].Contents = pdf.make_stream(content + b"\ninvalid_operator\n")
+            out = io.BytesIO()
+            pdf.save(out)
+            raw = out.getvalue()
+        reason = "decoding reported errors"
+    else:
+        replacement = (
+            source.splitlines()[0]
+            if damage == "missing-repetition"
+            else source.replace("-12.50", "-12.51")
+        )
+        raw = bytes(pdf_oxide.Pdf.from_text(replacement).to_bytes())
+        reason = "missing requested text/numbers"
+    (tmp_path / "controlled-corruption.pdf").write_bytes(raw)
+    options = validate_options("oxide_create_text", {"content": source})
+    # This direct validator assertion exercises actual independent decoding.
+    with pytest.raises(JobError, match=reason):
+        oxide_creation._verify_created_pdf(raw, 1, options)
+    # Only the native generation result and worker guard are substituted here;
+    # independent parsing/checking and the publish boundary remain real.
+    monkeypatch.setattr(oxide_runtime, "require_runtime", lambda request: pdf_oxide)
+    monkeypatch.setattr(oxide_creation, "_create_text", lambda *args: raw)
+    published = []
+    monkeypatch.setattr(oxide_runtime, "write_bytes", lambda *args: published.append(args[2]))
+    monkeypatch.setattr(oxide_runtime, "write_json", lambda *args: published.append(args[2]))
+    request = {
+        "operation": "oxide_create_text",
+        "limits": asdict(Limits()),
+        "workdir": str(tmp_path),
+    }
+    with pytest.raises(JobError):
+        oxide_creation.process(request, options, lambda path: published.append(path))
+    assert published == []
+
+
+def test_independent_count_checks_do_not_certify_visual_layout(tmp_path):
+    document = declaration(
+        [
+            {"type": "text", "text": "Invoice 001 -12.50", "x": 72, "y": 740},
+            {"type": "text", "text": "Invoice 001 -12.50", "x": 72, "y": 700},
+            {"type": "new_page"},
+            {"type": "paragraph", "text": "Wrapped prose 001 -12.50. " * 35},
+        ]
+    )
+    job = create(tmp_path, document)
+    pdf_result(job)
+    report = manifest(job)
+    integrity = report["independent_validation"]
+    assert integrity["pages_checked"] >= 2
+    assert integrity["visual_fidelity_verified"] is False
+    assert any("page/cell association" in item for item in integrity["limitations"])
+    limited = create(tmp_path / "limited", document, limits=replace(Limits(), max_pages=1))
+    assert limited.state == "failed" and limited.results == []
+
+
+def test_independent_checks_accept_empty_and_unselected_form_defaults(tmp_path):
+    job = create(
+        tmp_path,
+        declaration(
+            [
+                {"type": "text_field", "name": "Empty", "value": "", "y": 700},
+                {"type": "checkbox", "name": "Unchecked", "checked": False, "y": 640},
+                {"type": "combo_box", "name": "NoSelection", "choices": ["A", "B"], "y": 580},
+            ]
+        ),
+    )
+    pdf_result(job)
+    assert manifest(job)["independent_validation"]["form_fields"] == 3
+
+
+@pytest.mark.parametrize(
+    "damage,reason",
+    [
+        ("image", "image/barcode placement"),
+        ("field", "every requested form field"),
+        ("field-value", "form value or choice"),
+        ("note", "annotation content"),
+    ],
+)
+def test_independent_checks_detect_missing_objects_and_wrong_field_values(tmp_path, damage, reason):
+    import pdf_oxide
+
+    if damage == "image":
+        source = io.BytesIO()
+        Image.new("RGB", (16, 16), "red").save(source, format="PNG")
+        document = declaration(
+            [{"type": "image", "asset": "Icon", "alt": "Synthetic red icon"}],
+            images=[{"name": "Icon", "data": base64.b64encode(source.getvalue()).decode()}],
+        )
+    elif damage == "note":
+        document = declaration([{"type": "sticky_note_at", "text": "Note 001 -12.50"}])
+    else:
+        document = declaration([{"type": "text_field", "name": "Value", "value": "001.25"}])
+    document, fonts, images = oxide_creation._document(json.dumps(document))
+    raw, _, _ = oxide_creation._build(
+        document, fonts, images, pdf_oxide, lambda stage, call: call()
+    )
+    oxide_creation._verify_created_pdf(raw, 1, {}, document)
+    (tmp_path / "native-original.pdf").write_bytes(raw)
+    (tmp_path / "source.json").write_text(json.dumps(document, indent=2))
+    with pikepdf.open(io.BytesIO(raw)) as pdf:
+        if damage == "image":
+            pdf.pages[0].Contents = pdf.make_stream(b"")
+        elif damage == "field-value":
+            pdf.Root.AcroForm.Fields[0].V = "0099"
+        else:
+            pdf.pages[0].Annots = pikepdf.Array()
+            if damage == "field":
+                pdf.Root.AcroForm.Fields = pikepdf.Array()
+        output = io.BytesIO()
+        pdf.save(output)
+    corrupted = output.getvalue()
+    (tmp_path / "controlled-corruption.pdf").write_bytes(corrupted)
+    with pytest.raises(JobError, match=reason):
+        oxide_creation._verify_created_pdf(corrupted, 1, {}, document)

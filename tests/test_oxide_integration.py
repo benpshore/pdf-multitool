@@ -1,5 +1,6 @@
 """Real CLI, loopback HTTP and Chromium contracts for the optional Oxide routes."""
 
+import hashlib
 import importlib.util
 import json
 import shutil
@@ -17,6 +18,8 @@ import pytest
 from pdf_multitool import cli, oxide
 from pdf_multitool.catalog import OPERATIONS
 from pdf_multitool.server import BoundedHTTPServer, Workbench, make_handler
+from tests.test_extended import result as job_result
+from tests.test_extended import run, scan_fixture
 from tests.test_oxide_conversion import minimal_docx, minimal_other_office
 from tests.test_oxide_editing import source_pdf
 
@@ -250,6 +253,9 @@ def test_doctor_and_http_expose_actual_optional_engine_and_legacy_defaults(http,
     assert public["engines"]["pdf_oxide"]["version"] == "0.3.78"
     assert public["engines"]["pymupdf"]["available"]
     assert public["capabilities"]["operations"]["oxide_create_text"]["inputs"] == 0
+    redaction = public["capabilities"]["operations"]["oxide_redact"]
+    assert redaction["available"] is False
+    assert "recoverable" in redaction["blocked_reason"]
     source = source_pdf(tmp_path)
     before = source.read_bytes()
     item = http.upload(source.name, before)
@@ -346,6 +352,7 @@ def test_browser_zero_input_downloads_and_secret_controls(http, tmp_path):
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.goto(f"{http.base}/#token={http.app.token}")
+            expect(page.locator('#operation option[value="oxide_redact"]')).to_be_disabled()
             source = source_pdf(tmp_path)
             original = source.read_bytes()
             page.locator("#file-input").set_input_files(source)
@@ -410,6 +417,46 @@ def test_browser_zero_input_downloads_and_secret_controls(http, tmp_path):
             expect(page.locator("#option-new_password")).to_have_value("")
             expect(page.locator("#run-button")).to_be_enabled()
             assert source.read_bytes() == original and not errors
+        finally:
+            browser.close()
+
+
+@NATIVE
+@BROWSER
+def test_browser_exported_image_review_displays_exact_pixels_without_external_requests(tmp_path):
+    from playwright.sync_api import expect, sync_playwright
+
+    source = scan_fixture(tmp_path / "scan.pdf")
+    job = run(tmp_path, "oxide", source, {"images": "export", "include_html": True, "pages": "all"})
+    assert job.state in {"completed", "partial"}, job.errors
+    png = job_result(job, ".png")
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(
+            executable_path=shutil.which("chromium"), args=["--no-sandbox"]
+        )
+        try:
+            page = browser.new_page()
+            external = []
+            page.on(
+                "request",
+                lambda request: (
+                    external.append(request.url)
+                    if request.url.startswith(("http:", "https:"))
+                    else None
+                ),
+            )
+            page.set_content(job_result(job, ".html").read_text())
+            image = page.locator("img")
+            expect(image).to_have_count(1)
+            expect(image).to_be_visible()
+            assert image.evaluate(
+                "image => [image.complete, image.naturalWidth, image.naturalHeight]"
+            ) == [True, 1500, 800]
+            assert (
+                hashlib.sha256(png.read_bytes()).hexdigest()
+                in page.locator("figcaption").inner_text()
+            )
+            assert external == []
         finally:
             browser.close()
 

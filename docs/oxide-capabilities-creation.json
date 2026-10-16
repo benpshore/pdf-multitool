@@ -23,7 +23,8 @@
     "image_pixels_each": 4000000,
     "image_pixels_total": 8000000,
     "output_bytes_total": 16777216,
-    "additional_bounds": "Existing supervised worker memory, CPU, wall time, output, process-tree cancellation and native network filter; unavailable required guards fail closed."
+    "additional_bounds": "Existing supervised worker memory, CPU, wall time, output, process-tree cancellation and native network filter; unavailable required guards fail closed.",
+    "independent_extracted_characters": 200000
   },
   "capabilities": [
     {
@@ -35,7 +36,7 @@
       ],
       "route": "oxide_create_text format=text",
       "status": "implemented",
-      "verification": "Synthetic exact numbers/text, metadata, independent PyMuPDF rendering and source/output hashes.",
+      "verification": "Every generated PDF now requires independent structural and occurrence-aware requested-text/number checks before publication. Synthetic exact numbers/text, metadata, independent rendering and source/output hashes retained.",
       "limits": "Pinned plain-text writer does not wrap lines or embed Unicode fonts. Adapter rejects overflowing lines and non-WinAnsi text; explicit embedded-font document creation supports additional glyphs."
     },
     {
@@ -53,7 +54,7 @@
       "route": "oxide_create_text format=markdown",
       "status": "implemented",
       "verification": "Headings, emphasis, numeric literals, centered headers/footers and left/centered Artifact templates independently read and rendered.",
-      "limits": "Raw HTML and resource/image/link syntax rejected; use explicit declarative links/images. Native Unicode fallback and Markdown layout remain visually unqualified."
+      "limits": "Raw HTML and resource/image/link syntax rejected; use explicit declarative links/images. Independent input-derived token counts reject detected Unicode fallback loss and clipped unwrapped content, including repeated values. Native Markdown layout remains visually unqualified."
     },
     {
       "id": "oxide-create-basic-html",
@@ -63,7 +64,7 @@
       "route": "oxide_create_text format=html",
       "status": "implemented",
       "verification": "Basic headings, emphasis and numbers checked.",
-      "limits": "Pinned API performs basic HTML-to-Markdown substitution, not browser layout. Table elements, active/resource constructs and unsafe URLs rejected; HTML/CSS tables also blocked by known native overlap."
+      "limits": "Pinned API performs basic HTML-to-Markdown substitution, not browser layout. Independent entity-decoded expectations reject native literal-entity output that loses requested characters/numbers. Table elements and active/resource constructs remain blocked."
     },
     {
       "id": "oxide-create-html-css",
@@ -74,7 +75,7 @@
       "route": "oxide_create_text format=html_css",
       "status": "implemented",
       "verification": "Single and two-family supplied font calls retain paragraph text/numbers on separate rendered lines. All requested glyphs checked against supplied font bytes.",
-      "limits": "Table HTML is blocked: all cells overlap in PDFium even with explicit display/width/height CSS. Script/resource HTML, external URLs/imports/font-face/paths rejected. Metadata/template combinations unsupported by pinned API are rejected. Other CSS layouts remain unqualified."
+      "limits": "Table HTML is blocked: all cells overlap in PDFium even with explicit display/width/height CSS. Script/resource HTML, external URLs/imports/font-face/paths rejected. Metadata/template combinations unsupported by pinned API are rejected. Other CSS layouts remain unqualified. Independent body-text occurrence checks reject detected hidden/missing requested text; layout remains visually unqualified."
     },
     {
       "id": "oxide-create-document-and-pages",
@@ -83,7 +84,6 @@
         "DocumentBuilder.title",
         "DocumentBuilder.author",
         "DocumentBuilder.subject",
-        "DocumentBuilder.keywords",
         "DocumentBuilder.creator",
         "DocumentBuilder.a4_page",
         "DocumentBuilder.letter_page",
@@ -94,7 +94,7 @@
       ],
       "route": "oxide_create_document metadata/pages",
       "status": "implemented",
-      "verification": "Actual page count, dimensions, metadata and independent structural reopen. File save variants are represented by to-bytes/build plus confined app-owned output writing."
+      "verification": "Independent PyMuPDF count/geometry, declared minimum pages, metadata and repair-free reopen checked before publication. Content checks and bounded decoder renders are described in independent_pdf_validation; they do not certify visual fidelity. File save variants use bytes plus confined app-owned output writing."
     },
     {
       "id": "oxide-create-embedded-fonts",
@@ -130,7 +130,7 @@
       ],
       "route": "oxide_create_document pages[].elements[]",
       "status": "implemented",
-      "verification": "Mixed text/inline/headings/columns/footnote/rectangle fixture independently read and rendered. Complex layout overlap and clipping remain review requirements."
+      "verification": "Mixed text/inline/headings/columns/footnote/rectangle fixture independently read and rendered. Complex layout overlap and clipping remain review requirements. Independent requested token counts now reject observable off-page/column tail loss before publication; original failures are preserved."
     },
     {
       "id": "oxide-create-measurements",
@@ -377,6 +377,16 @@
       "status": "implemented-standalone-fragment",
       "verification": "All six presets return bounded nonempty actual native PDF content bytes and exact input/output hashes; output explicitly states complete_pdf=false, page_pattern_applied=false.",
       "limits": "No pinned Python method applies these pattern cells to a page. Export is the useful native helper result, not a fake rendered-page implementation. Color constructor/named-color helpers are value aliases for RGB; no individual method-complete claim."
+    },
+    {
+      "id": "oxide-create-keywords-native-loss",
+      "apis": [
+        "DocumentBuilder.keywords"
+      ],
+      "route": "oxide_create_document metadata.keywords",
+      "status": "blocked-on-independent-readback-mismatch",
+      "reason": "Pinned 0.3.78 silently omits declared nonempty keywords from the PDF Info dictionary. PyMuPDF and pikepdf independently reproduce absence; publication now fails instead of claiming retained metadata.",
+      "evidence": "evidence/creation-integrity-20261016/baseline-keywords-loss and native-declarative-loss regressions"
     }
   ],
   "usage_examples": {
@@ -398,5 +408,40 @@
       "color": "#2255aa",
       "secondary": "#eeeeee"
     }
+  },
+  "independent_pdf_validation": {
+    "status": "required-before-publication; detected mismatches fail without output",
+    "parser": "PyMuPDF 1.26.7",
+    "structure": [
+      "Independent page count agrees with native count and requested limit",
+      "No independent structural repair",
+      "Finite bounded page geometry",
+      "All pages decoded and rendered at at most 384 pixels on longest edge; decoder warnings fail closed"
+    ],
+    "content": [
+      "Input-derived, case/Unicode/sign/decimal-sensitive token occurrence counts; repeated words/numbers cannot be satisfied by one occurrence",
+      "HTML entities decoded independently for expectations; metadata/head text excluded",
+      "Bounded Markdown block/emphasis/code text expectations and template literal/page/title/author substitutions",
+      "Requested metadata, image/barcode placement counts, named form types/current values/choices and sticky-note/free-text annotation contents independently checked"
+    ],
+    "genuine_native_losses_reproduced": [
+      "Markdown code CJK replaced by question mark",
+      "Basic HTML numeric and apostrophe entities remain literal",
+      "Long Markdown headings and small-page columns lose text outside page bounds",
+      "Off-page declarative text is not retained by page extraction",
+      "DocumentBuilder.keywords silently omitted from Info dictionary"
+    ],
+    "limitations": [
+      "Occurrence counts do not verify text order, spacing, page or table-cell association; extra output text is not rejected",
+      "A repeated value elsewhere can satisfy an expected token count; this is not a complete semantic comparison",
+      "Markup expectations cover the bounded supported syntax; CSS hiding body text fails closed",
+      "Date/time template substitutions are not independently reproduced",
+      "Image count/decoding do not verify pixels or barcode payloads",
+      "Form/annotation values do not verify appearance or interaction",
+      "Small renders detect decoder errors only; no visibility, clipping, overlap, table-layout, accessibility or general visual-fidelity claim"
+    ],
+    "evidence": "evidence/creation-integrity-20261016/",
+    "review_required": true,
+    "visual_fidelity_verified": false
   }
 }

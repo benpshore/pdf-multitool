@@ -25,6 +25,7 @@ from .oxide_runtime import (
     read_input,
     require_runtime,
     selected,
+    validate_pdf_bytes,
     write_bytes,
     write_json,
 )
@@ -46,6 +47,12 @@ OFFICE_TYPES = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
+PDF_VALIDATION = {
+    "native_reopen": True,
+    "independent_parser": "PyMuPDF",
+    "page_count_and_rectangles_checked": True,
+    "content_fidelity_checked": False,
+}
 
 
 def _field(label, kind="string", default="", **kwargs):
@@ -59,12 +66,17 @@ OPERATIONS = {
         "inputs": 1,
         "pages": False,
         "description": (
-            "Place rendered page images on PDF Oxide's default paper with margins. "
-            "Original page dimensions and placement change; text, forms, links and signatures "
-            "lose their interactive structure. This is not verified redaction."
+            "Rasterize with native default paper and margins, or explicitly preserve the visible "
+            "page size using PDF Oxide rendering and its native page builder. Text, forms, links "
+            "and signatures lose their interactive structure. This is not verified redaction."
         ),
         "outputs": ["application/pdf", "application/json"],
         "options": {
+            "layout": _field(
+                "Page layout",
+                default="native_default",
+                enum=["native_default", "preserve_visible_page"],
+            ),
             "dpi": _field("Resolution (DPI)", "integer", 72, minimum=36, maximum=300),
             "allow_rasterization": _field(
                 "Allow loss of text and interactive structure", "boolean", False
@@ -175,7 +187,7 @@ def validate_options(operation, options):
     if operation == "oxide_flatten":
         if not options["allow_rasterization"]:
             raise JobError("Enable allow_rasterization to create an image-only derivative")
-        if not options["allow_page_relayout"]:
+        if options["layout"] == "native_default" and not options["allow_page_relayout"]:
             raise JobError(
                 "Native flattening changes page dimensions and margins; enable allow_page_relayout"
             )
@@ -289,6 +301,41 @@ def _diagnostics(doc):
     if len(records) > 2000 or len(json.dumps(records)) > 256 * 1024:
         raise JobError("Conversion diagnostics exceed the output limit")
     return records
+
+
+def _diagnostic_status(records, pages, *, needs_text=False):
+    """Classify loss reported by native code, preserving its original records.
+
+    Native page numbers are zero-based; an unscoped warning applies to every
+    selected page. A scan is valid raster input, so no_text_layer only makes a
+    text-dependent Office conversion partial, not an otherwise intact render.
+    """
+    applicable = {
+        record["category"]
+        for record in records
+        if record.get("page") is None or record["page"] in pages
+    }
+    truncated = "operator_cap_exceeded" in applicable
+    ocr_required = True if needs_text and "no_text_layer" in applicable else None
+    omitted = sorted(applicable & {"glyph_dropped", "image_suppressed"})
+    return {
+        "diagnostic_status": "warnings_present" if applicable else "none_reported",
+        "truncated": truncated,
+        "ocr_required": ocr_required,
+        "omitted_content_categories": omitted,
+        "partial": truncated or ocr_required is True or bool(omitted),
+    }
+
+
+def _diagnostic_warning(status):
+    return (
+        [
+            "Partial conversion: PDF Oxide reported truncated or omitted content, or a "
+            "missing text layer required by this conversion. Inspect structured_warnings."
+        ]
+        if status["partial"]
+        else []
+    )
 
 
 def _render(request, options, add):
@@ -421,11 +468,17 @@ def _render(request, options, add):
             entry["native_ink_inventory"] = names
             entry["status"] = "plates_returned" if plates else "no_plates_returned"
         report["pages"].append(entry)
-    report["structured_warnings"] = _diagnostics(doc)
+    records = _diagnostics(doc)
+    report["structured_warnings"] = records
+    status = _diagnostic_status(records, pages)
+    report.update(status)
+    for entry in report["pages"]:
+        entry.update(_diagnostic_status(records, {entry["page"] - 1}))
     write_json(request, add, "render.json", report)
     return [
-        "PDF Oxide rendering fidelity is unverified; compare every page with the source."
-    ], False
+        "PDF Oxide rendering fidelity is unverified; compare every page with the source.",
+        *_diagnostic_warning(status),
+    ], status["partial"]
 
 
 def _xml_budget(data, counters):
@@ -597,6 +650,10 @@ def _pdf_summary(module, data):
     count = native("converted page count", lambda: int(doc.page_count))
     if not 0 < count <= MAX_OFFICE_PAGES:
         raise JobError("Converted PDF exceeds the 250-page limit")
+    native(
+        "independent converted PDF structure validation",
+        lambda: validate_pdf_bytes(data, expected_pages=count),
+    )
     return count
 
 
@@ -660,6 +717,17 @@ def _office(request, options, add):
             "source_vector_pages": vector_pages,
             "known_graphics_gap": partial,
         }
+        status = _diagnostic_status(report["structured_warnings"], range(count), needs_text=True)
+        report.update(status)
+        report["page_diagnostics"] = [
+            {
+                "page": page + 1,
+                **_diagnostic_status(report["structured_warnings"], {page}, needs_text=True),
+            }
+            for page in range(count)
+        ]
+        partial = partial or status["partial"]
+        warnings.extend(_diagnostic_warning(status))
         filename = f"converted.{kind}"
     else:
         if options.get("password"):
@@ -686,6 +754,7 @@ def _office(request, options, add):
             "direction": "office_to_pdf",
             "package": package,
             "output_pages": count,
+            "output_structure_validation": PDF_VALIDATION,
             "structured_warnings": [],
             "diagnostics_status": "OfficeConverter does not expose structured diagnostics",
             "native_log_status": (
@@ -708,9 +777,184 @@ def _office(request, options, add):
     return warnings, partial
 
 
+def _checked_visible_geometry(doc, source_bytes, options):
+    """Compare native extents against independent physical page metadata.
+
+    PyMuPDF is a read-only geometry validator here. PDF Oxide remains the only
+    renderer and output writer; disagreement fails instead of changing engines.
+    """
+    import pymupdf
+
+    result = []
+    with pymupdf.open(stream=source_bytes, filetype="pdf") as independent:
+        if independent.needs_pass and not independent.authenticate(options.get("password", "")):
+            raise JobError("Independent source geometry authentication failed")
+        if not 0 < len(independent) <= 100:
+            raise JobError("Independent source geometry exceeds the page limit")
+        for index, page in enumerate(independent):
+            width, height = _page_extent(doc, index)
+            if not (
+                math.isclose(width, page.rect.width, abs_tol=0.01, rel_tol=0)
+                and math.isclose(height, page.rect.height, abs_tol=0.01, rel_tol=0)
+            ):
+                raise JobError(
+                    "Native and independent physical page dimensions disagree; "
+                    "unsupported page units or box geometry, no output kept"
+                )
+            result.append(
+                {
+                    "page": index + 1,
+                    "width": width,
+                    "height": height,
+                    "media_box": list(
+                        native("source media box", lambda index=index: doc.page_media_box(index))
+                    ),
+                    "crop_box": native(
+                        "source crop box", lambda index=index: doc.page_crop_box(index)
+                    ),
+                    "rotation_degrees": native(
+                        "source rotation", lambda index=index: doc.page_rotation(index)
+                    ),
+                    "output_box": [0, 0, width, height],
+                    "output_rotation_degrees": 0,
+                }
+            )
+    return result
+
+
+def _flatten_visible_page(request, options, module, doc, source, source_bytes, add):
+    geometry = native(
+        "independent source geometry validation",
+        lambda: _checked_visible_geometry(doc, source_bytes, options),
+    )
+    if len(geometry) != source["pages"]:
+        raise JobError("Independent and native page counts disagree; no output kept")
+    builder = native("native raster PDF builder", module.DocumentBuilder)
+    png_total, page_rasters = 0, []
+    for entry in geometry:
+        index, width, height = entry["page"] - 1, entry["width"], entry["height"]
+        png = bytes(
+            native(
+                "visible-page rasterization",
+                lambda index=index: doc.render_page(
+                    index,
+                    dpi=options["dpi"],
+                    format="png",
+                    background=(1, 1, 1, 1),
+                    transparent=False,
+                    render_annotations=True,
+                    excluded_layers=[],
+                ),
+            )
+        )
+        png_total += len(png)
+        if png_total > min(MAX_IMAGE_BYTES, request["limits"]["max_output_bytes"]):
+            raise JobError("Rasterized page images exceed the aggregate byte limit")
+        info = _encoded_image(png, allowed=("PNG",))
+        expected = (math.ceil(width * options["dpi"] / 72), math.ceil(height * options["dpi"] / 72))
+        if (info["width"], info["height"]) != expected:
+            raise JobError("Renderer changed requested page resolution; no output kept")
+        page = native(
+            "native sized page", lambda width=width, height=height: builder.page(width, height)
+        )
+        native(
+            "native full-page image placement",
+            lambda page=page, png=png, width=width, height=height, index=index: page.image_with_alt(
+                png, 0, 0, width, height, f"Rasterized source page {index + 1}"
+            ),
+        )
+        native("native page completion", page.done)
+        page_rasters.append(
+            {
+                "page": index + 1,
+                "source_sha256": source["sha256"],
+                "png_sha256": _hash(png),
+                "png_bytes": len(png),
+                "width_pixels": info["width"],
+                "height_pixels": info["height"],
+            }
+        )
+    data = native("native geometry-preserving PDF serialization", builder.build)
+    count = _pdf_summary(module, data)
+    dimensions = _pdf_dimensions(module, data)
+    if count != source["pages"] or any(
+        not math.isclose(actual[key], expected[key], abs_tol=0.01, rel_tol=0)
+        for actual, expected in zip(dimensions, geometry, strict=True)
+        for key in ("width", "height")
+    ):
+        raise JobError("Native output page geometry differs from source; no output kept")
+    # Re-open independently too, including each final physical page rectangle.
+    verified = native(
+        "independent output geometry validation",
+        lambda: _checked_visible_geometry(
+            module.PdfDocument.from_bytes(data), data, {"password": ""}
+        ),
+    )
+    if len(verified) != len(geometry):
+        raise JobError("Independent output page count differs from source")
+    records = _diagnostics(doc)
+    status = _diagnostic_status(records, range(count))
+    for entry in page_rasters:
+        entry.update(_diagnostic_status(records, {entry["page"] - 1}))
+    write_bytes(request, add, "rasterized.pdf", data)
+    write_json(
+        request,
+        add,
+        "conversion.json",
+        {
+            "engine": "pdf-oxide==0.3.78",
+            "source": source,
+            "operation": "render_page+DocumentBuilder",
+            "layout": options["layout"],
+            "native_methods": [
+                "PdfDocument.render_page",
+                "DocumentBuilder.page",
+                "FluentPageBuilder.image_with_alt",
+                "FluentPageBuilder.done",
+                "DocumentBuilder.build",
+            ],
+            "renderer": "PDF Oxide",
+            "container_writer": "PDF Oxide",
+            "engine_fallback": False,
+            "dpi": options["dpi"],
+            "output": "rasterized.pdf",
+            "output_sha256": _hash(data),
+            "output_pages": count,
+            "output_structure_validation": PDF_VALIDATION,
+            "fidelity_verified": False,
+            "redaction_verified": False,
+            "source_page_dimensions": [
+                {key: entry[key] for key in ("page", "width", "height")} for entry in geometry
+            ],
+            "source_geometry": geometry,
+            "output_page_dimensions": dimensions,
+            "physical_dimensions_checked": True,
+            "geometry_validator": "PyMuPDF (metadata only; no rendering or output writing)",
+            "page_rasters": page_rasters,
+            **status,
+            "layout_policy": (
+                "Visible crop and rotation baked into a zero-origin page of the same visible "
+                "physical size; original media/crop origins and rotation metadata are normalized"
+            ),
+            "native_flatten_limitation": (
+                "PdfDocument.flatten_to_images still uses default paper and margins; "
+                "this explicit native render/builder pipeline bypasses that helper"
+            ),
+            "lost_structure": ["text layer", "forms", "links", "signatures", "off-crop content"],
+            "structured_warnings": records,
+        },
+    )
+    return [
+        "Visible physical page dimensions were checked; original page-box origins and rotation "
+        "are normalized. Native rendering fidelity remains unverified. Rasterization removes "
+        "text and interactive structure; this is not verified redaction.",
+        *_diagnostic_warning(status),
+    ], status["partial"]
+
+
 def _flatten(request, options, add):
     module = require_runtime(request)
-    doc, _, source = open_source(request, options)
+    doc, source_bytes, source = open_source(request, options)
     if source["pages"] > 100:
         raise JobError("Rasterization is limited to 100 source pages")
     total_pixels, source_dimensions = 0, []
@@ -722,6 +966,8 @@ def _flatten(request, options, add):
         )
         if total_pixels > MAX_TOTAL_PIXELS:
             raise JobError("Rasterization exceeds the 64-million-pixel document limit")
+    if options["layout"] == "preserve_visible_page":
+        return _flatten_visible_page(request, options, module, doc, source, source_bytes, add)
     # The native API writes temporary PNGs before building its returned PDF.
     # Force Rust's std::env::temp_dir into this disposable worker's directory;
     # the outer temporary directory also cleans native partial files on errors.
@@ -738,6 +984,8 @@ def _flatten(request, options, add):
     count = _pdf_summary(module, data)
     if count != source["pages"]:
         raise JobError("Rasterized PDF page count differs from source")
+    records = _diagnostics(doc)
+    status = _diagnostic_status(records, range(count))
     write_bytes(request, add, "rasterized.pdf", data)
     write_json(
         request,
@@ -751,19 +999,22 @@ def _flatten(request, options, add):
             "output": "rasterized.pdf",
             "output_sha256": _hash(data),
             "output_pages": count,
+            "output_structure_validation": PDF_VALIDATION,
             "fidelity_verified": False,
             "redaction_verified": False,
             "source_page_dimensions": source_dimensions,
             "output_page_dimensions": _pdf_dimensions(module, data),
+            **status,
             "partial": True,
             "layout_policy": "Native default paper and margins; source geometry is not retained",
             "lost_structure": ["text layer", "forms", "links", "signatures"],
-            "structured_warnings": _diagnostics(doc),
+            "structured_warnings": records,
         },
     )
     return [
         "Partial conversion: native rasterization changes paper and margins, and removes text "
-        "and interactive structure. Source geometry and visual fidelity are not retained."
+        "and interactive structure. Source geometry and visual fidelity are not retained.",
+        *_diagnostic_warning(status),
     ], True
 
 
@@ -843,6 +1094,7 @@ def _image_pdf(request, options, add):
             "output": "images.pdf",
             "output_sha256": _hash(data),
             "output_pages": pages,
+            "output_structure_validation": PDF_VALIDATION,
             "output_page_dimensions": _pdf_dimensions(module, data),
             "layout_policy": "Images centered and fitted on native default paper with margins",
             "fidelity_verified": False,

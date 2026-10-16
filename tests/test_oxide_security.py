@@ -5,14 +5,16 @@ import json
 import os
 import subprocess
 import sys
+from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
 
 import pikepdf
 import pymupdf
+import pypdfium2
 import pytest
 
-from pdf_multitool import oxide
+from pdf_multitool import oxide, oxide_security
 from pdf_multitool.catalog import validate_options
 from pdf_multitool.core import Job, JobError, Limits
 from pdf_multitool.oxide_security import _regions
@@ -277,7 +279,7 @@ def test_timestamp_metadata_is_not_a_trusted_document_timestamp(tmp_path):
 
 
 @NATIVE
-def test_redaction_resolves_inherited_rotation_before_any_output(tmp_path):
+def test_redaction_gate_also_blocks_inherited_rotation(tmp_path):
     source = text_source(tmp_path / "source.pdf")
     with pikepdf.open(source) as pdf:
         if "/Rotate" in pdf.pages[0].obj:
@@ -289,32 +291,36 @@ def test_redaction_resolves_inherited_rotation_before_any_output(tmp_path):
         tmp_path, "oxide_redact", inherited, {"regions": '[{"page":1,"rect":[40,285,200,320]}]'}
     )
     assert job.state == "failed" and not job.results
-    assert "unrotated" in str(job.errors)
+    assert "redaction is unavailable" in str(job.errors)
 
 
 @NATIVE
-def test_text_redaction_removes_content_and_preserves_other_numbers(tmp_path):
+def test_redaction_gate_blocks_even_simple_text(tmp_path):
     source = text_source(tmp_path / "source.pdf")
     regions = json.dumps([{"page": 1, "rect": [40, 285, 200, 320]}])
     job = run(tmp_path, "oxide_redact", source, {"regions": regions})
-    assert job.state == "completed", job.errors
-    output = result(job, "oxide-text-redacted.pdf")
-    with pymupdf.open(output) as doc:
-        assert "SECRET" not in doc[0].get_text()
-        assert "012" not in doc[0].get_text() and "10.25" not in doc[0].get_text()
-        assert "PUBLIC 036 -2.00" in doc[0].get_text()
-    with pikepdf.open(output) as pdf:
-        for obj in pdf.objects:
-            if isinstance(obj, pikepdf.Stream):
-                assert b"SECRET" not in obj.read_bytes()
-    report = json_result(job, "oxide-text-redacted.json")
-    assert report["native_redaction"]["glyphs_removed"] > 0
-    assert report["secure_redaction_certified"] is False
+    assert job.state == "failed" and not job.results, job.snapshot()
+    assert "redaction is unavailable" in str(job.errors)
+    assert not list(job.directory.iterdir())
+
+
+def test_redaction_gate_precedes_input_read_and_native_runtime(monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Blocked redaction must neither read the input nor invoke native code/output")
+
+    for name in ("require_runtime", "open_source", "native", "write_bytes", "write_json"):
+        monkeypatch.setattr(oxide_security, name, forbidden)
+    with pytest.raises(JobError, match="redaction is unavailable"):
+        oxide_security.process(
+            {"operation": "oxide_redact"},
+            {"regions": '[{"page":1,"rect":[40,285,200,320]}]'},
+            forbidden,
+        )
 
 
 @NATIVE
 @pytest.mark.parametrize("kind", ["image", "vector", "annotation", "rotation", "form"])
-def test_redaction_refuses_unqualified_content_and_keeps_no_overlay_copy(tmp_path, kind):
+def test_redaction_gate_keeps_no_overlay_copy_for_complex_inputs(tmp_path, kind):
     source = text_source(tmp_path / "source.pdf")
     with pymupdf.open(source) as doc:
         if kind == "image":
@@ -338,6 +344,140 @@ def test_redaction_refuses_unqualified_content_and_keeps_no_overlay_copy(tmp_pat
         doc.save(edited)
     job = run(tmp_path, "oxide_redact", edited, {"regions": '[{"page":1,"rect":[40,285,200,320]}]'})
     assert job.state == "failed" and not job.results, job.snapshot()
+    assert not list(job.directory.iterdir())
+
+
+# Direct native calls below are bounded diagnostic probes. Unsafe candidates stay
+# in pytest's temporary evidence directory; the product route is always blocked.
+REDACTION_PROBE = r"""
+import json
+import sys
+from dataclasses import asdict
+from pathlib import Path
+from pdf_multitool.core import Limits
+from pdf_multitool.worker import _limits
+from pdf_multitool.isolation import install
+from pdf_multitool.oxide import initialize_guard
+_limits(asdict(Limits()), "oxide_redact")
+initialize_guard(install(), asdict(Limits()))
+from pdf_oxide import PdfDocument
+doc = PdfDocument.from_bytes(Path(sys.argv[1]).read_bytes())
+doc.add_redaction(0, tuple(json.loads(sys.argv[3])))
+report = doc.apply_redactions_destructive()
+doc.sanitize_document()
+Path(sys.argv[2]).write_bytes(doc.to_bytes(compress=True, garbage_collect=True, linearize=False))
+print(json.dumps(report))
+"""
+
+REDACTION_CASES = {
+    "rise": (b"BT /F1 12 Tf 0 Ts ET\nq BT 100 Ts ET Q\n", b"SECRET0042", [40, 280, 250, 330]),
+    "font_size": (
+        b"BT /F1 12 Tf ET\nq BT /F1 1 Tf ET Q\n",
+        b"WWWWWW SECRET0042",
+        [118, 280, 201, 330],
+    ),
+    "font_family": (
+        b"BT /F1 12 Tf ET\nq BT /F2 12 Tf ET Q\n",
+        b"W" * 24 + b" SECRET0042",
+        [322, 280, 405, 330],
+    ),
+    "character_spacing": (
+        b"BT /F1 12 Tf 10 Tc ET\nq BT 0 Tc ET Q\n",
+        b"WWWWWWWWWW SECRET0042",
+        [274, 280, 445, 330],
+    ),
+    "word_spacing": (
+        b"BT /F1 12 Tf 100 Tw ET\nq BT 0 Tw ET Q\n",
+        b"A B SECRET0042",
+        [270, 280, 352, 330],
+    ),
+    "horizontal_scale": (
+        b"BT /F1 12 Tf 200 Tz ET\nq BT 10 Tz ET Q\n",
+        b"WWWWWW SECRET0042",
+        [190, 280, 348, 330],
+    ),
+}
+
+
+def redaction_regression_source(path, kind):
+    with pikepdf.Pdf.new() as pdf:
+        page = pdf.add_blank_page(page_size=(600, 400))
+        page.Resources = pikepdf.Dictionary(
+            Font=pikepdf.Dictionary(
+                {
+                    alias: pdf.make_indirect(
+                        pikepdf.Dictionary(
+                            Type=pikepdf.Name.Font,
+                            Subtype=pikepdf.Name.Type1,
+                            BaseFont=pikepdf.Name(font),
+                        )
+                    )
+                    for alias, font in (("/F1", "/Helvetica"), ("/F2", "/Courier"))
+                }
+            )
+        )
+        if kind == "actualtext":
+            content = (
+                b"/Span << /ActualText (ACCOUNT 0042 TOTAL 987.65) >> BDC\n"
+                b"BT /F1 12 Tf 1 0 0 1 50 300 Tm (VISIBLE 012 10.25) Tj ET\nEMC\n"
+            )
+            rect = [40, 285, 250, 320]
+        else:
+            state, text, rect = REDACTION_CASES[kind]
+            content = state + b"BT 1 0 0 1 50 300 Tm (" + text + b") Tj ET\n"
+        page.Contents = pdf.make_stream(
+            content + b"BT /F1 12 Tf 0 Tc 0 Tw 100 Tz 0 Ts "
+            b"1 0 0 1 50 200 Tm (PUBLIC 036 -2.00) Tj ET\n"
+        )
+        pdf.save(path, compress_streams=False)
+    return rect
+
+
+@NATIVE
+@pytest.mark.parametrize("kind", ["actualtext", *REDACTION_CASES])
+def test_known_native_redaction_leaks_are_blocked_by_product(tmp_path, kind):
+    source = tmp_path / "source.pdf"
+    rect = redaction_regression_source(source, kind)
+    candidate = tmp_path / "unsafe-diagnostic-native.pdf"
+    env = {key: value for key, value in os.environ.items() if key in {"PATH", "LANG", "PYTHONPATH"}}
+    probe = subprocess.run(  # noqa: S603 -- fixed bounded program and synthetic paths, no shell
+        [sys.executable, "-c", REDACTION_PROBE, str(source), str(candidate), json.dumps(rect)],
+        env=env,
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+    assert probe.returncode == 0, probe.stderr.decode()
+    native_report = json.loads(probe.stdout)
+    with pikepdf.open(candidate) as pdf:
+        decoded = b"\n".join(
+            obj.read_bytes() for obj in pdf.objects if isinstance(obj, pikepdf.Stream)
+        )
+    marker = b"ACCOUNT 0042 TOTAL 987.65" if kind == "actualtext" else b"SECRET0042"
+    assert marker in decoded, "Freeze the pinned native recoverable-content failure"
+    with pymupdf.open(candidate) as doc:
+        mupdf_text = doc[0].get_text()
+    with (
+        pypdfium2.PdfDocument(candidate) as doc,
+        closing(doc[0]) as page,
+        closing(page.get_textpage()) as textpage,
+    ):
+        pdfium_text = textpage.get_text_range()
+    assert "PUBLIC 036 -2.00" in mupdf_text and "PUBLIC 036 -2.00" in pdfium_text
+    if kind == "actualtext":
+        assert native_report["glyphs_removed"] > 0
+        # Both extraction engines miss this retained string. Text absence and
+        # a black rectangle are inadequate proofs of irreversible removal.
+        assert marker.decode() not in mupdf_text and marker.decode() not in pdfium_text
+    else:
+        assert native_report["glyphs_removed"] == 0
+        assert marker.decode() in "".join(mupdf_text.split())
+        assert marker.decode() in pdfium_text
+    job = run(
+        tmp_path, "oxide_redact", source, {"regions": json.dumps([{"page": 1, "rect": rect}])}
+    )
+    assert job.state == "failed" and not job.results, job.snapshot()
+    assert "redaction is unavailable" in str(job.errors)
     assert not list(job.directory.iterdir())
 
 
@@ -410,7 +550,6 @@ def test_pdfa_conversion_reopens_actual_output_and_retains_numbers(tmp_path):
         ("oxide_security", {}),
         ("oxide_compliance", {}),
         ("oxide_sanitize", {}),
-        ("oxide_redact", {"regions": '[{"page":1,"rect":[40,285,200,320]}]'}),
     ],
 )
 def test_output_overflow_does_not_publish_partial_artifacts(tmp_path, operation, options):
@@ -474,7 +613,7 @@ def cms_for(data):
 # The native verifier rejects usual /Contents trailing padding. Freeze that
 # failure separately and use exact DER length for the supported positive case.
 length = len(cms_for(b"synthetic size probe"))
-def linked_signature(capacity):
+def linked_signature(capacity, duplicate_and_unlinked=False):
     with pikepdf.open(io.BytesIO(source_bytes)) as doc:
         signature = doc.make_indirect(pikepdf.Dictionary(
             Type=pikepdf.Name.Sig, Filter=pikepdf.Name.Adobe_PPKLite,
@@ -484,6 +623,13 @@ def linked_signature(capacity):
         field = doc.make_indirect(pikepdf.Dictionary(
             FT=pikepdf.Name.Sig, T="Synthetic signature", V=signature))
         doc.Root.AcroForm = pikepdf.Dictionary(Fields=pikepdf.Array([field]))
+        if duplicate_and_unlinked:
+            alias = doc.make_indirect(pikepdf.Dictionary(
+                FT=pikepdf.Name.Sig, T="Duplicate reference", V=signature))
+            doc.Root.AcroForm.Fields.append(alias)
+            doc.Root.SyntheticUnlinkedSignature = doc.make_indirect(pikepdf.Dictionary(
+                Type=pikepdf.Name.Sig, Contents=pikepdf.String(b"unverified synthetic CMS"),
+                ByteRange=pikepdf.Array([0, 10, 20, 10])))
         doc.Root.DSS = pikepdf.Dictionary(Certs=pikepdf.Array([
             doc.make_stream(cert.public_bytes(serialization.Encoding.DER))]))
         output = io.BytesIO()
@@ -492,7 +638,7 @@ def linked_signature(capacity):
     contents = re.search(rb'/Contents\s*(<0{' + str(capacity * 2).encode() + rb'}>)', data)
     assert contents is not None
     start, end = contents.span(1)
-    byte_range = re.search(rb'/ByteRange\s*\[[^\]]+\]', data)
+    byte_range = list(re.finditer(rb'/ByteRange\s*\[[^\]]+\]', data[:start]))[-1]
     values = (0, start, end, len(data) - end)
     replacement = b'/ByteRange [ ' + b' '.join(str(v).encode() for v in values) + b' ]'
     replacement += b' ' * (len(byte_range.group()) - len(replacement))
@@ -508,6 +654,9 @@ def linked_signature(capacity):
     return data[:start + 1] + encoded.ljust(capacity * 2, b'0') + data[end - 1:]
 Path(sys.argv[2]).write_bytes(linked_signature(length))
 Path(sys.argv[2]).with_name("padded-signature.pdf").write_bytes(linked_signature(length + 64))
+if algorithm == "rsa":
+    Path(sys.argv[2]).with_name("duplicate-fields-unlinked-signature.pdf").write_bytes(
+        linked_signature(length, duplicate_and_unlinked=True))
 """
 
 
@@ -527,7 +676,9 @@ def test_signature_detached_verification_distinguishes_tampering_from_trust(tmp_
     assert made.returncode == 0, made.stderr.decode()
     job = run(tmp_path, "oxide_security", signed)
     assert job.state == "completed", job.errors
-    signatures = json_result(job, "oxide-security.json")["signatures"]
+    inspection = json_result(job, "oxide-security.json")
+    assert inspection["signature_identity_coverage_complete"] is True
+    signatures = inspection["signatures"]
     assert len(signatures) == 1
     assert signatures[0]["detached_verification"] == {"status": "valid", "valid": True}
     assert signatures[0]["certificate_trust"] == "not_checked"
@@ -546,6 +697,24 @@ def test_signature_detached_verification_distinguishes_tampering_from_trust(tmp_
         bare_report = json_result(bare, "oxide-security.json")
         assert bare_report["signatures"] == []
         assert bare_report["unlinked_signature_dictionaries"] == 1
+        duplicate = run(
+            tmp_path, "oxide_security", signed.with_name("duplicate-fields-unlinked-signature.pdf")
+        )
+        assert duplicate.state == "partial", duplicate.snapshot()
+        duplicate_report = json_result(duplicate, "oxide-security.json")
+        assert [s["detached_verification"] for s in duplicate_report["signatures"]] == [
+            {"status": "valid", "valid": True},
+            {"status": "valid", "valid": True},
+        ]
+        assert duplicate_report["independent_object_inventory"]["signature_dictionaries"] == 2
+        assert duplicate_report["unlinked_signature_dictionaries"] == 1
+        assert duplicate_report["signature_identity_coverage_complete"] is False
+        coverage = duplicate_report["independent_object_inventory"]["signature_identity_coverage"]
+        assert coverage["duplicate_signature_references"] == 1
+        assert len(coverage["signature_object_ids"]) == 2
+        assert len(coverage["linked_signature_object_ids"]) == 1
+        assert len(coverage["unlinked_signature_object_ids"]) == 1
+        assert coverage["linked_signature_object_ids"] != coverage["unlinked_signature_object_ids"]
     padded = run(tmp_path, "oxide_security", signed.with_name("padded-signature.pdf"))
     assert padded.state == "partial", padded.errors
     assert json_result(padded, "oxide-security.json")["signatures"][0]["detached_verification"] == {

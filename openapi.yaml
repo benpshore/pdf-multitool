@@ -2197,6 +2197,11 @@
             "maxLength": 32768,
             "description": "Annotation actions (JSON array)"
           },
+          "allow_highlight_repair": {
+            "type": "boolean",
+            "default": false,
+            "description": "Correct new highlight appearances with pikepdf and retain native comparison"
+          },
           "password": {
             "type": "string",
             "maxLength": 127,
@@ -2229,6 +2234,15 @@
       "oxide_flattenOptions": {
         "type": "object",
         "properties": {
+          "layout": {
+            "type": "string",
+            "default": "native_default",
+            "enum": [
+              "native_default",
+              "preserve_visible_page"
+            ],
+            "description": "Page layout"
+          },
           "dpi": {
             "type": "integer",
             "default": 72,
@@ -3809,7 +3823,7 @@
               "operation",
               "files"
             ],
-            "description": "Add a note or HTTP(S)/mailto link, or remove a non-widget annotation in a new PDF using a bounded JSON action list. Coordinates use native PDF user space. Removal fails closed when the saved annotation remains. New highlights are unsupported because pinned output disappears in PDFium."
+            "description": "Add a note or HTTP(S)/mailto link, or remove a non-widget annotation in a new PDF using a bounded JSON action list. Coordinates use native PDF user space. Removal fails closed when the saved annotation remains. Native highlights stay blocked. Optional pikepdf correction builds the requested rectangular highlight appearance; both the defective native copy and corrected copy are retained for comparison."
           },
           {
             "type": "object",
@@ -3859,7 +3873,7 @@
               "operation",
               "files"
             ],
-            "description": "Place rendered page images on PDF Oxide's default paper with margins. Original page dimensions and placement change; text, forms, links and signatures lose their interactive structure. This is not verified redaction."
+            "description": "Rasterize with native default paper and margins, or explicitly preserve the visible page size using PDF Oxide rendering and its native page builder. Text, forms, links and signatures lose their interactive structure. This is not verified redaction."
           },
           {
             "type": "object",
@@ -4034,7 +4048,7 @@
               "operation",
               "files"
             ],
-            "description": "Remove text in explicit unrotated PDF user-space rectangles and create a copy. Selected pages with images, forms, vector paint, annotations or layers fail: the pinned engine does not fully remove those content types. Review the copy."
+            "description": "PDF Oxide redaction is unavailable: the pinned engine can retain recoverable content beneath black rectangles. No redacted copy is published."
           },
           {
             "type": "object",

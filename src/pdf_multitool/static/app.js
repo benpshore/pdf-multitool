@@ -160,6 +160,7 @@
     return Boolean(value && (value.available === true || value.enabled === true));
   }
   function operationAvailable(op) {
+    if (additional[op]?.available === false || operations[op]?.blocked_reason) return false;
     if (op === 'render_native' && advancedControls.has('renderer')) return engineAvailable(advancedControls.get('renderer').input.value);
     if (op === 'imagepdf') return engineAvailable('pymupdf') && engineAvailable('pillow');
     if (Object.prototype.hasOwnProperty.call(state.engines, op)) return engineAvailable(op);
@@ -208,7 +209,7 @@
     if (!state.ready) hint = 'Connecting to the local workspace…';
     else if (state.uploading) hint = 'Adding files to the workspace…';
     else if (state.busy) hint = 'Working locally. You can cancel below.';
-    else if (unavailable) hint = 'This engine is unavailable. See About & engines below.';
+    else if (unavailable) hint = operations[effectiveOperation()]?.blocked_reason || 'This engine is unavailable. See About & engines below.';
     else if (!rasterAccepted) hint = 'Confirm rasterization and possible content loss to continue.';
     else if (!requiresFiles) hint = 'Create a new file from the options above.';
     else if (!count) hint = 'Add and select files to begin.';

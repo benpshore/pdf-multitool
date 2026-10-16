@@ -41,7 +41,7 @@
       "operation": "oxide_security",
       "mode": "inspect",
       "status": "implemented_tested_with_limits",
-      "limits": "100 signatures; native enumeration only visits AcroForm-linked fields. Independent object inventory reports unlinked signature dictionaries and produces partial status. verify_detached uses original full bytes; verify alone is not substituted because it omits document-digest validation.",
+      "limits": "100 native field records; native enumeration only visits AcroForm-linked fields. Independent inventory reconciles PDF object identities against AcroForm /V references. Unlinked objects, duplicate references, direct dictionaries, malformed or repeated field links and native/reference-count mismatch produce partial status. Two fields referring to signature A cannot hide signature B. verify_detached uses original full bytes; verify alone is not substituted because it omits document-digest validation. Native records lack object identifiers, so the report does not assert a per-record identity mapping or certificate trust.",
       "tested_algorithms": ["RSA PKCS#1 v1.5 SHA-256", "RSA-PSS SHA-256", "ECDSA P-256 SHA-256", "ECDSA P-384 SHA-384"],
       "unsupported": ["Trust-chain validation", "revocation checking", "timestamp trust", "unknown digest or absent signed attributes"],
       "known_failure": "Ordinary zero-padded /Contents is rejected as trailing DER data; this cryptographically valid fixture remains an explicit partial/unverifiable result. Exact-DER-length linked fixtures verify and same-length document mutation fails for all four tested algorithm paths.",
@@ -101,16 +101,25 @@
       "id": "security.destructive_text_redaction",
       "python_apis": ["PdfDocument.add_redaction", "PdfDocument.redaction_count", "PdfDocument.apply_redactions_destructive", "PdfDocument.to_bytes"],
       "operation": "oxide_redact",
-      "status": "implemented_tested_restricted_text_path",
-      "limits": "100 pages and 100 explicit rectangles, unrotated PDF user-space xyxy coordinates. Independent preflight rejects images, Form XObjects, painted vectors, layers, forms, annotations, active actions and embedded files. The wired native engine removes text only; image/path-prune modules are not wired into this API. Unsupported font encodings fail rather than yielding an overlay-only result. Full nonincremental rewrite and explicit document sanitizer follow.",
-      "qualification": "Synthetic original target text and numbers disappear from extracted text and content streams while unrelated numbers remain. Complete secure redaction and every font/geometry representation remain unqualified.",
-      "tests": ["test_text_redaction_removes_content_and_preserves_other_numbers", "test_redaction_refuses_unqualified_content_and_keeps_no_overlay_copy", "test_invalid_regions_before_spawn", "test_redaction_resolves_inherited_rotation_before_any_output"]
+      "status": "blocked_known_recoverable_content_failure",
+      "limits": "The entire product oxide_redact route fails before input parsing, native execution or publishing any artifact. The catalog exposes a blocked_reason and unavailable status. Explicit region syntax remains validated, but no source content is accepted for redaction. No fallback overlay or narrowly qualified path is exposed.",
+      "reproduced_failures": [
+        "Inline /ActualText survives in a decoded output content stream after the visible text is removed. Both PyMuPDF and PDFium extraction omit the retained secret, proving that successful extraction checks and a black mask are insufficient.",
+        "Separate q/Q fixtures restoring Ts text rise, Tf font size, Tf font family, Tc character spacing, Tw word spacing and Tz horizontal scale all return native success with zero glyph removals. The target string remains in decoded content streams and both independent extractors beneath the opaque overlay."
+      ],
+      "upstream_source_chain": [
+        "src/redaction/text_engine.rs: SaveState/RestoreState update the graphics-state CTM stack without restoring the separately maintained TextState",
+        "src/redaction/text_engine.rs: other => out.push(other.clone()) passes non-text marked-content properties through",
+        "src/redaction/engine.rs: redact_content_stream serializes those surviving operators and appends opaque region overlays"
+      ],
+      "qualification": "Earlier simple-text success evidence is preserved but superseded as redaction qualification. Independent irreversible removal is not established; the entire native redaction route remains blocked pending an independently verified engine fix and broader regression review.",
+      "tests": ["test_known_native_redaction_leaks_are_blocked_by_product", "test_redaction_gate_precedes_input_read_and_native_runtime", "test_redaction_gate_blocks_even_simple_text", "test_redaction_gate_keeps_no_overlay_copy_for_complex_inputs", "test_invalid_regions_before_spawn", "test_redaction_gate_also_blocks_inherited_rotation"]
     },
     {
       "id": "security.legacy_redaction_masks",
       "python_apis": ["PdfDocument.apply_page_redactions", "PdfDocument.apply_all_redactions", "PdfDocument.is_page_marked_for_redaction", "PdfDocument.unmark_page_for_redaction", "PdfDocument.clear_erase_regions"],
       "status": "not_exposed_as_secure_redaction",
-      "reason": "Mask/mark state does not independently demonstrate underlying content removal. Product route uses explicit destructive text API plus bounded preflight instead."
+      "reason": "Mask/mark state does not independently demonstrate underlying content removal. The entire native redaction product route is blocked, including destructive text redaction; no mask fallback is offered."
     },
     {
       "id": "security.catalog_sanitization",

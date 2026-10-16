@@ -64,6 +64,22 @@ def _review(source_hash, number, baseline, sanitized):
     )
 
 
+def _page_diagnostics(diagnostics, page):
+    categories = {
+        entry["native"]["category"] for entry in diagnostics if entry["page"] in {None, page}
+    }
+    truncated = "operator_cap_exceeded" in categories
+    ocr_required = True if "no_text_layer" in categories else None
+    omitted = sorted(categories & {"glyph_dropped", "image_suppressed"})
+    return {
+        "truncated": truncated,
+        "ocr_required": ocr_required,
+        "diagnostic_status": "warnings_present" if categories else "none_reported",
+        "omitted_content_categories": omitted,
+        "partial": truncated or ocr_required is True or bool(omitted),
+    }
+
+
 def process(request, options, add):
     from .oxide import MAX_CHARACTERS, VERSION, _warnings
     from .oxide_html import sanitize
@@ -130,6 +146,13 @@ def process(request, options, add):
             }
         page_records.append(record)
     diagnostics = _warnings(doc, source["sha256"], "format conversion")
+    for record in page_records:
+        record.update(_page_diagnostics(diagnostics, record["page"]))
+    truncated = any(record["truncated"] for record in page_records)
+    partial = any(record["partial"] for record in page_records)
+    omitted = sorted(
+        {category for record in page_records for category in record["omitted_content_categories"]}
+    )
     write_json(
         request,
         add,
@@ -147,11 +170,27 @@ def process(request, options, add):
             "ocr": "not_run",
             "whole_document_method": "bounded explicit page loop; native *_all not called",
             "semantics_verified": False,
-            "truncated": False,
+            "truncated": truncated,
+            "partial": partial,
+            "omitted_content_categories": omitted,
         },
     )
-    return [
+    warnings = [
         "Native formatting, reading order, headings and tables require comparison with the "
         "original PDF. Original native text is retained separately; "
         "process success is not correctness."
-    ], False
+    ]
+    if diagnostics:
+        warnings.append("PDF Oxide reported structured diagnostics; inspect the format manifest.")
+    if truncated:
+        warnings.append(
+            "Partial formatting: PDF Oxide reached its operator cap; native baseline and "
+            "formatted output may omit source content."
+        )
+    if any(record["ocr_required"] is True for record in page_records):
+        warnings.append("Partial formatting: source pages require OCR; OCR was not run.")
+    if omitted:
+        warnings.append(
+            "Partial formatting: PDF Oxide reported omitted content (" + ", ".join(omitted) + ")."
+        )
+    return warnings, partial

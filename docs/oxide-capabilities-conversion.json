@@ -8,9 +8,18 @@
       "api": ["PdfDocument.flatten_to_images"],
       "operation": "oxide_flatten",
       "status": "implemented_partial",
-      "options": ["dpi", "allow_rasterization", "allow_page_relayout"],
+      "options": ["layout=native_default (unchanged default)", "dpi", "allow_rasterization", "allow_page_relayout"],
       "limits": "100 pages, 16MP/page and 64MP/document; native temporary PNG files confined to and cleaned with the disposable work directory.",
       "accuracy": "Native flatten reconstructs rendered pages on default paper with margins. Source geometry and interactive structure are lost. Requires both explicit acknowledgments, records source/output dimensions and returns partial. Not verified redaction."
+    },
+    {
+      "api": ["PdfDocument.render_page", "DocumentBuilder.page", "FluentPageBuilder.image_with_alt", "FluentPageBuilder.done", "DocumentBuilder.build"],
+      "operation": "oxide_flatten",
+      "status": "implemented_explicit_geometry_repair",
+      "options": ["layout=preserve_visible_page (explicit opt-in)", "dpi", "allow_rasterization"],
+      "adapter": "PDF Oxide renders each visible page to PNG and embeds it at full-page extent through its native fluent builder. Renderer and PDF writer remain PDF Oxide; engine_fallback=false. PyMuPDF only checks source/output physical dimensions independently, without rendering or writing. Source page boxes, rotation, dimensions and per-page native PNG hashes are retained in the report.",
+      "limits": "100 pages, 16MP/page, 64MP/document, 16MiB aggregate native PNGs and existing supervised output budget. Native render dimensions must equal requested dimensions. Disagreement with independent physical geometry, including unsupported UserUnit scaling, fails with no output.",
+      "accuracy": "Visible crop and rotation are baked into a zero-origin page of the same displayed physical size; original media/crop box origins, rotation metadata and off-crop content are not retained. Exact embedded-pixel tests prove container retention, not native renderer correctness. Native render diagnostics can still make the result partial. No text/forms/links/signatures or verified redaction. The native flatten_to_images default-paper limitation remains unchanged and its previous failed outputs are preserved."
     },
     {
       "api": ["PdfDocument.render_page"],
@@ -18,7 +27,7 @@
       "options": ["format=png|jpeg", "dpi", "background RGBA", "transparent", "annotations", "jpeg_quality", "excluded_layers"],
       "status": "implemented",
       "limits": "Selected pages <=100; DPI 36..300; 16MP/image and 64MP/input; output budget inherited from supervised worker.",
-      "accuracy": "Rejects requested raster dimensions exceeding the cap rather than accepting upstream silent downscaling. Pixel correctness is separately tested. Universal fidelity is unverified."
+      "accuracy": "Rejects requested raster dimensions exceeding the cap rather than accepting upstream silent downscaling. Applicable native operator_cap_exceeded, glyph_dropped or image_suppressed diagnostics make the derivative partial; reports retain raw diagnostics and explicit page/global truncation. Pixel correctness is separately tested. Universal fidelity is unverified."
     },
     {
       "api": ["PdfDocument.render_page_fit"],
@@ -103,12 +112,27 @@
     "mitigation": "Disable native logging callbacks inside the disposable Office import worker. Correct independent DOCX import then completed in 0.38 seconds. Structured Office diagnostics are unavailable, explicitly reported; no claim of complete warnings.",
     "dependency_sha256": "e07e156a6bc62caaa66fc698daad7405dd62e86f5292fd22898c1a55f154748d"
   },
+  "diagnostic_policy": {
+    "scope": "Render, both flatten modes and PDF-to-Office exports retain bounded raw structured_warnings and report explicit partial, truncated, diagnostic_status and omitted_content_categories. Page fields use one-based app numbering; native diagnostic page numbers remain zero-based in raw records.",
+    "global_warnings": "Native page=null applies conservatively to all selected pages; scoped warnings apply only to the relevant page.",
+    "known_loss": "operator_cap_exceeded means truncated=true and partial=true. glyph_dropped or image_suppressed also mean partial. no_text_layer means ocr_required=true and partial for text-dependent Office export; raster-only scans remain valid render/flatten input.",
+    "actual_regression": "A real one-million-operator PDF retains Before cap 012 0.15 and After cap 036 0.00 in an independent reader. Native render, DOCX/XLSX/PPTX export and both flatten modes omit trailing content. These routes previously completed silently despite native diagnostics; regression tests now require partial and preserve the warning. No native cap or acceptance criterion was weakened.",
+    "unavailable_channels": "Office import and Pdf image constructors still lack a native structured diagnostic channel; their manifests explicitly report that limitation. No absence-of-warning fidelity claim."
+  },
+  "independent_output_validation": {
+    "scope": "Every generated PDF from Office import, image-to-PDF and both flatten modes is reopened by PyMuPDF after native validation and before output publication, within the existing bounded worker.",
+    "checks": "Independent page count must agree with native page count; all page rectangles must be nonempty and finite. Explicit preserve_visible_page additionally checks visible source/output physical dimensions. Reports identify the independent parser and explicitly state content_fidelity_checked=false.",
+    "failure_tests": "Fault-injected native success for a truncated PDF and a real two-page PDF falsely reported as one page is rejected by the real independent parser. Existing real supervised conversion tests validate the gate on generated outputs.",
+    "limits": "Structural reopen is not a text, numbers, tables, fonts or visual correctness oracle; PyMuPDF may repair PDFs it can recover. No universal validity or interoperability claim."
+  },
   "verification": {
     "test_file": "tests/test_oxide_conversion.py",
     "evidence_directory": "evidence/conversion-review (isolated cloud workspace; outside repository)",
     "visual_review": "Conversion agent inspected PDFium-rendered originals and derivatives, including native raster, DOCX, XLSX and PPTX round trips for frozen wrapped/missing/empty-cell tables and prose. Ada's independent acceptance remains pending.",
     "limits_of_office_review": "No Microsoft Office or LibreOffice renderer is installed; Office files were independently inspected as OOXML and round-tripped with PDF Oxide before independent PDFium rendering. Successful round trip is not Office interoperability or semantic fidelity certification.",
-    "preserved_failures": ["Direct native CMYK JPEG color corruption", "Native flatten default-page/margin relayout", "XLSX/PPTX dropped ordinary vectors and ruled table borders", "Office parser/logging stall bounded by supervisor timeout"],
+    "preserved_failures": ["Direct native CMYK JPEG color corruption", "Native flatten default-page/margin relayout", "XLSX/PPTX dropped ordinary vectors and ruled table borders", "Office parser/logging stall bounded by supervisor timeout", "Native operator-cap loss of trailing text and numbers", "Native raster font appearance and spacing changes in frozen Courier fixtures"],
+    "additional_geometry_evidence": "evidence/flatten-visible-review-20261016 (new isolated package; previous packages untouched): ten crop/nonzero-origin/rotation cases, mixed fractional sizes, six original frozen experiment fixtures, native operator-cap failure, original/default/explicit PDFs, native PNGs, independent PDFium 72/144-DPI renders, extracted content, pixel metrics and SHA-256 manifest.",
+    "geometry_tests": "Crop and nonzero origin, rotations 0/90/180/270/-90, mixed fractional physical sizes at 72/144 DPI, PDFium dimensions/corner colors/pixel comparisons, exact retention of every native RGB pixel, unsupported UserUnit rejection and quota cleanup. Numeric 012, 0.15 and -2.00 plus ruled A1/B1/A2/B2 table fixtures; source/output visual acceptance remains separate.",
     "frozen_sources_modified": false,
     "merge_hold": "unchanged"
   },
@@ -117,6 +141,9 @@
     "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/rendering/mod.rs",
     "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/converters/office/mod.rs",
     "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/api/pdf_builder.rs",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs#L5856",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs#L6417",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/extractors/warnings.rs#L39",
     "https://pdf.oxide.fyi/rust/docs/creation/office-conversion"
   ]
 }
