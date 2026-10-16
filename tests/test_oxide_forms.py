@@ -69,14 +69,16 @@ def form_fixture(path):
     return path
 
 
-def annotation_fixture(path):
+def annotation_fixture(path, *, flattenable=False):
     with pymupdf.open() as doc:
         for number in range(2):
             page = doc.new_page(width=400, height=500)
             page.insert_text(
                 (40, 60), f"Synthetic page {number + 1}: Invoice 000123.40; total 20.15"
             )
-            page.add_text_annot((40, 90), f"Original note {number + 1}")
+            note = page.add_text_annot((40, 90), f"Original note {number + 1}")
+            if flattenable:
+                note.set_flags(pymupdf.PDF_ANNOT_IS_PRINT)
             page.insert_link(
                 {
                     "kind": pymupdf.LINK_URI,
@@ -86,6 +88,73 @@ def annotation_fixture(path):
             )
             page.add_highlight_annot(pymupdf.Rect(40, 45, 110, 65))
         doc.save(path)
+    return path
+
+
+def flatten_structure_fixture(
+    path, *, forms=False, missing_contents=False, inherited_resources=False
+):
+    """Visible AP plus optional inherited font/image resources; all content is synthetic."""
+    import pikepdf
+
+    with pikepdf.Pdf.new() as pdf:
+        font = pdf.make_indirect(
+            pikepdf.Dictionary(
+                Type=pikepdf.Name.Font, Subtype=pikepdf.Name.Type1, BaseFont=pikepdf.Name.Helvetica
+            )
+        )
+        image = pikepdf.Stream(pdf, bytes([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255]))
+        image.Type, image.Subtype = pikepdf.Name.XObject, pikepdf.Name.Image
+        image.Width, image.Height, image.BitsPerComponent = 2, 2, 8
+        image.ColorSpace = pikepdf.Name.DeviceRGB
+        resources = pdf.make_indirect(
+            pikepdf.Dictionary(
+                Font=pikepdf.Dictionary(Body=font), XObject=pikepdf.Dictionary(Swatch=image)
+            )
+        )
+        page = pdf.add_blank_page(page_size=(400, 500))
+        page.Resources = resources
+        if missing_contents:
+            if "/Contents" in page.obj:
+                del page.obj["/Contents"]
+        else:
+            page.Contents = pikepdf.Stream(
+                pdf,
+                b"q BT /Body 16 Tf 40 450 Td (Invoice 000123.40; total 20.15) Tj ET Q\n"
+                b"q 60 0 0 50 40 350 cm /Swatch Do Q\n",
+            )
+        appearance = pikepdf.Stream(
+            pdf,
+            b"q 1 0.85 0.1 rg 0 0 240 80 re f Q\n"
+            b"BT /Label 16 Tf 0 g 12 50 Td (Amount 000123.40) Tj 0 -24 Td (Total 20.15) Tj ET\n",
+        )
+        appearance.Type, appearance.Subtype = pikepdf.Name.XObject, pikepdf.Name.Form
+        appearance.BBox = pikepdf.Array([0, 0, 240, 80])
+        appearance.Resources = pikepdf.Dictionary(Font=pikepdf.Dictionary(Label=font))
+        annotation = pikepdf.Dictionary(
+            Type=pikepdf.Name.Annot,
+            Subtype=pikepdf.Name.Widget if forms else pikepdf.Name.FreeText,
+            Rect=pikepdf.Array([40, 200, 280, 280]),
+            AP=pikepdf.Dictionary(N=appearance),
+            F=4,
+        )
+        if forms:
+            annotation.FT, annotation.T, annotation.V = pikepdf.Name.Tx, "amount", "000123.40"
+        else:
+            annotation.Contents = "Amount 000123.40; Total 20.15"
+        reference = pdf.make_indirect(annotation)
+        page.Annots = pikepdf.Array([reference])
+        if forms:
+            pdf.Root.AcroForm = pikepdf.Dictionary(Fields=pikepdf.Array([reference]))
+        control = pdf.add_blank_page(page_size=(400, 500))
+        control.Resources = pikepdf.Dictionary(Font=pikepdf.Dictionary(Body=font))
+        control.Contents = pikepdf.Stream(
+            pdf, b"q BT /Body 16 Tf 40 450 Td (Untouched page 002; balance 001.20) Tj ET Q\n"
+        )
+        if inherited_resources:
+            pdf.Root.Pages.Resources = resources
+            del page.obj["/Resources"]
+        pdf.save(path)
     return path
 
 
@@ -713,7 +782,7 @@ def test_empty_string_xfdf_export_is_explicitly_unsupported(tmp_path):
 
 @native
 def test_annotation_flatten_page_selection_and_widget_gate(tmp_path):
-    source = annotation_fixture(tmp_path / "source.pdf")
+    source = annotation_fixture(tmp_path / "source.pdf", flattenable=True)
     job = _run(tmp_path, "oxide_annotation_flatten", source, {"pages": "1", "allow_flatten": True})
     assert job.state == "completed", job.errors
     report = _report(job)
@@ -739,11 +808,225 @@ def test_annotation_flatten_page_selection_and_widget_gate(tmp_path):
 
 
 @native
+@pytest.mark.parametrize("forms", [False, True])
+@pytest.mark.parametrize("defect", ["missing_contents", "inherited_resources"])
+def test_flatten_rejects_selected_page_structures_with_native_content_loss(tmp_path, forms, defect):
+    source = flatten_structure_fixture(tmp_path / "source.pdf", forms=forms, **{defect: True})
+    operation = "oxide_form_flatten" if forms else "oxide_annotation_flatten"
+    job = _run(tmp_path, operation, source, {"pages": "1", "allow_flatten": True})
+    _assert_failed(job)
+    expected = (
+        "local content streams" if defect == "missing_contents" else "inherited page resources"
+    )
+    assert expected in str(job.errors)
+
+
+@native
+@pytest.mark.parametrize("forms", [False, True])
+def test_flatten_keeps_selected_original_content_and_records_appearance_comparison(tmp_path, forms):
+    from PIL import ImageChops
+
+    source = flatten_structure_fixture(tmp_path / "source.pdf", forms=forms)
+    operation = "oxide_form_flatten" if forms else "oxide_annotation_flatten"
+    job = _run(tmp_path, operation, source, {"pages": "1", "allow_flatten": True})
+    assert job.state == "completed", job.errors
+    report = _report(job)
+    assert report["flatten_preflight"]["stage"] == "source preflight before native flattening"
+    assert report["independent_flatten_verification"]["selected_appearance_counts"] == {"1": 1}
+    comparisons = []
+    for number in (0, 1):
+        original, original_text, _ = _renderer_snapshot(source, number)
+        actual, actual_text, _ = _renderer_snapshot(_output(job, ".pdf"), number)
+        for engine in original:
+            original[engine].save(tmp_path / f"source-page-{number + 1}-{engine}.png")
+            actual[engine].save(tmp_path / f"output-page-{number + 1}-{engine}.png")
+            difference = ImageChops.difference(original[engine], actual[engine])
+            bounds = difference.getbbox()
+            comparisons.append(
+                {
+                    "page": number + 1,
+                    "engine": engine,
+                    "exact_pixel_parity": bounds is None,
+                    "changed_bounds": bounds,
+                    "source_text": original_text,
+                    "saved_text": actual_text,
+                }
+            )
+            if forms and number == 0 and engine == "pdfium":
+                # Preserve the observed widget/page glyph-raster difference as a negative
+                # fidelity result. Original body text/image pixels must still match exactly.
+                assert bounds is not None
+                difference.paste((0, 0, 0), (80, 440, 560, 600))
+                assert difference.getbbox() is None
+            else:
+                assert bounds is None
+        if number == 0:
+            assert all("Invoice 000123.40; total 20.15" in text for text in actual_text)
+        else:
+            assert actual_text == original_text
+    (tmp_path / "render-comparison.json").write_text(json.dumps(comparisons, indent=2) + "\n")
+    assert all(
+        "Amount 000123.40" in text and "Total 20.15" in text
+        for text in _renderer_snapshot(_output(job, ".pdf"), 0)[1]
+    )
+
+
+@native
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "no_invocation",
+        "comment_invocation",
+        "appearance_bytes",
+        "original_content",
+        "original_resource",
+    ],
+)
+def test_flatten_verifier_rejects_selected_content_resource_and_appearance_loss(tmp_path, mutation):
+    import io
+
+    import pikepdf
+
+    from pdf_multitool.oxide_forms import _verify_flatten_saved
+
+    source = flatten_structure_fixture(tmp_path / "source.pdf")
+    job = _run(tmp_path, "oxide_annotation_flatten", source, {"pages": "1", "allow_flatten": True})
+    assert job.state == "completed", job.errors
+    with pikepdf.open(_output(job, ".pdf")) as pdf:
+        page = pdf.pages[0]
+        if mutation == "no_invocation":
+            page.Contents = pikepdf.Array([page.Contents[0]])
+        elif mutation == "comment_invocation":
+            page.Contents[-1].write(b"% q 1 0 0 1 40 200 cm /FlatAnnot0 Do Q\n")
+        elif mutation == "appearance_bytes":
+            page.Resources.XObject.FlatAnnot0.write(b"q Q\n")
+        elif mutation == "original_content":
+            page.Contents[0].write(b"q Q\n")
+        else:
+            page.Resources.Font.Body.BaseFont = pikepdf.Name.Courier
+        data = io.BytesIO()
+        pdf.save(data)
+    with pytest.raises(JobError, match=r"appearance|original content|original resources"):
+        _verify_flatten_saved(source.read_bytes(), data.getvalue(), [0])
+
+
+@native
+def test_flatten_preserves_duplicate_appearance_multiplicity_and_placement(tmp_path):
+    import pikepdf
+    from PIL import ImageChops
+
+    original = flatten_structure_fixture(tmp_path / "original.pdf")
+    source = tmp_path / "source.pdf"
+    with pikepdf.open(original) as pdf:
+        annotation = pikepdf.Dictionary(pdf.pages[0].Annots[0])
+        annotation.Rect = pikepdf.Array([40, 100, 280, 180])
+        pdf.pages[0].Annots.append(pdf.make_indirect(annotation))
+        pdf.save(source)
+    job = _run(tmp_path, "oxide_annotation_flatten", source, {"pages": "1", "allow_flatten": True})
+    assert job.state == "completed", job.errors
+    assert _report(job)["independent_flatten_verification"]["selected_appearance_counts"] == {
+        "1": 2
+    }
+    before, _, _ = _renderer_snapshot(source, 0)
+    after, _, _ = _renderer_snapshot(_output(job, ".pdf"), 0)
+    assert all(
+        ImageChops.difference(before[engine], after[engine]).getbbox() is None for engine in before
+    )
+
+
+@native
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "transform_tail",
+        "clip_tail",
+        "unbalanced_state",
+        "marked_content",
+        "appearance_matrix",
+        "visible_link_border",
+        "unspecified_link_border",
+    ],
+)
+def test_flatten_rejects_unverifiable_state_or_unpainted_link_border(tmp_path, mutation):
+    import pikepdf
+
+    original = flatten_structure_fixture(tmp_path / "original.pdf")
+    source = tmp_path / "source.pdf"
+    with pikepdf.open(original) as pdf:
+        page = pdf.pages[0]
+        if mutation in {"transform_tail", "clip_tail", "unbalanced_state", "marked_content"}:
+            suffix = {
+                "transform_tail": b"1 0 0 1 40 0 cm",
+                "clip_tail": b"0 0 10 10 re W n",
+                "unbalanced_state": b"q",
+                "marked_content": b"q /Artifact BMC Q",
+            }[mutation]
+            page.Contents.write(page.Contents.read_bytes() + suffix + b"\n")
+        elif mutation == "appearance_matrix":
+            page.Annots[0].AP.N.Matrix = pikepdf.Array([1, 0, 0, 1, 5, 0])
+        else:
+            link = pikepdf.Dictionary(
+                Subtype=pikepdf.Name.Link,
+                Rect=pikepdf.Array([40, 300, 200, 330]),
+                A=pikepdf.Dictionary(S=pikepdf.Name.URI, URI="https://example.invalid/synthetic"),
+            )
+            if mutation == "visible_link_border":
+                link.Border = pikepdf.Array([0, 0, 2])
+            page.Annots.append(pdf.make_indirect(link))
+        pdf.save(source)
+    job = _run(tmp_path, "oxide_annotation_flatten", source, {"pages": "1", "allow_flatten": True})
+    _assert_failed(job)
+    assert "preflight" in str(job.errors)
+
+
+@native
+@pytest.mark.parametrize(
+    "semantics",
+    [
+        "hidden",
+        "invisible",
+        "no_view",
+        "no_zoom",
+        "no_rotate",
+        "toggle_no_view",
+        "opacity",
+        "optional_content",
+    ],
+)
+def test_flatten_rejects_external_annotation_appearance_semantics(tmp_path, semantics):
+    import pikepdf
+
+    original = flatten_structure_fixture(tmp_path / "original.pdf")
+    source = tmp_path / "source.pdf"
+    with pikepdf.open(original) as pdf:
+        annotation = pdf.pages[0].Annots[0]
+        if semantics == "opacity":
+            annotation.CA = 0.25
+        elif semantics == "optional_content":
+            annotation.OC = pdf.make_indirect(
+                pikepdf.Dictionary(Type=pikepdf.Name.OCG, Name="Synthetic layer")
+            )
+        else:
+            annotation.F = {
+                "invisible": 1,
+                "hidden": 2,
+                "no_zoom": 8,
+                "no_rotate": 16,
+                "no_view": 32,
+                "toggle_no_view": 256,
+            }[semantics]
+        pdf.save(source)
+    job = _run(tmp_path, "oxide_annotation_flatten", source, {"pages": "1", "allow_flatten": True})
+    _assert_failed(job)
+    assert "preflight" in str(job.errors)
+
+
+@native
 @pytest.mark.parametrize("mutation", ["annotation_loss", "resource_change"])
 def test_flatten_verification_rejects_unselected_page_changes(tmp_path, mutation):
     from pdf_multitool.oxide_forms import _verify_flatten_saved
 
-    source = annotation_fixture(tmp_path / "source.pdf")
+    source = annotation_fixture(tmp_path / "source.pdf", flattenable=True)
     job = _run(tmp_path, "oxide_annotation_flatten", source, {"pages": "1", "allow_flatten": True})
     assert job.state == "completed", job.errors
     with pymupdf.open(_output(job, ".pdf")) as altered:
@@ -754,7 +1037,7 @@ def test_flatten_verification_rejects_unselected_page_changes(tmp_path, mutation
             font_xref = page.get_fonts()[0][0]
             altered.xref_set_key(font_xref, "BaseFont", "/Courier")
         tampered = altered.tobytes()
-    with pytest.raises(JobError, match="unselected page"):
+    with pytest.raises(JobError, match=r"unselected page|selected-page original resources"):
         _verify_flatten_saved(source.read_bytes(), tampered, [0])
 
 

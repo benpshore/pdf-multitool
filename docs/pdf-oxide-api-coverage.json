@@ -2,8 +2,8 @@
   "schema_version": 2,
   "distribution": "pdf-oxide",
   "version": "0.3.78",
-  "generated_at_utc": "2026-10-16T00:30:11.917987+00:00",
-  "audit_stage": "2026-10-16 adapter correction pass; no native correctness approval, feature-family promotion or merge clearance.",
+  "generated_at_utc": "2026-10-16T01:01:01.205467+00:00",
+  "audit_stage": "2026-10-16 selected-page flatten loss follow-up to 45dc322; no native correctness approval, feature-family promotion or merge clearance.",
   "inventory": {
     "path": "docs/pdf-oxide-public-api-0.3.78.json",
     "sha256": "97245209527a3cf6743f734415ad8d08aea7267f2fbcccbb69b617ecb34d5a5d",
@@ -56,7 +56,7 @@
     },
     {
       "path": "docs/oxide-capabilities-forms.json",
-      "sha256": "969070181591d2bff57661dc1ef07c1bcb25595f240eef209176ca2f7808a278"
+      "sha256": "38f035e221dff5f5c63677728d5158b11e74ab786a1c77b876e1d8b30f98ba53"
     },
     {
       "path": "docs/oxide-capabilities-security.json",
@@ -307,8 +307,10 @@
         "output": "1000 fields, 2000 annotations, 2 MiB report/export, 16 MiB aggregate output; no truncated success",
         "configuration": "32 KiB strict JSON; 100 edits; no arbitrary method dispatch or user output paths",
         "coordinates": "Native PDF user-space coordinates; one-based source pages, zero-based annotation indices. Explicit highlight correction preserves CropBox/Rotate handling and accepts only 0/90/180/270 rotation, UserUnit 1 and rectangles wholly inside MediaBox intersection CropBox; no inferred layout or coordinate normalization.",
-        "independent_validation": "PyMuPDF structural reopen and existing field-value checks; saved flattening additionally uses bounded pikepdf page/annotation graph comparisons. Explicit highlight correction uses pinned pikepdf 10.17.0, records its backend and retains the defective native comparison. These checks do not establish general visible appearance accuracy.",
-        "graph_limits": "Annotation/resource graphs at most 100000 nodes/depth 64; cumulative decoded page-content plus resource streams at most 16 MiB per snapshot; absolute native numeric metadata tolerance 0.001. Textual numeric values and decoded stream hashes are exact. Budget or verification failure publishes no candidate."
+        "independent_validation": "PyMuPDF structural reopen and existing field-value checks; flattening adds raw non-inheriting pikepdf preflight plus selected original content/resource preservation and actual AP invocation checks. Unsupported shapes and mismatches fail without output. Opt-in highlight correction remains a separately named pikepdf backend. These checks do not establish visible appearance parity.",
+        "graph_limits": "Annotation/resource graphs at most 100000 nodes/depth 64; cumulative decoded page-content plus resource streams at most 16 MiB per snapshot; absolute native numeric metadata tolerance 0.001. Textual numeric values and decoded stream hashes are exact. Budget or verification failure publishes no candidate.",
+        "flatten_input_limits": "Targeted selected pages require local Contents streams, non-shadowed Resources, identity AP matrices and original commands inside balanced q/Q, text, marked-content and compatibility scopes. Graphics stack <=64, source commands <=100000, decoded source content <=16 MiB. External annotation flags allow only Print/ReadOnly/Locked/LockedContents; CA must be 1, OC absent, BM absent/Normal. Missing-AP links require explicit zero-width Border/BS without conflict; popup requires a usable parent AP.",
+        "flatten_comparison_limits": "Selected original resources and AP Resources/Group/stream hashes are exact. Only appearance metadata and placement numeric comparisons use absolute 0.001 tolerance; textual numeric strings remain exact. Added invocation commands <=2000 annotations*6. Selected validation shares the 100000-node/depth64/16MiB decoded-stream budget. Existing original-annotation metadata checks retain their documented tolerance."
       },
       "correction_pass_20261016": {
         "status": "owner source/tests frozen; report updated after exact owner reconciliation",
@@ -325,6 +327,51 @@
         "merge_hold": true,
         "review_manifest_sha256": "bdcee0a01faf32c141ec7491df639f1a62ba498ad56dad05274f1e739941627e",
         "review_zip_bytes": 1352832
+      },
+      "selected_page_followup_20261016": {
+        "source_checkpoint": "45dc3224054ad30f08b4dce2385a4d4eaba02dc0",
+        "source_frozen": true,
+        "module_sha256": "7feb4f390e2fae088bda4f123d4452e1702733453a97227d6c2ed4d3f037e253",
+        "tests_sha256": "79d2b37edac8d6b65b569e402555eca8bd62ddc57751132349dbd440f5a95b98",
+        "tests": "84 tests passed in 24.83 seconds; Ruff and diff checks clean (owner freeze)",
+        "negative_baseline_evidence": [
+          "evidence/forms-selected-loss-45dc322-v2",
+          "evidence/forms-flatten-hidden-baseline-45dc322-v1"
+        ],
+        "independent_working_tree_probes": [
+          "evidence/forms-flatten-graphics-state-audit-20261016-v1",
+          "evidence/forms-flatten-annotation-semantics-audit-20261016-v1"
+        ],
+        "probe_provenance": "Initial live-working-tree probes did not capture adapter bytes before invocation and are not attributed retrospectively to a commit. The hidden case was separately rerun using identical input bytes and isolated git archive of 45dc322 source, module SHA c51342bab1a13d352550324d1684684b625ef376c40589e57dcbd2709e7a41a9.",
+        "opacity_probe": "CA=0.25 did not reproduce an appearance difference in the tested MuPDF case; opacity refusal is a conservative unsupported-shape restriction, not a claimed reproduced opacity defect.",
+        "remaining_pixel_oracle": {
+          "renderer": "PDFium",
+          "different_pixels": 3941,
+          "changed_box": [
+            103,
+            477,
+            374,
+            549
+          ],
+          "maximum_channel_difference": 84,
+          "mupdf_pixels_identical_for_sample": true,
+          "pixel_parity": false,
+          "strict_failed_oracle_preserved": true
+        },
+        "review_document": "docs/PDF_OXIDE_CORRECTION_REVIEW_20261016.md",
+        "native_accuracy_qualified": false,
+        "merge_hold": true,
+        "acceptance_ledger_promotion": false,
+        "other_holds": "Native redaction stays blocked after confirmed recoverable ActualText. Image completeness and creation/render parity remain unaccepted.",
+        "final_review_package": {
+          "index": "evidence/forms-selected-loss-review-v3/index.html",
+          "files_excluding_manifest": 133,
+          "bytes_excluding_manifest": 1463468,
+          "zip_bytes": 893616,
+          "manifest_sha256": "9dc004fe734f380384ed9d2436d577e4ade444ae4c4b3910c6f170e0af3d5cd7",
+          "contents": "Exact four original negative retries and durable hidden case retry reject without output and retain source hashes; final restricted positive annotation/form cases and the separate strict failed form pixel oracle are preserved.",
+          "acceptance": "No appearance-parity acceptance or ledger promotion."
+        }
       }
     },
     "security": {
@@ -405,9 +452,13 @@
         "PdfDocument.is_page_marked_for_flatten"
       ],
       "status": "implemented_with_independent_rejection_of_known_loss",
-      "backend": "pdf-oxide rewrite; pikepdf saved-result validation",
+      "backend": "pdf-oxide rewrite; pikepdf raw source preflight and saved-result validation",
       "native_defect_fixed_upstream": false,
-      "note": "Reject native form-loss warnings or persistent selected annotations/widgets. Independent checks compare unselected page geometry, decoded content, inherited Resources, page Group and annotation graphs; selected forms retain non-widget annotations. These checks are not proof of appearance fidelity.",
+      "note": "Reject missing local Contents, inherited resource shadowing, unsupported external visibility/opacity/optional-content/blend flags, nonidentity AP matrices and unbalanced source state. Selected original content remains an exact ordered prefix; original resource entries and page Group are exact. Parsed AP calls preserve count/order, stream/resource identity and expected placement. Native warnings, persistent targets or unknown appended commands reject output. Native defects remain unresolved; a positive form case still differs in PDFium by 3941 glyph pixels (max channel difference 84), so appearance parity remains false.",
+      "native_failure_evidence": [
+        "evidence/forms-selected-loss-45dc322-v2",
+        "evidence/forms-flatten-hidden-baseline-45dc322-v1"
+      ],
       "family_report": "docs/oxide-capabilities-forms.json",
       "native_accuracy_qualified": false
     },
@@ -539,7 +590,7 @@
   },
   "operation_catalog": {
     "path": "docs/PDF_OXIDE_OPERATIONS_20261016.md",
-    "sha256": "337fa3884c10a552596f95e8e4d89ce8e6f2a4aa73e4c93e5169884eff542069",
+    "sha256": "b216cab423c4105cc32bdf017cab92835b4f469ffdd5c61a13ea98c9bfdb83e9",
     "count": 37,
     "names": [
       "oxide",
@@ -623,6 +674,27 @@
     ],
     "note": "Changed method dispositions follow stronger gates or newly reproduced failures. Unchanged high-level disposition can still contain new variant restrictions, backend corrections or diagnostics; compare adapter_corrections and exact report snapshots."
   },
+  "selected_page_followup_comparison": {
+    "sha": "45dc3224054ad30f08b4dce2385a4d4eaba02dc0",
+    "report_sha256": "51be45cd320e0c40a35860110c0fcc0dfb45b686ca7d55d55ce3ce2f6a5159d6",
+    "counts": {
+      "blocked_workflow_due_to_native_failure": 2,
+      "equivalent_async_workflow": 149,
+      "equivalent_value_or_constructor": 19,
+      "equivalent_workflow": 43,
+      "implemented_with_constraints": 295,
+      "internal_or_value_protocol": 102,
+      "no_bound_workflow_consumer": 55,
+      "not_exposed_as_secure_redaction": 2,
+      "not_exposed_as_trust_validation": 1,
+      "resource_gated_unqualified": 5,
+      "resource_or_active_content_gate": 20,
+      "upstream_defect_or_noop": 28,
+      "value_object_member": 67
+    },
+    "classification_changes": [],
+    "note": "Missing local Contents and shadowed inherited Resources caused selected appearance loss in both flatten routes despite completed status. Native failures remain preserved; follow-up gates do not qualify fidelity or promote API/operation/acceptance counts."
+  },
   "taxonomy": {
     "implemented_with_constraints": "Bounded app capability context exists; does not claim every variant, every direct SDK call, native correctness, visual fidelity or general accuracy.",
     "equivalent_async_workflow": "Existing supervised app scheduling represents a synchronous workflow; upstream threadpool wrappers are not called. Inspect target_disposition for blocked/partial targets.",
@@ -665,7 +737,7 @@
     },
     {
       "path": "src/pdf_multitool/oxide_forms.py",
-      "sha256": "c51342bab1a13d352550324d1684684b625ef376c40589e57dcbd2709e7a41a9"
+      "sha256": "7feb4f390e2fae088bda4f123d4452e1702733453a97227d6c2ed4d3f037e253"
     },
     {
       "path": "src/pdf_multitool/oxide_html.py",
@@ -686,7 +758,7 @@
   ],
   "refresh_procedure": {
     "script": "evidence/refresh_oxide_api_coverage_20261016.py (outside repository)",
-    "script_sha256": "af39d375ba8840c7175767d98f4d14f39e8bb0ed13f5d02528511c2e7384b164",
+    "script_sha256": "bfd0297723f9720998fa4fcb254ee9c7db743feec8d70ee8fe1cccc8b4b67a96",
     "default_destination": "Isolated evidence preview; repository report requires explicit --output.",
     "checks": "788 unique pinned entries, 76 exports, 37 checkpoint operations, resolving capability/correction references, complete dispositions, snapshots and preserved merge/accuracy holds."
   },
@@ -700,7 +772,8 @@
     "Native fixed/streaming tables and HTML/CSS table creation blocked after visible overlap or cell-loss defects.",
     "Native DOM text replacement/removal blocked after black masking; basic add-text has encoding/fidelity constraints.",
     "Native annotation removal does not persist and native highlight appearance is malformed/absent. Default native paths remain blocked; explicit pikepdf highlight correction has separate provenance, bounded checks and retained native comparison. Radio/form limitations remain.",
-    "Secure native redaction is fully blocked: ActualText and restored q/Q text-state failures retained recoverable content despite apparent success.",
+    "Secure native redaction is fully blocked: ActualText and restored q/Q text-state failures retained recoverable content despite apparent success. Parent Ada confirmed ActualText remains recoverable in the preserved old output; no redaction fallback or qualification is restored.",
+    "Both native form and annotation flattening can drop every selected appearance when Contents is absent, or shadow inherited Resources and lose original images/fonts. Exact 45dc322 annotation flatten also made a hidden annotation visible. Restricted preflight and selected-page content/resource/AP invocation checks reject these inputs; native appearance fidelity is not repaired or accepted. One positive form case still differs in PDFium by 3941 pixels, max channel difference 84; strict failed oracle preserved.",
     "Native filtered text extraction can reinsert full-page table content outside its requested region; region spans/words/direct-table metadata remain available.",
     "AES256 native output fails independent qpdf checks; authenticated encrypted rewrite loses editor authentication.",
     "Gradient/ExtGState/line-cap/join/style helpers have no bound rendering consumer despite constructible values.",
@@ -2323,18 +2396,25 @@
         "PdfDocument.flatten_warnings"
       ],
       "route": "oxide_form_flatten",
-      "status": "implemented_with_independent_loss_and_persistence_gates",
-      "details": "Explicit allow_flatten; selected widgets or entire AcroForm flattened in a derivative. Every native flatten_warnings entry is treated as a possible content-loss signal and rejects the output with bounded diagnostic text. Saved selected widgets must be absent; selected page geometry and non-widget annotation graphs must remain intact. Unselected page geometry, decoded content, inherited Resources, page Group and annotation graphs must match independently through pikepdf. XFA is unsupported. Interactivity changes; passing these checks is not appearance qualification.",
+      "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified",
+      "details": "Explicit allow_flatten; selected widgets or entire AcroForm flattened only through the documented restricted preflight and saved-result checks. Every native flatten_warnings entry rejects the output with its bounded diagnostic. Selected widgets must be absent; selected non-widget annotations and unselected pages are retained. XFA is unsupported. Passing these checks does not establish visible appearance accuracy.",
       "verification": [
         "actual selected-page widget removal with other-page widgets and non-widget notes preserved",
         "actual all-page AcroForm removal and retained source text",
         "native blank-signature appearance warning reproduced and rejected without PDF",
-        "independent unselected-page geometry/content/resources/Group/annotation change rejection"
+        "independent unselected-page geometry/content/resources/Group/annotation change rejection",
+        "Exact 45dc322 missing-Contents and inherited-Resources losses reproduced in both form and annotation routes, then refused by current preflight",
+        "Hidden annotation visibility loss reproduced on exact45dc322; appearance-affecting flags now rejected",
+        "Original resource-name collisions, missing/changed/reordered AP calls and unsupported placement/state are rejected",
+        "Supported synthetic positive checks retain body/image pixels outside the AP and exact numeric content; they do not establish pixel parity"
       ],
       "limitations": [
-        "Native missing-appearance behavior remains defective; no appearance reconstruction is performed by flattening",
-        "No general field appearance, Unicode glyph or source/output pixel equivalence claim"
-      ]
+        "Native missing-Contents, inherited-resource-shadowing and hidden-annotation flatten defects remain unresolved upstream. These are rejection checks, not appearance reconstruction or native fidelity qualification. Valid PDFs outside the restricted supported shape may be rejected.",
+        "A positive form case still differs in PDFium by 3941 glyph-region pixels (maximum channel difference 84); MuPDF pixels match for that case. The strict failing pixel oracle is preserved and appearance parity remains false."
+      ],
+      "preflight": "Raw pikepdf preflight uses inherit_page_attributes=False. A selected page with targets requires a nonempty list of local Contents streams and may not rely on inherited Resources that native output would shadow. Original commands must restore graphics/text/marked-content/compatibility state inside balanced q/Q blocks. Nonidentity AP matrices and unsupported external annotation visibility/opacity/optional-content/blend semantics are rejected; no source normalization or fallback painting occurs.",
+      "selected_page_verification": "Selected original decoded content-stream hashes must remain an exact ordered prefix. Every original resource entry and page Group is preserved exactly. Each removed usable normal Form appearance must match saved decoded content and exact resource/Group graphs, and be invoked in order with the expected finite Rect/BBox transform by parsed q/cm/Do/Q instructions; duplicates, missing calls, changed placement and extra appended commands fail. Appearance numeric metadata/placement tolerance is 0.001. Existing removal, selected geometry and unselected page/content/resource/annotation checks remain.",
+      "native_defect_fixed_upstream": false
     },
     "oxide-capabilities-forms:8": {
       "report": "docs/oxide-capabilities-forms.json",
@@ -2476,19 +2556,26 @@
         "PdfDocument.is_page_marked_for_flatten"
       ],
       "route": "oxide_annotation_flatten",
-      "status": "implemented_with_independent_loss_and_persistence_gates",
-      "details": "Explicit allow_flatten; existing widgets require separate form flattening. After serialization, native and independent pikepdf readers must find no remaining selected annotations. Independently compare all unselected page geometry, decoded content, inherited Resources, page Group and annotation graphs; selected geometry must remain intact. Actual link-only and no-appearance-highlight cases persist natively and are rejected without output. Native flatten marks or successful serialization are not correctness proof.",
+      "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified",
+      "details": "Explicit allow_flatten; existing widgets require separate form flattening. Source preflight rejects known loss shapes. After serialization, native and independent readers must find no selected annotations and the selected-content/resource/AP invocation checks must pass. Earlier link-only and no-AP-highlight persistence failures remain rejected. Native flatten marks and successful serialization are not correctness proof.",
       "verification": [
         "selected page annotation removal in supported cases",
         "unselected page content/resource/annotation preservation checks",
         "actual link-only annotation persistence rejected for selected and whole-document modes",
         "actual no-appearance-highlight persistence rejected",
-        "widget-bearing page gate"
+        "widget-bearing page gate",
+        "Exact 45dc322 missing-Contents and inherited-Resources losses reproduced in both form and annotation routes, then refused by current preflight",
+        "Hidden annotation visibility loss reproduced on exact45dc322; appearance-affecting flags now rejected",
+        "Original resource-name collisions, missing/changed/reordered AP calls and unsupported placement/state are rejected",
+        "Supported synthetic positive checks retain body/image pixels outside the AP and exact numeric content; they do not establish pixel parity"
       ],
       "limitations": [
-        "Removal of interactivity is not proof of retained visible appearance",
-        "General missing-appearance reconstruction is unimplemented"
-      ]
+        "Native missing-Contents, inherited-resource-shadowing and hidden-annotation flatten defects remain unresolved upstream. These are rejection checks, not appearance reconstruction or native fidelity qualification. Valid PDFs outside the restricted supported shape may be rejected.",
+        "A positive form case still differs in PDFium by 3941 glyph-region pixels (maximum channel difference 84); MuPDF pixels match for that case. The strict failing pixel oracle is preserved and appearance parity remains false."
+      ],
+      "preflight": "Raw pikepdf preflight uses inherit_page_attributes=False. A selected page with targets requires a nonempty list of local Contents streams and may not rely on inherited Resources that native output would shadow. Original commands must restore graphics/text/marked-content/compatibility state inside balanced q/Q blocks. Nonidentity AP matrices and unsupported external annotation visibility/opacity/optional-content/blend semantics are rejected; no source normalization or fallback painting occurs.",
+      "selected_page_verification": "Selected original decoded content-stream hashes must remain an exact ordered prefix. Every original resource entry and page Group is preserved exactly. Each removed usable normal Form appearance must match saved decoded content and exact resource/Group graphs, and be invoked in order with the expected finite Rect/BBox transform by parsed q/cm/Do/Q instructions; duplicates, missing calls, changed placement and extra appended commands fail. Appearance numeric metadata/placement tolerance is 0.001. Existing removal, selected geometry and unselected page/content/resource/annotation checks remain.",
+      "native_defect_fixed_upstream": false
     },
     "oxide-capabilities-forms:15": {
       "report": "docs/oxide-capabilities-forms.json",
@@ -2544,6 +2631,33 @@
       "apis": [],
       "status": "separate_explicit_gate",
       "details": "No private keys, certificates, signing or form JavaScript is loaded/executed. Signature inspection/security belongs to oxide_security. Existing signature fields are not filled by this module; rewriting signed documents records invalidation."
+    },
+    "oxide-capabilities-forms:19": {
+      "report": "docs/oxide-capabilities-forms.json",
+      "capability_index": 19,
+      "owner": "forms",
+      "id": "oxide.flatten.native_selected_page_loss",
+      "apis": [
+        "PdfDocument.flatten_forms",
+        "PdfDocument.flatten_forms_on_page",
+        "PdfDocument.flatten_page_annotations",
+        "PdfDocument.flatten_all_annotations"
+      ],
+      "route": "oxide_form_flatten / oxide_annotation_flatten",
+      "status": "upstream_content_loss_failure_blocked",
+      "native_defect_fixed_upstream": false,
+      "source_checkpoint": "45dc3224054ad30f08b4dce2385a4d4eaba02dc0",
+      "failure_contexts": [
+        "Selected page lacks local Contents: both native flatten routes remove the annotation/widget and orphan its appearance, changing 76800 nonwhite pixels to zero in both renderers",
+        "Selected page inherits Resources: both routes install a local XObject-only dictionary that shadows original fonts/images; invoice text can remain extractable while the image disappears",
+        "Hidden annotation /F=2: exact45dc322 annotation flatten completes but turns the hidden appearance visible in both MuPDF and PDFium"
+      ],
+      "evidence": [
+        "evidence/forms-selected-loss-45dc322-v2/reproduction.json",
+        "evidence/forms-flatten-hidden-baseline-45dc322-v1/reproduction.json"
+      ],
+      "response": "Fail-closed preflight and selected-page preservation/invocation checks. No wrapper repair, renderer substitution or qualification of the broken native methods.",
+      "qualification": "Parent Ada found the selected-page blockers; negative reproductions do not grant positive appearance acceptance."
     },
     "oxide-capabilities-security:0": {
       "report": "docs/oxide-capabilities-security.json",
@@ -4780,7 +4894,8 @@
       "disposition": "equivalent_async_workflow",
       "owner": "forms",
       "capability_refs": [
-        "oxide-capabilities-forms:14"
+        "oxide-capabilities-forms:14",
+        "oxide-capabilities-forms:19"
       ],
       "note": "No direct upstream threadpool call; existing supervisor supplies bounded queue/cancellation. Target disposition: implemented_with_constraints",
       "accuracy_qualified": false,
@@ -4790,7 +4905,11 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:14",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
+        },
+        {
+          "ref": "oxide-capabilities-forms:19",
+          "status": "upstream_content_loss_failure_blocked"
         }
       ],
       "equivalent_to": "PdfDocument.flatten_all_annotations",
@@ -4804,7 +4923,8 @@
       "disposition": "equivalent_async_workflow",
       "owner": "forms",
       "capability_refs": [
-        "oxide-capabilities-forms:7"
+        "oxide-capabilities-forms:7",
+        "oxide-capabilities-forms:19"
       ],
       "note": "No direct upstream threadpool call; existing supervisor supplies bounded queue/cancellation. Target disposition: implemented_with_constraints",
       "accuracy_qualified": false,
@@ -4814,7 +4934,11 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:7",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
+        },
+        {
+          "ref": "oxide-capabilities-forms:19",
+          "status": "upstream_content_loss_failure_blocked"
         }
       ],
       "equivalent_to": "PdfDocument.flatten_forms",
@@ -4828,7 +4952,8 @@
       "disposition": "equivalent_async_workflow",
       "owner": "forms",
       "capability_refs": [
-        "oxide-capabilities-forms:7"
+        "oxide-capabilities-forms:7",
+        "oxide-capabilities-forms:19"
       ],
       "note": "No direct upstream threadpool call; existing supervisor supplies bounded queue/cancellation. Target disposition: implemented_with_constraints",
       "accuracy_qualified": false,
@@ -4838,7 +4963,11 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:7",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
+        },
+        {
+          "ref": "oxide-capabilities-forms:19",
+          "status": "upstream_content_loss_failure_blocked"
         }
       ],
       "equivalent_to": "PdfDocument.flatten_forms_on_page",
@@ -4852,7 +4981,8 @@
       "disposition": "equivalent_async_workflow",
       "owner": "forms",
       "capability_refs": [
-        "oxide-capabilities-forms:14"
+        "oxide-capabilities-forms:14",
+        "oxide-capabilities-forms:19"
       ],
       "note": "No direct upstream threadpool call; existing supervisor supplies bounded queue/cancellation. Target disposition: implemented_with_constraints",
       "accuracy_qualified": false,
@@ -4862,7 +4992,11 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:14",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
+        },
+        {
+          "ref": "oxide-capabilities-forms:19",
+          "status": "upstream_content_loss_failure_blocked"
         }
       ],
       "equivalent_to": "PdfDocument.flatten_page_annotations",
@@ -4912,7 +5046,7 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:7",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
         }
       ],
       "equivalent_to": "PdfDocument.flatten_warnings",
@@ -5220,7 +5354,7 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:14",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
         }
       ],
       "equivalent_to": "PdfDocument.is_page_marked_for_flatten",
@@ -12401,7 +12535,8 @@
       "disposition": "implemented_with_constraints",
       "owner": "forms",
       "capability_refs": [
-        "oxide-capabilities-forms:14"
+        "oxide-capabilities-forms:14",
+        "oxide-capabilities-forms:19"
       ],
       "note": "See exact capability variants and restrictions in referenced reports; report status is not visual correctness qualification.",
       "accuracy_qualified": false,
@@ -12411,7 +12546,11 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:14",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
+        },
+        {
+          "ref": "oxide-capabilities-forms:19",
+          "status": "upstream_content_loss_failure_blocked"
         }
       ]
     },
@@ -12423,7 +12562,8 @@
       "disposition": "implemented_with_constraints",
       "owner": "forms",
       "capability_refs": [
-        "oxide-capabilities-forms:7"
+        "oxide-capabilities-forms:7",
+        "oxide-capabilities-forms:19"
       ],
       "note": "See exact capability variants and restrictions in referenced reports; report status is not visual correctness qualification.",
       "accuracy_qualified": false,
@@ -12433,7 +12573,11 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:7",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
+        },
+        {
+          "ref": "oxide-capabilities-forms:19",
+          "status": "upstream_content_loss_failure_blocked"
         }
       ]
     },
@@ -12445,7 +12589,8 @@
       "disposition": "implemented_with_constraints",
       "owner": "forms",
       "capability_refs": [
-        "oxide-capabilities-forms:7"
+        "oxide-capabilities-forms:7",
+        "oxide-capabilities-forms:19"
       ],
       "note": "See exact capability variants and restrictions in referenced reports; report status is not visual correctness qualification.",
       "accuracy_qualified": false,
@@ -12455,7 +12600,11 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:7",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
+        },
+        {
+          "ref": "oxide-capabilities-forms:19",
+          "status": "upstream_content_loss_failure_blocked"
         }
       ]
     },
@@ -12467,7 +12616,8 @@
       "disposition": "implemented_with_constraints",
       "owner": "forms",
       "capability_refs": [
-        "oxide-capabilities-forms:14"
+        "oxide-capabilities-forms:14",
+        "oxide-capabilities-forms:19"
       ],
       "note": "See exact capability variants and restrictions in referenced reports; report status is not visual correctness qualification.",
       "accuracy_qualified": false,
@@ -12477,7 +12627,11 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:14",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
+        },
+        {
+          "ref": "oxide-capabilities-forms:19",
+          "status": "upstream_content_loss_failure_blocked"
         }
       ]
     },
@@ -12523,7 +12677,7 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:7",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
         }
       ]
     },
@@ -12805,7 +12959,7 @@
       "capability_variant_statuses": [
         {
           "ref": "oxide-capabilities-forms:14",
-          "status": "implemented_with_independent_loss_and_persistence_gates"
+          "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified"
         }
       ]
     },
@@ -18651,7 +18805,7 @@
     },
     {
       "owner": "forms",
-      "result": "Native highlight remains defective/default gated, with separate explicit pikepdf correction and retained native comparison. Independent flatten loss/persistence/resource checks reject reproduced missing-appearance or retained-interactivity failures. Owner source/tests frozen at 57 passing; appearance acceptance remains separate."
+      "result": "Native highlight remains defective/default gated, with separate explicit pikepdf correction and retained native comparison. Follow-up selected-page flatten preflight and content/resource/AP invocation checks address reproduced loss at 45dc322; exact freeze/test evidence is recorded in the forms family report. Appearance acceptance remains withheld."
     },
     {
       "owner": "conversion",

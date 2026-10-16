@@ -125,9 +125,15 @@ native radio creation defects. The native paths fail explicitly. An explicit
 `allow_highlight_repair` option applies a separately identified pikepdf correction
 to the known rectangular highlight QuadPoints/appearance defect, retaining the
 unverified native comparison output. It does not repair the upstream method.
-Flattening now checks saved annotation/widget removal and unselected-page
-preservation independently, rejecting persistent links/no-appearance annotations
-and form warnings that identify blank-field loss. Region-filtered text
+Flattening now checks saved annotation/widget removal, selected-page original
+content/resources, appearance references and draw commands, and unselected-page
+preservation independently. Selected pages with missing content streams or
+inherited resources are rejected before native flattening: both shapes caused
+executed content loss in both annotation and form routes. Unsupported appearance
+placement, persistent annotations and form warnings identifying blank-field loss
+also reject publication. These are preservation gates, not native appearance
+repair. The [correction review record](PDF_OXIDE_CORRECTION_REVIEW_20261016.md)
+preserves Ada's findings and the four new reproductions. Region-filtered text
 can reinsert whole-page tables outside the region and is blocked; region spans,
 words and direct table/image metadata remain separate bounded calls. Plain-text
 format conversion ignores artifact exclusion on the frozen tagged fixture, so

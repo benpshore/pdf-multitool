@@ -705,14 +705,344 @@ def _annotation_fingerprints(pdf, *, exclude_widgets=False, original_counts=None
     return _pdf_graph_fingerprints(pdf, values)
 
 
+def _flatten_targets(page, forms):
+    import pikepdf
+
+    return [
+        annotation
+        for annotation in page.obj.get("/Annots", [])
+        if not forms or annotation.get("/Subtype") == pikepdf.Name.Widget
+    ]
+
+
+def _normal_appearance(annotation):
+    import pikepdf
+
+    appearance = annotation.get("/AP", pikepdf.Dictionary()).get("/N")
+    if isinstance(appearance, pikepdf.Dictionary):
+        state = annotation.get("/AS")
+        if not isinstance(state, pikepdf.Name) or str(state) not in appearance:
+            raise JobError("Flattening requires an explicit, valid normal appearance state")
+        appearance = appearance[str(state)]
+    return appearance
+
+
+def _nonpainting_annotation(annotation):
+    import pikepdf
+
+    if annotation.get("/Subtype") == pikepdf.Name.Link:
+        border, style = annotation.get("/Border"), annotation.get("/BS")
+        explicit_zero = (isinstance(style, pikepdf.Dictionary) and style.get("/W") == 0) or (
+            isinstance(border, pikepdf.Array) and len(border) in {3, 4} and border[2] == 0
+        )
+        return (
+            explicit_zero
+            and (
+                border is None
+                or (isinstance(border, pikepdf.Array) and len(border) in {3, 4} and border[2] == 0)
+            )
+            and (style is None or (isinstance(style, pikepdf.Dictionary) and style.get("/W") == 0))
+        )
+    if annotation.get("/Subtype") == pikepdf.Name.Popup:
+        parent = annotation.get("/Parent")
+        return isinstance(parent, pikepdf.Dictionary) and isinstance(
+            _normal_appearance(parent), pikepdf.Stream
+        )
+    return False
+
+
+def _check_flatten_content_state(streams):
+    """Require original commands to restore graphics/text state before the native overlay."""
+    import pikepdf
+
+    stack, in_text, marked, compatibility, total, commands = [], False, 0, 0, 0, 0
+    for stream in streams:
+        total += len(stream.read_bytes())
+        if total > 16 * 1024**2:
+            raise JobError("Flatten preflight content exceeds its decoded-stream limit")
+        for instruction in pikepdf.parse_content_stream(stream):
+            commands += 1
+            if commands > 100_000:
+                raise JobError("Flatten preflight content exceeds its command limit")
+            operator = str(instruction.operator)
+            if operator == "q":
+                stack.append((in_text, marked, compatibility))
+                if len(stack) > 64 or instruction.operands:
+                    raise JobError("Flatten preflight requires bounded valid graphics state")
+            elif operator == "Q":
+                if (
+                    not stack
+                    or stack.pop() != (in_text, marked, compatibility)
+                    or instruction.operands
+                ):
+                    raise JobError("Flatten preflight requires balanced graphics/text state")
+            elif not stack:
+                raise JobError(
+                    "Flatten preflight requires original content inside balanced q/Q blocks; "
+                    "inherited graphics or clipping state is unsupported"
+                )
+            elif operator == "BT":
+                if in_text:
+                    raise JobError("Flatten preflight rejects nested text objects")
+                in_text = True
+            elif operator == "ET":
+                if not in_text:
+                    raise JobError("Flatten preflight rejects unbalanced text objects")
+                in_text = False
+            elif operator in {"BMC", "BDC"}:
+                marked += 1
+            elif operator == "EMC":
+                marked -= 1
+                if marked < 0:
+                    raise JobError("Flatten preflight requires balanced marked content")
+            elif operator == "BX":
+                compatibility += 1
+            elif operator == "EX":
+                compatibility -= 1
+                if compatibility < 0:
+                    raise JobError("Flatten preflight requires balanced compatibility sections")
+    if stack or in_text or marked or compatibility:
+        raise JobError("Flatten preflight requires balanced graphics/text state")
+
+
+def _flatten_source_preflight(source_bytes, indices, *, forms=False):
+    """Inspect raw page dictionaries without materializing inherited attributes."""
+    import pikepdf
+
+    checked = []
+    try:
+        with pikepdf.open(io.BytesIO(source_bytes), inherit_page_attributes=False) as source:
+            for index in indices:
+                page = source.pages[index]
+                targets = _flatten_targets(page, forms)
+                if not targets:
+                    continue
+                contents = page.obj.get("/Contents")
+                streams = [contents] if isinstance(contents, pikepdf.Stream) else contents
+                if (
+                    not isinstance(streams, list | pikepdf.Array)
+                    or not streams
+                    or not all(isinstance(stream, pikepdf.Stream) for stream in streams)
+                ):
+                    raise JobError(
+                        f"PDF Oxide flatten preflight: page {index + 1} requires local content "
+                        "streams; the native engine can discard appearances without /Contents"
+                    )
+                resources = page.obj.get("/Resources")
+                if resources is None and _inherited_pdf_value(page, "/Resources", None) is not None:
+                    raise JobError(
+                        "PDF Oxide flatten preflight: inherited page resources "
+                        f"on page {index + 1} "
+                        "are unsupported; native flattening can hide inherited fonts/images"
+                    )
+                if resources is not None and not isinstance(resources, pikepdf.Dictionary):
+                    raise JobError("PDF Oxide flatten preflight requires a resource dictionary")
+                for annotation in targets:
+                    appearance = _normal_appearance(annotation)
+                    if annotation.get("/Subtype") != pikepdf.Name.Popup:
+                        flags = annotation.get("/F", 0)
+                        # Print/read-only/locked flags do not change static visible appearance.
+                        if type(flags) is not int or flags < 0 or flags & ~(4 | 64 | 128 | 512):
+                            raise JobError(
+                                "Flatten preflight rejects appearance-affecting annotation flags"
+                            )
+                        if (
+                            annotation.get("/CA", 1) != 1
+                            or annotation.get("/OC") is not None
+                            or annotation.get("/BM") not in {None, pikepdf.Name.Normal}
+                        ):
+                            raise JobError(
+                                "Flatten preflight rejects external annotation opacity, blend "
+                                "or optional-content membership"
+                            )
+                    if (
+                        appearance is None
+                        and annotation.get("/Subtype") == pikepdf.Name.Link
+                        and not _nonpainting_annotation(annotation)
+                    ):
+                        raise JobError(
+                            "Flatten preflight requires a saved appearance for links with "
+                            "visible or unspecified borders"
+                        )
+                    if isinstance(appearance, pikepdf.Stream) and list(
+                        map(float, appearance.get("/Matrix", [1, 0, 0, 1, 0, 0]))
+                    ) != [1, 0, 0, 1, 0, 0]:
+                        raise JobError(
+                            "PDF Oxide flatten preflight: nonidentity appearance matrices "
+                            "are unsupported; native placement cannot be verified"
+                        )
+                _check_flatten_content_state(streams)
+                checked.append(index + 1)
+    except JobError:
+        raise
+    except Exception as exc:
+        raise JobError(f"Independent flatten preflight failed ({type(exc).__name__})") from None
+    return {
+        "engine": "pikepdf",
+        "inherit_page_attributes": False,
+        "pages_with_flatten_targets": checked,
+        "stage": "source preflight before native flattening",
+        "local_content_streams_present": True,
+        "inherited_resources_shadowing_rejected": True,
+        "nonidentity_appearance_matrices_rejected": True,
+        "original_graphics_and_text_state_restored": True,
+        "external_annotation_appearance_semantics_rejected": True,
+    }
+
+
+def _resource_entries(page):
+    import pikepdf
+
+    entries = {(None, "/Group"): page.obj.get("/Group")}
+    resources = _inherited_pdf_value(page, "/Resources", pikepdf.Dictionary())
+    for category, value in resources.items():
+        if isinstance(value, pikepdf.Dictionary):
+            entries.update(((category, name), item) for name, item in value.items())
+        else:
+            entries[(category, None)] = value
+    return entries
+
+
+def _appearance_fingerprint(pdf, appearance, budget):
+    import pikepdf
+
+    if not isinstance(appearance, pikepdf.Stream):
+        raise JobError("Flattening requires a usable normal appearance for each painted annotation")
+    if appearance.get("/Subtype") != pikepdf.Name.Form or appearance.get("/FormType", 1) != 1:
+        raise JobError("Flattening requires a normal Form XObject appearance")
+    data = appearance.read_bytes()
+    budget["decoded_bytes"] += len(data)
+    if budget["decoded_bytes"] > 16 * 1024**2:
+        raise JobError("Flatten appearance validation exceeds its decoded-stream limit")
+    rendering = pikepdf.Dictionary(
+        {
+            key: value
+            for key, value in appearance.items()
+            if key
+            not in {
+                "/Length",
+                "/Filter",
+                "/DecodeParms",
+                "/Type",
+                "/FormType",
+                "/Resources",
+                "/Group",
+            }
+        }
+    )
+    rendering["/Matrix"] = appearance.get("/Matrix", pikepdf.Array([1, 0, 0, 1, 0, 0]))
+    rendering["/DecodedContentSHA256"] = hashlib.sha256(data).hexdigest()
+    return {
+        "metadata": _pdf_graph_fingerprints(pdf, [rendering], budget=budget)[0],
+        "resources_and_group": _pdf_graph_fingerprints(
+            pdf,
+            [appearance.get("/Resources", pikepdf.Dictionary()), appearance.get("/Group")],
+            budget=budget,
+        ),
+    }
+
+
+def _verify_selected_flatten(source, saved, index, before, after, forms, budget):
+    import pikepdf
+
+    original_page, page = source.pages[index], saved.pages[index]
+    prefix = before["decoded_content_sha256"]
+    if after["decoded_content_sha256"][: len(prefix)] != prefix:
+        raise JobError("Flattening changed selected-page original content streams; no output kept")
+    original_resources, actual_resources = _resource_entries(original_page), _resource_entries(page)
+    if not original_resources.keys() <= actual_resources.keys():
+        raise JobError("Flattening removed selected-page original resources; no output kept")
+    for key, value in original_resources.items():
+        original = _pdf_graph_fingerprints(source, [value], budget=budget)[0]
+        actual = _pdf_graph_fingerprints(saved, [actual_resources[key]], budget=budget)[0]
+        if actual != original:
+            raise JobError("Flattening changed selected-page original resources; no output kept")
+
+    appearances = []
+    for annotation in _flatten_targets(original_page, forms):
+        appearance = _normal_appearance(annotation)
+        if appearance is None and _nonpainting_annotation(annotation):
+            continue
+        fingerprint = _appearance_fingerprint(source, appearance, budget)
+        bbox, rect = (
+            list(map(float, obj))
+            for obj in (appearance.get("/BBox", []), annotation.get("/Rect", []))
+        )
+        if (
+            len(bbox) != 4
+            or len(rect) != 4
+            or not all(math.isfinite(value) for value in bbox + rect)
+            or bbox[2] <= bbox[0]
+            or bbox[3] <= bbox[1]
+            or rect[2] <= rect[0]
+            or rect[3] <= rect[1]
+        ):
+            raise JobError("Flattening requires finite, nonempty appearance bounds")
+        sx, sy = (
+            (rect[2] - rect[0]) / (bbox[2] - bbox[0]),
+            (rect[3] - rect[1]) / (bbox[3] - bbox[1]),
+        )
+        appearances.append(
+            (fingerprint, [sx, 0, 0, sy, rect[0] - bbox[0] * sx, rect[1] - bbox[1] * sy])
+        )
+
+    contents = page.obj.get("/Contents", [])
+    if isinstance(contents, pikepdf.Stream):
+        contents = [contents]
+    instructions = []
+    for stream in list(contents)[len(prefix) :]:
+        instructions.extend(pikepdf.parse_content_stream(stream))
+        if len(instructions) > MAX_ANNOTATIONS * 6:
+            raise JobError("Flatten appearance invocation validation exceeds its command limit")
+    cursor = 0
+    resources = _inherited_pdf_value(page, "/Resources", pikepdf.Dictionary())
+    xobjects = resources.get("/XObject", pikepdf.Dictionary())
+    for fingerprint, matrix in appearances:
+
+        def take(operator, operands=None):
+            nonlocal cursor
+            if cursor >= len(instructions):
+                raise JobError("Flattened appearance is not invoked by saved page content")
+            instruction = instructions[cursor]
+            cursor += 1
+            if str(instruction.operator) != operator or (
+                operands is not None and not _metadata_matches(list(instruction.operands), operands)
+            ):
+                raise JobError("Flattened appearance invocation/placement differs; no output kept")
+            return list(instruction.operands)
+
+        take("q", [])
+        # qpdf represents fractional operands as Decimal; compare their numeric values explicitly.
+        actual_matrix = take("cm")
+        if not _metadata_matches(list(map(float, actual_matrix)), matrix):
+            raise JobError("Flattened appearance placement differs; no output kept")
+        if cursor < len(instructions) and str(instructions[cursor].operator) == "cm":
+            identity = take("cm")
+            if list(map(float, identity)) != [1, 0, 0, 1, 0, 0]:
+                raise JobError("Flattened appearance applies an unsupported extra transform")
+        name = take("Do")
+        if len(name) != 1 or not isinstance(name[0], pikepdf.Name) or str(name[0]) not in xobjects:
+            raise JobError("Flattened appearance has no valid saved XObject reference")
+        actual = _appearance_fingerprint(saved, xobjects[str(name[0])], budget)
+        if (
+            not _pdf_graph_matches(actual["metadata"], fingerprint["metadata"])
+            or actual["resources_and_group"] != fingerprint["resources_and_group"]
+        ):
+            raise JobError("Flattened appearance content/resources changed; no output kept")
+        take("Q", [])
+    if cursor != len(instructions):
+        raise JobError("Flattening appended unverified selected-page content; no output kept")
+    return len(appearances)
+
+
 def _verify_flatten_saved(source_bytes, data, indices, *, forms=False):
     """Do not equate a native flatten mark with persisted removal or preservation."""
     import pikepdf
 
     try:
         with (
-            pikepdf.open(io.BytesIO(source_bytes)) as source,
-            pikepdf.open(io.BytesIO(data)) as saved,
+            pikepdf.open(io.BytesIO(source_bytes), inherit_page_attributes=False) as source,
+            pikepdf.open(io.BytesIO(data), inherit_page_attributes=False) as saved,
         ):
             before, after = _page_snapshots(source), _page_snapshots(saved)
             original_annotations = _annotation_fingerprints(source)
@@ -722,7 +1052,8 @@ def _verify_flatten_saved(source_bytes, data, indices, *, forms=False):
                 saved_nonwidgets = _annotation_fingerprints(saved, exclude_widgets=True)
             if len(before) != len(after):
                 raise JobError("Flattening changed page count; no output kept")
-            counts = []
+            counts, appearance_counts = [], {}
+            selected_budget = {"nodes": 0, "decoded_bytes": 0}
             for index, page in enumerate(saved.pages):
                 annotations = page.obj.get("/Annots", [])
                 count = sum(
@@ -748,6 +1079,9 @@ def _verify_flatten_saved(source_bytes, data, indices, *, forms=False):
                         for key in ("media_box", "crop_box", "rotation", "user_unit")
                     ):
                         raise JobError("Flattening changed page geometry; no output kept")
+                    appearance_counts[index + 1] = _verify_selected_flatten(
+                        source, saved, index, before[index], after[index], forms, selected_budget
+                    )
                 elif before[index] != after[index] or not _pdf_graph_matches(
                     saved_annotations[index], original_annotations[index]
                 ):
@@ -760,6 +1094,9 @@ def _verify_flatten_saved(source_bytes, data, indices, *, forms=False):
         "engine": "pikepdf",
         "selected_pages_have_no_widgets" if forms else "selected_pages_have_no_annotations": True,
         "unselected_page_geometry_content_resources_annotations_unchanged": True,
+        "selected_page_original_content_resources_preserved": True,
+        "selected_appearances_attached_and_invoked": True,
+        "selected_appearance_counts": appearance_counts,
         "annotation_numeric_tolerance_pdf_points": 0.001,
         "saved_widget_counts" if forms else "saved_annotation_counts": counts,
         "visual_accuracy_verified": False,
@@ -1101,6 +1438,9 @@ def process(request, options, add):
             }
         elif operation == "oxide_form_flatten":
             report["pages_before"] = _annotations(doc, indices)
+            report["flatten_preflight"] = _flatten_source_preflight(
+                source_bytes, indices, forms=True
+            )
             if set(indices) == set(range(count)):
                 native("flattening all forms", doc.flatten_forms)
             else:
@@ -1154,6 +1494,7 @@ def process(request, options, add):
                 "Annotation flattening on widget-bearing pages is unsupported; "
                 "flatten forms separately"
             )
+        report["flatten_preflight"] = _flatten_source_preflight(source_bytes, indices)
         if set(indices) == set(range(count)):
             native("flattening all annotations", doc.flatten_all_annotations)
         else:

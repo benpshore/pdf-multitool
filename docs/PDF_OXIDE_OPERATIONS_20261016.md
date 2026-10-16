@@ -33,10 +33,10 @@ No status here promotes a family in the 198-family acceptance ledger.
 | 17 | `oxide_form_inspect` | Working, bounded | AcroForm data and widget pages; XFA presence only. |
 | 18 | `oxide_form_fill` | Working, bounded | Supported existing AcroForm values; independent saved-value checks. XFA/signatures and unsupported fields rejected. Appearance is separate acceptance. |
 | 19 | `oxide_form_export` | Partial | Exact JSON plus bounded FDF/XFDF; Unicode FDF and lossy XFDF array/empty-string cases are blocked. |
-| 20 | `oxide_form_flatten` | Partial; known-loss cases blocked | Independent saved-widget removal and nonselected-page preservation checks. Native warnings identifying blank-field loss reject publication; no general appearance qualification. |
+| 20 | `oxide_form_flatten` | Partial; known-loss cases blocked | Missing content streams/inherited page resources fail before native flattening. Saved widget removal, selected original content/resources, invoked appearances and nonselected-page preservation are checked independently. Native loss warnings and unsupported placement reject publication; no general appearance qualification. |
 | 21 | `oxide_annotation_inspect` | Working, bounded | Native metadata/rectangles; links remain inert strings. |
 | 22 | `oxide_annotation_edit` | Partial; explicit correction available | Notes/links work in tested cases. Native highlight stays blocked by default; explicit pikepdf rectangle/appearance correction is separately identified with original native output retained. Nonpersistent removal rejected. |
-| 23 | `oxide_annotation_flatten` | Partial; persistent cases blocked | Independent selected-page annotation removal and nonselected-page preservation required. Link-only/no-AP native failures now reject publication. Widget pages require form flattening first. |
+| 23 | `oxide_annotation_flatten` | Partial; known-loss cases blocked | Missing content streams/inherited page resources fail before native flattening. Independent removal, selected original content/resources and appearance draw commands, plus nonselected-page preservation, are required. Unsupported appearances and persistent annotations reject publication. Widget pages require form flattening first. |
 | 24 | `oxide_flatten` | Partial; geometry correction available | Native default still relayouts. Explicit `preserve_visible_page` composes native rendered PNGs at checked visible physical dimensions, normalizing crop/rotation metadata. Native rendering fidelity unqualified; no redaction claim. |
 | 25 | `oxide_render` | Working, bounded | PNG/JPEG/premultiplied pixels/ink plates; physical geometry/color/layers require source comparison. Native fit sizing has crop/media-box limitations. |
 | 26 | `oxide_office_export` | Partial | DOCX/XLSX/PPTX; sampled XLSX/PPTX drop vectors/table borders. Automatic positioned/flow thresholds recorded. |
@@ -104,9 +104,14 @@ text replacement and encryption are upstream defects, not completed features.
 4. **Incorrect completion status:** actual native operator-cap omissions now
    produce page/file truncation and partial status for extraction, formatting
    and conversion. Known missing content is retained as evidence, not invented.
-5. **Flatten postconditions:** persistent selected links/widgets/annotations,
-   changed nonselected pages, and native warnings of blank form-field loss
-   prevent publication. Tests retain the formerly completed failing outputs.
+5. **Flatten postconditions:** missing page content and inherited resource
+   shadowing caused four reproduced losses across annotation/form routes.
+   Source preflight rejects those shapes. Saved original content/resource and
+   appearance-reference/draw-command checks cover selected pages as well as
+   nonselected-page preservation. Persistent annotations, unsupported placement
+   and native blank-field loss warnings prevent publication. Formerly completed
+   failing outputs remain in the separate inspection package; no native repair
+   or general visual parity is claimed.
 6. **Redaction and signature accounting:** the entire native redaction route is
    blocked after seven executed recoverability regressions. Signature coverage
    reconciles object identities; duplicates cannot substitute for unlinked
