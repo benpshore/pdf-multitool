@@ -1,0 +1,124 @@
+{
+  "engine": "pdf-oxide",
+  "engine_version": "0.3.78",
+  "operation": "oxide_form_flatten",
+  "source": {
+    "name": "source.pdf",
+    "sha256": "9b081cabdf09cb10540750d1e317e761a5ae968e1df46280a3e310bcddb75a31",
+    "pages": 2
+  },
+  "source_unchanged": true,
+  "coordinates": "Native PDF user-space rectangles; no rotation/crop normalization",
+  "visual_accuracy_verified": false,
+  "fields": [
+    {
+      "name": "amount",
+      "field_type": "text",
+      "value": "000123.40",
+      "tooltip": null,
+      "bounds": [
+        40.0,
+        180.0,
+        140.0,
+        280.0
+      ],
+      "flags": null,
+      "max_length": null,
+      "is_readonly": false,
+      "is_required": false
+    }
+  ],
+  "has_xfa": false,
+  "pages_before": [
+    {
+      "page": 1,
+      "native_page_index": 0,
+      "annotations": [
+        {
+          "index": 0,
+          "subtype": "Widget",
+          "rect": [
+            40.0,
+            180.0,
+            140.0,
+            280.0
+          ],
+          "author": "amount",
+          "field_type": "Text",
+          "field_name": "amount",
+          "field_value": "000123.40"
+        }
+      ]
+    }
+  ],
+  "flatten_preflight": {
+    "engine": "pikepdf",
+    "inherit_page_attributes": false,
+    "pages_with_flatten_targets": [
+      1
+    ],
+    "stage": "source preflight before native flattening",
+    "local_content_streams_present": true,
+    "inherited_resources_shadowing_rejected": true,
+    "nonidentity_appearance_matrices_rejected": true,
+    "original_graphics_and_text_state_restored": true,
+    "external_annotation_appearance_semantics_rejected": true
+  },
+  "flatten_warnings": [],
+  "independent_flatten_verification": {
+    "engine": "pikepdf",
+    "selected_pages_have_no_widgets": true,
+    "unselected_page_geometry_content_resources_annotations_unchanged": true,
+    "selected_page_original_content_resources_preserved": true,
+    "selected_appearances_attached_and_invoked": true,
+    "selected_appearance_bounds_verified": true,
+    "appearance_geometry_tolerance": {
+      "relative_to_rect_extent": 1e-05,
+      "maximum_physical_pdf_points": 0.001,
+      "arithmetic": "exact rational over parsed PDF numbers",
+      "checks": "positive axis scales, source/saved AP extents and all four corners"
+    },
+    "selected_appearance_counts": {
+      "1": 1
+    },
+    "annotation_numeric_tolerance_pdf_points": 0.001,
+    "saved_widget_counts": [
+      0,
+      0
+    ],
+    "visual_accuracy_verified": false
+  },
+  "fields_after": [
+    {
+      "name": "amount",
+      "field_type": "text",
+      "value": "000123.40",
+      "tooltip": null,
+      "bounds": [
+        40.0,
+        180.0,
+        140.0,
+        280.0
+      ],
+      "flags": null,
+      "max_length": null,
+      "is_readonly": false,
+      "is_required": false
+    }
+  ],
+  "pages_after": [
+    {
+      "page": 1,
+      "native_page_index": 0,
+      "annotations": []
+    }
+  ],
+  "structured_warnings": {
+    "source": [],
+    "saved": []
+  },
+  "warnings": [
+    "Form flattening changes interactivity and may lose appearances; compare every field with the source"
+  ],
+  "output_sha256": "e6fa5cc6b670a8089205dded4c1a6b56a59e2045fcf7346cb32d92034c316b7e"
+}

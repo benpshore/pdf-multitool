@@ -1,0 +1,23 @@
+{
+  "source_checkpoint": "5644fcaf9014928a817dfc0cd470991329e141ec",
+  "scope": [
+    "retained-3941",
+    "precision-control-1238"
+  ],
+  "accepted": "No demonstrated native content or geometry loss in these two fixtures; default PDFium widget/page raster policy accounts for the observed mismatch.",
+  "reviewer_evidence_reported_by_parent": {
+    "packaged_pdfium_comparisons_verified": 90,
+    "packaged_mupdf_comparisons_verified": 12,
+    "appearance_bytes_complete_resource_font_graphs_geometry_content_prefixes_verified": true,
+    "fresh_mupdf_comparisons": 12,
+    "fresh_mupdf_version": "1.26.6",
+    "fresh_mupdf_comparisons_exact": 12,
+    "parent_visual_review_pages": 7
+  },
+  "strict_default_pdfium_oracle": "Still fails; retained unchanged",
+  "renderer_defaults_changed": false,
+  "production_code_or_tests_changed": false,
+  "form_qualification": false,
+  "broader_merge_release_redaction_fidelity_holds": "Preserved",
+  "next_capability_work": "Requires new direction"
+}

@@ -1,0 +1,25 @@
+{
+  "source": {
+    "pages": [
+      "Invoice 000123.40; total 20.15\n000123.40\n20.15\n",
+      "Untouched page 002; balance 001.20\n"
+    ],
+    "widget_values": [
+      "000123.40"
+    ]
+  },
+  "native": {
+    "pages": [
+      "Invoice 000123.40; total 20.15\n000123.40\n20.15\n",
+      "Untouched page 002; balance 001.20\n"
+    ],
+    "widget_values": []
+  },
+  "manual": {
+    "pages": [
+      "Invoice 000123.40; total 20.15\n000123.40\n20.15\n",
+      "Untouched page 002; balance 001.20\n"
+    ],
+    "widget_values": []
+  }
+}
