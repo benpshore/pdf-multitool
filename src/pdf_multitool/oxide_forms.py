@@ -6,6 +6,8 @@ import hashlib
 import io
 import json
 import math
+from decimal import Decimal
+from fractions import Fraction
 from pathlib import Path
 from urllib.parse import urlsplit
 from xml.etree import ElementTree
@@ -864,8 +866,8 @@ def _flatten_source_preflight(source_bytes, indices, *, forms=False):
                             "Flatten preflight requires a saved appearance for links with "
                             "visible or unspecified borders"
                         )
-                    if isinstance(appearance, pikepdf.Stream) and list(
-                        map(float, appearance.get("/Matrix", [1, 0, 0, 1, 0, 0]))
+                    if isinstance(appearance, pikepdf.Stream) and _flatten_geometry_numbers(
+                        appearance.get("/Matrix", [1, 0, 0, 1, 0, 0]), 6
                     ) != [1, 0, 0, 1, 0, 0]:
                         raise JobError(
                             "PDF Oxide flatten preflight: nonidentity appearance matrices "
@@ -942,6 +944,55 @@ def _appearance_fingerprint(pdf, appearance, budget):
     }
 
 
+def _flatten_geometry_numbers(values, count):
+    """Keep parsed PDF decimals exact, including products with very large BBoxes."""
+    if len(values) != count or any(
+        type(value) not in {int, float, Decimal} or not math.isfinite(value) for value in values
+    ):
+        raise JobError("Flattening requires finite numeric appearance geometry")
+    return [Fraction(value) for value in values]
+
+
+def _verify_flatten_appearance_extent(annotation, appearance, matrix, user_unit):
+    """Verify physical placement/extent, never compare dimensionless scales with a pt tolerance."""
+    bbox = _flatten_geometry_numbers(appearance.get("/BBox", []), 4)
+    rect = _flatten_geometry_numbers(annotation.get("/Rect", []), 4)
+    if bbox[2] <= bbox[0] or bbox[3] <= bbox[1] or rect[2] <= rect[0] or rect[3] <= rect[1]:
+        raise JobError("Flattening requires finite, nonempty appearance bounds")
+    if _flatten_geometry_numbers(appearance.get("/Matrix", [1, 0, 0, 1, 0, 0]), 6) != [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+    ]:
+        raise JobError("Flattened appearance applies an unsupported extra transform")
+    a, b, c, d, e, f = _flatten_geometry_numbers(matrix, 6)
+    if a <= 0 or d <= 0 or b != 0 or c != 0:
+        raise JobError(
+            "Flattened appearance has a degenerate or unsupported transform; no output kept"
+        )
+    unit = _flatten_geometry_numbers([user_unit], 1)[0]
+    if unit <= 0:
+        raise JobError("Flattened appearance requires a positive page UserUnit")
+    width, height = rect[2] - rect[0], rect[3] - rect[1]
+    # 0.001 physical point is only a ceiling: small appearances get a relative bound.
+    tx, ty = (min(Fraction(1, 1000) / unit, size / 100_000) for size in (width, height))
+    if abs(a * (bbox[2] - bbox[0]) - width) > tx or abs(d * (bbox[3] - bbox[1]) - height) > ty:
+        raise JobError(
+            "Flattened appearance extent differs from its source rectangle; no output kept"
+        )
+    # Check every corner as well as width/height; a translated or offset BBox can have
+    # correct extent yet be misplaced. Exact rational arithmetic avoids cancellation.
+    if any(
+        abs(a * bbox[x] + e - rect[x]) > tx or abs(d * bbox[y] + f - rect[y]) > ty
+        for x in (0, 2)
+        for y in (1, 3)
+    ):
+        raise JobError("Flattened appearance corner placement differs; no output kept")
+
+
 def _verify_selected_flatten(source, saved, index, before, after, forms, budget):
     import pikepdf
 
@@ -964,27 +1015,7 @@ def _verify_selected_flatten(source, saved, index, before, after, forms, budget)
         if appearance is None and _nonpainting_annotation(annotation):
             continue
         fingerprint = _appearance_fingerprint(source, appearance, budget)
-        bbox, rect = (
-            list(map(float, obj))
-            for obj in (appearance.get("/BBox", []), annotation.get("/Rect", []))
-        )
-        if (
-            len(bbox) != 4
-            or len(rect) != 4
-            or not all(math.isfinite(value) for value in bbox + rect)
-            or bbox[2] <= bbox[0]
-            or bbox[3] <= bbox[1]
-            or rect[2] <= rect[0]
-            or rect[3] <= rect[1]
-        ):
-            raise JobError("Flattening requires finite, nonempty appearance bounds")
-        sx, sy = (
-            (rect[2] - rect[0]) / (bbox[2] - bbox[0]),
-            (rect[3] - rect[1]) / (bbox[3] - bbox[1]),
-        )
-        appearances.append(
-            (fingerprint, [sx, 0, 0, sy, rect[0] - bbox[0] * sx, rect[1] - bbox[1] * sy])
-        )
+        appearances.append((fingerprint, annotation, appearance))
 
     contents = page.obj.get("/Contents", [])
     if isinstance(contents, pikepdf.Stream):
@@ -997,7 +1028,7 @@ def _verify_selected_flatten(source, saved, index, before, after, forms, budget)
     cursor = 0
     resources = _inherited_pdf_value(page, "/Resources", pikepdf.Dictionary())
     xobjects = resources.get("/XObject", pikepdf.Dictionary())
-    for fingerprint, matrix in appearances:
+    for fingerprint, annotation, appearance in appearances:
 
         def take(operator, operands=None):
             nonlocal cursor
@@ -1012,23 +1043,29 @@ def _verify_selected_flatten(source, saved, index, before, after, forms, budget)
             return list(instruction.operands)
 
         take("q", [])
-        # qpdf represents fractional operands as Decimal; compare their numeric values explicitly.
         actual_matrix = take("cm")
-        if not _metadata_matches(list(map(float, actual_matrix)), matrix):
-            raise JobError("Flattened appearance placement differs; no output kept")
+        _verify_flatten_appearance_extent(
+            annotation, appearance, actual_matrix, original_page.obj.get("/UserUnit", 1)
+        )
         if cursor < len(instructions) and str(instructions[cursor].operator) == "cm":
             identity = take("cm")
-            if list(map(float, identity)) != [1, 0, 0, 1, 0, 0]:
+            if _flatten_geometry_numbers(identity, 6) != [1, 0, 0, 1, 0, 0]:
                 raise JobError("Flattened appearance applies an unsupported extra transform")
         name = take("Do")
         if len(name) != 1 or not isinstance(name[0], pikepdf.Name) or str(name[0]) not in xobjects:
             raise JobError("Flattened appearance has no valid saved XObject reference")
-        actual = _appearance_fingerprint(saved, xobjects[str(name[0])], budget)
+        saved_appearance = xobjects[str(name[0])]
+        actual = _appearance_fingerprint(saved, saved_appearance, budget)
         if (
             not _pdf_graph_matches(actual["metadata"], fingerprint["metadata"])
             or actual["resources_and_group"] != fingerprint["resources_and_group"]
         ):
             raise JobError("Flattened appearance content/resources changed; no output kept")
+        # Saved AP bounds/matrix also matter: tolerant metadata equality alone could
+        # otherwise accept a collapsed clip box or a tiny but consequential transform.
+        _verify_flatten_appearance_extent(
+            annotation, saved_appearance, actual_matrix, page.obj.get("/UserUnit", 1)
+        )
         take("Q", [])
     if cursor != len(instructions):
         raise JobError("Flattening appended unverified selected-page content; no output kept")
@@ -1096,6 +1133,13 @@ def _verify_flatten_saved(source_bytes, data, indices, *, forms=False):
         "unselected_page_geometry_content_resources_annotations_unchanged": True,
         "selected_page_original_content_resources_preserved": True,
         "selected_appearances_attached_and_invoked": True,
+        "selected_appearance_bounds_verified": True,
+        "appearance_geometry_tolerance": {
+            "relative_to_rect_extent": 0.00001,
+            "maximum_physical_pdf_points": 0.001,
+            "arithmetic": "exact rational over parsed PDF numbers",
+            "checks": "positive axis scales, source/saved AP extents and all four corners",
+        },
         "selected_appearance_counts": appearance_counts,
         "annotation_numeric_tolerance_pdf_points": 0.001,
         "saved_widget_counts" if forms else "saved_annotation_counts": counts,

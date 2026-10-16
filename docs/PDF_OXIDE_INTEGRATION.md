@@ -131,9 +131,13 @@ preservation independently. Selected pages with missing content streams or
 inherited resources are rejected before native flattening: both shapes caused
 executed content loss in both annotation and form routes. Unsupported appearance
 placement, persistent annotations and form warnings identifying blank-field loss
-also reject publication. These are preservation gates, not native appearance
+also reject publication. Finite extreme-BBox inputs reproduced zero-scale
+collapse and nonzero scale shrinkage on `31a2909`. Saved source/appearance
+extents and corners now use exact arithmetic with rectangle-relative tolerance
+capped at 0.001 physical point; degenerate transforms reject publication.
+These are preservation gates, not native appearance
 repair. The [correction review record](PDF_OXIDE_CORRECTION_REVIEW_20261016.md)
-preserves Ada's findings and the four new reproductions. Region-filtered text
+preserves Ada's completed 13-page review and the new precision reproductions. Region-filtered text
 can reinsert whole-page tables outside the region and is blocked; region spans,
 words and direct table/image metadata remain separate bounded calls. Plain-text
 format conversion ignores artifact exclusion on the frozen tagged fixture, so

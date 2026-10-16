@@ -172,6 +172,26 @@ def _run(tmp_path, operation, source, options=None, limits=None):
     return job
 
 
+def flatten_precision_fixture(path, *, forms, edge):
+    """A finite large AP BBox maps a synthetic two-row amount table into 100 points."""
+    import pikepdf
+
+    original = flatten_structure_fixture(path.with_name("fixture-original.pdf"), forms=forms)
+    with pikepdf.open(original) as pdf:
+        annotation = pdf.pages[0].Annots[0]
+        annotation.Rect = pikepdf.Array([40, 180, 140, 280])
+        appearance = annotation.AP.N
+        appearance.BBox = pikepdf.Array([0, 0, edge, edge])
+        appearance.write(
+            f"q {edge // 100} 0 0 {edge // 100} 0 0 cm\n".encode()
+            + b"1 0.85 0.1 rg 0 0 100 100 re f 0 g\n"
+            + b"1 w 3 3 94 94 re S 3 50 m 97 50 l S\n"
+            + b"BT /Label 10 Tf 8 75 Td (000123.40) Tj 0 -40 Td (20.15) Tj ET Q\n"
+        )
+        pdf.save(path)
+    return path
+
+
 def _output(job, suffix):
     matches = [Path(item["path"]) for item in job.results if item["path"].endswith(suffix)]
     assert len(matches) == 1, job.snapshot()
@@ -823,6 +843,33 @@ def test_flatten_rejects_selected_page_structures_with_native_content_loss(tmp_p
 
 @native
 @pytest.mark.parametrize("forms", [False, True])
+@pytest.mark.parametrize("edge", [1_000_000_000, 70_000_000, 300_000])
+def test_flatten_rejects_rounded_or_collapsed_appearance_extent(tmp_path, forms, edge):
+    source = flatten_precision_fixture(tmp_path / "source.pdf", forms=forms, edge=edge)
+    operation = "oxide_form_flatten" if forms else "oxide_annotation_flatten"
+    job = _run(tmp_path, operation, source, {"pages": "1", "allow_flatten": True})
+    _assert_failed(job)
+    assert "degenerate" in str(job.errors) or "appearance extent" in str(job.errors)
+
+
+@native
+@pytest.mark.parametrize("forms", [False, True])
+def test_flatten_retains_exact_small_nonzero_scale(tmp_path, forms):
+    source = flatten_precision_fixture(tmp_path / "source.pdf", forms=forms, edge=100_000_000)
+    operation = "oxide_form_flatten" if forms else "oxide_annotation_flatten"
+    job = _run(tmp_path, operation, source, {"pages": "1", "allow_flatten": True})
+    assert job.state == "completed", job.errors
+    verification = _report(job)["independent_flatten_verification"]
+    assert verification["selected_appearance_bounds_verified"] is True
+    assert verification["visual_accuracy_verified"] is False
+    assert verification["appearance_geometry_tolerance"]["relative_to_rect_extent"] == 0.00001
+    with pymupdf.open(_output(job, ".pdf")) as document:
+        assert "000123.40" in document[0].get_text() and "20.15" in document[0].get_text()
+        assert "Untouched page 002; balance 001.20" in document[1].get_text()
+
+
+@native
+@pytest.mark.parametrize("forms", [False, True])
 def test_flatten_keeps_selected_original_content_and_records_appearance_comparison(tmp_path, forms):
     from PIL import ImageChops
 
@@ -880,6 +927,11 @@ def test_flatten_keeps_selected_original_content_and_records_appearance_comparis
         "appearance_bytes",
         "original_content",
         "original_resource",
+        "scale_precision",
+        "zero_x_scale",
+        "reflection",
+        "shear",
+        "saved_ap_matrix",
     ],
 )
 def test_flatten_verifier_rejects_selected_content_resource_and_appearance_loss(tmp_path, mutation):
@@ -902,11 +954,89 @@ def test_flatten_verifier_rejects_selected_content_resource_and_appearance_loss(
             page.Resources.XObject.FlatAnnot0.write(b"q Q\n")
         elif mutation == "original_content":
             page.Contents[0].write(b"q Q\n")
-        else:
+        elif mutation == "original_resource":
             page.Resources.Font.Body.BaseFont = pikepdf.Name.Courier
+        elif mutation == "saved_ap_matrix":
+            page.Resources.XObject.FlatAnnot0.Matrix = pikepdf.Array([1, 0, 0, 1, 0.0001, 0])
+        else:
+            matrix = {
+                "scale_precision": "1.0001 0 0 1 40 200",
+                "zero_x_scale": "0 0 0 1 40 200",
+                "reflection": "-1 0 0 1 280 200",
+                "shear": "1 0.0001 0 1 40 200",
+            }[mutation]
+            page.Contents[-1].write(f"q {matrix} cm /FlatAnnot0 Do Q\n".encode())
         data = io.BytesIO()
         pdf.save(data)
     with pytest.raises(JobError, match=r"appearance|original content|original resources"):
+        _verify_flatten_saved(source.read_bytes(), data.getvalue(), [0])
+
+
+@pytest.mark.parametrize(
+    ("bbox", "rect", "matrix", "unit"),
+    [
+        # An absolute 0.001 check would accept losing half a tiny appearance.
+        ([0, 0, 1, 1], [0, 0, "0.0001", "0.0001"], ["0.00005", 0, 0, "0.0001", 0, 0], 1),
+        # Correct extent, but misplaced by more than the rectangle-relative limit.
+        ([0, 0, 1, 1], [0, 0, "0.0001", "0.0001"], ["0.0001", 0, 0, "0.0001", "0.000001", 0], 1),
+        # UserUnit turns a small coordinate error into an excessive physical error.
+        ([0, 0, 100, 100], [0, 0, 100, 100], [1, 0, 0, 1, "0.0005", 0], 10),
+        # Large offsets must not hide corner errors through floating-point cancellation.
+        (
+            ["1000000000000.0002", 0, "1000000000000.0102", 1],
+            [0, 0, 1, 100],
+            [100, 0, 0, 100, "-100000000000000", 0],
+            1,
+        ),
+        ([0, 0, 0, 1], [0, 0, 100, 100], [1, 0, 0, 1, 0, 0], 1),
+        ([0, 0, 1, 1], [0, 0, 100, 100], [100, 0, 0, 100, 0, 0], 0),
+    ],
+)
+def test_flatten_geometry_rejects_small_extents_and_offset_precision_loss(bbox, rect, matrix, unit):
+    import pikepdf
+
+    from pdf_multitool.oxide_forms import _verify_flatten_appearance_extent
+
+    def numbers(values):
+        # Array construction formats Decimal with 15 significant digits. Parse the
+        # original numeric tokens so the adversarial large-offset case retains them.
+        return pikepdf.Object.parse(("[" + " ".join(map(str, values)) + "]").encode())
+
+    with pytest.raises(JobError, match=r"appearance|UserUnit"):
+        _verify_flatten_appearance_extent(
+            pikepdf.Dictionary(Rect=numbers(rect)),
+            pikepdf.Dictionary(BBox=numbers(bbox)),
+            numbers(matrix),
+            unit,
+        )
+
+
+@native
+def test_flatten_verifier_rejects_collapsed_saved_appearance_bbox(tmp_path):
+    import io
+    from decimal import Decimal
+
+    import pikepdf
+
+    from pdf_multitool.oxide_forms import _verify_flatten_saved
+
+    original = flatten_structure_fixture(tmp_path / "original.pdf")
+    source = tmp_path / "source.pdf"
+    with pikepdf.open(original) as pdf:
+        annotation = pdf.pages[0].Annots[0]
+        annotation.Rect = pikepdf.Array([40, 180, 140, 280])
+        annotation.AP.N.BBox = pikepdf.Array([0, 0, Decimal("0.0001"), Decimal("0.0001")])
+        annotation.AP.N.write(b"q 1 0 0 rg 0 0 0.0001 0.0001 re f Q\n")
+        pdf.save(source)
+    job = _run(tmp_path, "oxide_annotation_flatten", source, {"pages": "1", "allow_flatten": True})
+    assert job.state == "completed", job.errors
+    with pikepdf.open(_output(job, ".pdf")) as pdf:
+        # Old 0.001 metadata tolerance accepted this empty clip box. Source BBox and
+        # page invocation alone cannot prove the saved AP has a nonempty visible extent.
+        pdf.pages[0].Resources.XObject.FlatAnnot0.BBox = pikepdf.Array([0, 0, 0, 0])
+        data = io.BytesIO()
+        pdf.save(data)
+    with pytest.raises(JobError, match="nonempty appearance bounds"):
         _verify_flatten_saved(source.read_bytes(), data.getvalue(), [0])
 
 

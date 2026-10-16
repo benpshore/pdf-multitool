@@ -84,5 +84,54 @@ visibly present, reinforcing the need for source/output visual review.
 Successful parsing, extracted-text agreement and annotation removal are insufficient.
 The correction does not repair the native engine, reconstruct lost content,
 qualify all appearance semantics or promote any of the 198 feature families.
-Ada's review of the new correction package remains pending. Merge and release
-holds remain in effect; no PR title, body or comment update is authorized here.
+Ada subsequently viewed all 13 pages of the selected-page review for checkpoint
+`31a2909316286c9ca9f9b2bf80f3f1c3624fd79e`. She visually confirmed blank
+missing-Contents results, lost inherited images/font changes despite retained
+numeric extraction, and the hidden annotation becoming visible. The supported
+control looked preserved, but the 3,941-pixel PDFium difference remains
+unaccepted and its oracle remains unchanged. Her review record is retained by
+the parent. Merge and release holds remain in effect; no PR title, body or
+comment update is authorized here.
+
+## Flatten transform precision loss
+
+Ada then identified a source-derived numerical risk: the pinned native
+`generate_flatten_overlay` writes scale coefficients with six fractional digits,
+while the adapter compared those dimensionless coefficients with an absolute
+0.001 tolerance. The risk was subsequently reproduced against an isolated
+archive of exact `31a2909316286c9ca9f9b2bf80f3f1c3624fd79e`, with the invoked
+adapter hash recorded before execution. Both annotation and form routes
+incorrectly completed these finite synthetic cases:
+
+| Appearance BBox | Intended rectangle | Saved scale | Actual extent |
+| --- | --- | --- | --- |
+| 1,000,000,000 square | 100 points square | 0 instead of 0.0000001 | Zero; the amount table disappears |
+| 70,000,000 square | 100 points square | 0.000001 instead of about 0.000001428571 | 70 points square; the amount table shrinks |
+
+MuPDF and PDFium both confirm the visible defects. The yellow two-row table
+contains `000123.40` and `20.15`; original body text, colored image and the
+unselected control page remain unchanged. Original PDFs, wrongly completed
+outputs/reports, decoded commands, text, both renderers' images and hashes are
+preserved in the separate precision review package. These are now runtime
+findings, not source-only inferences. The two 1,000-unit BBox controls retain
+their 100-point extents; the form control still differs in PDFium glyph pixels
+and receives no appearance-parity claim.
+
+The saved-result gate now requires positive finite axis scales without shear or
+reflection. Using exact rational arithmetic over parsed PDF numbers, it checks
+both the source and saved appearance BBoxes: width, height and all four
+transformed corners must match the source annotation rectangle within
+`min(0.00001 * rectangle extent, 0.001 / UserUnit)` per axis. The physical
+ceiling is 0.001 point; small rectangles receive a smaller relative tolerance.
+Saved appearance matrices and any extra invocation matrix must be exactly
+identity. These checks prevent zero-scale collapse, nonzero scale error,
+misplaced offset BBoxes and a collapsed saved clipping box from passing a loose
+coefficient comparison. They run before any PDF is published and do not change
+the native output. All four preserved failing originals now reject with zero
+results; exact nonzero small scales remain supported in regression tests.
+
+The first large-offset arithmetic test accidentally lost its intended decimal
+precision in pikepdf's Array constructor. Its failed run is preserved. The
+test now parses the original decimal tokens directly; neither the expected
+failure nor the existing pixel oracle was relaxed. New precision-package
+review by Ada remains pending. No feature-family acceptance is promoted.

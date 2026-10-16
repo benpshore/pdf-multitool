@@ -109,7 +109,11 @@ text replacement and encryption are upstream defects, not completed features.
    Source preflight rejects those shapes. Saved original content/resource and
    appearance-reference/draw-command checks cover selected pages as well as
    nonselected-page preservation. Persistent annotations, unsupported placement
-   and native blank-field loss warnings prevent publication. Formerly completed
+   and native blank-field loss warnings prevent publication. Extreme finite
+   BBoxes also reproduced collapsed/shrunken appearances on `31a2909` in both
+   routes. Exact rational checks of source/saved AP extents and corners now
+   reject degenerate scales or placement errors above the rectangle-relative
+   tolerance, capped at 0.001 physical point. Formerly completed
    failing outputs remain in the separate inspection package; no native repair
    or general visual parity is claimed.
 6. **Redaction and signature accounting:** the entire native redaction route is

@@ -17,7 +17,7 @@
     "independent_validation": "PyMuPDF structural reopen and existing field-value checks; flattening adds raw non-inheriting pikepdf preflight plus selected original content/resource preservation and actual AP invocation checks. Unsupported shapes and mismatches fail without output. Opt-in highlight correction remains a separately named pikepdf backend. These checks do not establish visible appearance parity.",
     "graph_limits": "Annotation/resource graphs at most 100000 nodes/depth 64; cumulative decoded page-content plus resource streams at most 16 MiB per snapshot; absolute native numeric metadata tolerance 0.001. Textual numeric values and decoded stream hashes are exact. Budget or verification failure publishes no candidate.",
     "flatten_input_limits": "Targeted selected pages require local Contents streams, non-shadowed Resources, identity AP matrices and original commands inside balanced q/Q, text, marked-content and compatibility scopes. Graphics stack <=64, source commands <=100000, decoded source content <=16 MiB. External annotation flags allow only Print/ReadOnly/Locked/LockedContents; CA must be 1, OC absent, BM absent/Normal. Missing-AP links require explicit zero-width Border/BS without conflict; popup requires a usable parent AP.",
-    "flatten_comparison_limits": "Selected original resources and AP Resources/Group/stream hashes are exact. Only appearance metadata and placement numeric comparisons use absolute 0.001 tolerance; textual numeric strings remain exact. Added invocation commands <=2000 annotations*6. Selected validation shares the 100000-node/depth64/16MiB decoded-stream budget. Existing original-annotation metadata checks retain their documented tolerance."
+    "flatten_comparison_limits": "Selected original resources and AP Resources/Group/stream hashes are exact. Appearance metadata retains its absolute 0.001 tolerance, with separate exact-matrix and physical-geometry validation. Placement is checked with exact rational arithmetic over parsed PDF numbers: positive finite axis scales, no shear/reflection, exact identity AP/extra matrices, and both source/saved AP width, height and all four corners within min(0.00001 * Rect extent, 0.001 / UserUnit) per axis. No absolute coefficient tolerance. Nonpositive UserUnit or degenerate bounds fail without output. Textual numeric strings remain exact. Added invocation commands <=2000 annotations*6. Selected validation shares the 100000-node/depth64/16MiB decoded-stream budget. Existing original-annotation metadata checks retain their documented tolerance."
   },
   "capabilities": [
     {
@@ -149,14 +149,17 @@
         "Exact 45dc322 missing-Contents and inherited-Resources losses reproduced in both form and annotation routes, then refused by current preflight",
         "Hidden annotation visibility loss reproduced on exact45dc322; appearance-affecting flags now rejected",
         "Original resource-name collisions, missing/changed/reordered AP calls and unsupported placement/state are rejected",
-        "Supported synthetic positive checks retain body/image pixels outside the AP and exact numeric content; they do not establish pixel parity"
+        "Supported synthetic positive checks retain body/image pixels outside the AP and exact numeric content; they do not establish pixel parity",
+        "Exact 31a2909 finite extreme-BBox inputs incorrectly completed with 100-point APs collapsed to zero or shrunk to 70 points, in both routes; preserved originals now reject without outputs",
+        "Adversarial saved transforms/BBoxes, small rectangles, large offsets and UserUnit-scaled errors reject; exact nonzero 0.000001 scales remain supported"
       ],
       "limitations": [
         "Native missing-Contents, inherited-resource-shadowing and hidden-annotation flatten defects remain unresolved upstream. These are rejection checks, not appearance reconstruction or native fidelity qualification. Valid PDFs outside the restricted supported shape may be rejected.",
-        "A positive form case still differs in PDFium by 3941 glyph-region pixels (maximum channel difference 84); MuPDF pixels match for that case. The strict failing pixel oracle is preserved and appearance parity remains false."
+        "A positive form case still differs in PDFium by 3941 glyph-region pixels (maximum channel difference 84); MuPDF pixels match for that case. The strict failing pixel oracle is preserved and appearance parity remains false.",
+        "Native six-decimal overlay scale serialization remains unchanged; the adapter rejects measured collapsed/shrunken appearances before publication and does not repair them."
       ],
       "preflight": "Raw pikepdf preflight uses inherit_page_attributes=False. A selected page with targets requires a nonempty list of local Contents streams and may not rely on inherited Resources that native output would shadow. Original commands must restore graphics/text/marked-content/compatibility state inside balanced q/Q blocks. Nonidentity AP matrices and unsupported external annotation visibility/opacity/optional-content/blend semantics are rejected; no source normalization or fallback painting occurs.",
-      "selected_page_verification": "Selected original decoded content-stream hashes must remain an exact ordered prefix. Every original resource entry and page Group is preserved exactly. Each removed usable normal Form appearance must match saved decoded content and exact resource/Group graphs, and be invoked in order with the expected finite Rect/BBox transform by parsed q/cm/Do/Q instructions; duplicates, missing calls, changed placement and extra appended commands fail. Appearance numeric metadata/placement tolerance is 0.001. Existing removal, selected geometry and unselected page/content/resource/annotation checks remain.",
+      "selected_page_verification": "Selected original decoded content-stream hashes must remain an exact ordered prefix. Every original resource entry and page Group is preserved exactly. Each removed usable normal Form appearance must match saved decoded content and exact resource/Group graphs, and be invoked in order with the expected finite Rect/BBox transform by parsed q/cm/Do/Q instructions; duplicates, missing calls, changed placement and extra appended commands fail. Placement is checked with exact rational arithmetic over parsed PDF numbers: positive finite axis scales, no shear/reflection, exact identity AP/extra matrices, and both source/saved AP width, height and all four corners within min(0.00001 * Rect extent, 0.001 / UserUnit) per axis. No absolute coefficient tolerance. Nonpositive UserUnit or degenerate bounds fail without output. Existing removal, selected geometry and unselected page/content/resource/annotation checks remain.",
       "native_defect_fixed_upstream": false
     },
     {
@@ -289,14 +292,17 @@
         "Exact 45dc322 missing-Contents and inherited-Resources losses reproduced in both form and annotation routes, then refused by current preflight",
         "Hidden annotation visibility loss reproduced on exact45dc322; appearance-affecting flags now rejected",
         "Original resource-name collisions, missing/changed/reordered AP calls and unsupported placement/state are rejected",
-        "Supported synthetic positive checks retain body/image pixels outside the AP and exact numeric content; they do not establish pixel parity"
+        "Supported synthetic positive checks retain body/image pixels outside the AP and exact numeric content; they do not establish pixel parity",
+        "Exact 31a2909 finite extreme-BBox inputs incorrectly completed with 100-point APs collapsed to zero or shrunk to 70 points, in both routes; preserved originals now reject without outputs",
+        "Adversarial saved transforms/BBoxes, small rectangles, large offsets and UserUnit-scaled errors reject; exact nonzero 0.000001 scales remain supported"
       ],
       "limitations": [
         "Native missing-Contents, inherited-resource-shadowing and hidden-annotation flatten defects remain unresolved upstream. These are rejection checks, not appearance reconstruction or native fidelity qualification. Valid PDFs outside the restricted supported shape may be rejected.",
-        "A positive form case still differs in PDFium by 3941 glyph-region pixels (maximum channel difference 84); MuPDF pixels match for that case. The strict failing pixel oracle is preserved and appearance parity remains false."
+        "A positive form case still differs in PDFium by 3941 glyph-region pixels (maximum channel difference 84); MuPDF pixels match for that case. The strict failing pixel oracle is preserved and appearance parity remains false.",
+        "Native six-decimal overlay scale serialization remains unchanged; the adapter rejects measured collapsed/shrunken appearances before publication and does not repair them."
       ],
       "preflight": "Raw pikepdf preflight uses inherit_page_attributes=False. A selected page with targets requires a nonempty list of local Contents streams and may not rely on inherited Resources that native output would shadow. Original commands must restore graphics/text/marked-content/compatibility state inside balanced q/Q blocks. Nonidentity AP matrices and unsupported external annotation visibility/opacity/optional-content/blend semantics are rejected; no source normalization or fallback painting occurs.",
-      "selected_page_verification": "Selected original decoded content-stream hashes must remain an exact ordered prefix. Every original resource entry and page Group is preserved exactly. Each removed usable normal Form appearance must match saved decoded content and exact resource/Group graphs, and be invoked in order with the expected finite Rect/BBox transform by parsed q/cm/Do/Q instructions; duplicates, missing calls, changed placement and extra appended commands fail. Appearance numeric metadata/placement tolerance is 0.001. Existing removal, selected geometry and unselected page/content/resource/annotation checks remain.",
+      "selected_page_verification": "Selected original decoded content-stream hashes must remain an exact ordered prefix. Every original resource entry and page Group is preserved exactly. Each removed usable normal Form appearance must match saved decoded content and exact resource/Group graphs, and be invoked in order with the expected finite Rect/BBox transform by parsed q/cm/Do/Q instructions; duplicates, missing calls, changed placement and extra appended commands fail. Placement is checked with exact rational arithmetic over parsed PDF numbers: positive finite axis scales, no shear/reflection, exact identity AP/extra matrices, and both source/saved AP width, height and all four corners within min(0.00001 * Rect extent, 0.001 / UserUnit) per axis. No absolute coefficient tolerance. Nonpositive UserUnit or degenerate bounds fail without output. Existing removal, selected geometry and unselected page/content/resource/annotation checks remain.",
       "native_defect_fixed_upstream": false
     },
     {
@@ -357,14 +363,17 @@
       "failure_contexts": [
         "Selected page lacks local Contents: both native flatten routes remove the annotation/widget and orphan its appearance, changing 76800 nonwhite pixels to zero in both renderers",
         "Selected page inherits Resources: both routes install a local XObject-only dictionary that shadows original fonts/images; invoice text can remain extractable while the image disappears",
-        "Hidden annotation /F=2: exact45dc322 annotation flatten completes but turns the hidden appearance visible in both MuPDF and PDFium"
+        "Hidden annotation /F=2: exact45dc322 annotation flatten completes but turns the hidden appearance visible in both MuPDF and PDFium",
+        "Exact 31a2909: finite BBox 1e9 square to Rect 100 points square serializes scale 1e-7 as zero; BBox 7e7 square serializes about 1.428571e-6 as 1e-6, shrinking to 70 points. Both annotation/form Jobs completed incorrectly; MuPDF and PDFium confirm the visible defects."
       ],
       "evidence": [
         "evidence/forms-selected-loss-45dc322-v2/reproduction.json",
-        "evidence/forms-flatten-hidden-baseline-45dc322-v1/reproduction.json"
+        "evidence/forms-flatten-hidden-baseline-45dc322-v1/reproduction.json",
+        "evidence/forms-flatten-precision-31a2909-v1/baseline-runs/reproduction.json"
       ],
       "response": "Fail-closed preflight and selected-page preservation/invocation checks. No wrapper repair, renderer substitution or qualification of the broken native methods.",
-      "qualification": "Parent Ada found the selected-page blockers; negative reproductions do not grant positive appearance acceptance."
+      "qualification": "Parent Ada found the selected-page blockers; negative reproductions do not grant positive appearance acceptance.",
+      "precision_source_checkpoint": "31a2909316286c9ca9f9b2bf80f3f1c3624fd79e"
     }
   ],
   "correction_pass_20261016": {
@@ -427,5 +436,17 @@
       "contents": "Exact four original negative retries and durable hidden case retry reject without output and retain source hashes; final restricted positive annotation/form cases and the separate strict failed form pixel oracle are preserved.",
       "acceptance": "No appearance-parity acceptance or ledger promotion."
     }
+  },
+  "precision_followup_20261016": {
+    "source_checkpoint": "31a2909316286c9ca9f9b2bf80f3f1c3624fd79e",
+    "module_sha256": "0932bee5117a0b50abc097fc6c67ca7ed3843032413787a6a77c9b3a00a065df",
+    "tests_sha256": "d55d6e77f77e154e12cceea63289ae0745fde90f0b38be9a79cab68574435d19",
+    "tests": "104 passed in 29.32 seconds; prior constructor-precision test failure retained",
+    "evidence": "evidence/forms-flatten-precision-31a2909-v1",
+    "four_preserved_failing_originals": "Now reject with no results or output PDFs; source hashes unchanged",
+    "prior_review": "Ada viewed all 13 selected-page review pages at31a2909, confirmed blank/lost-image/hidden-annotation failures, and retained the 3941-pixel PDFium mismatch as unaccepted. Parent retains her review record.",
+    "new_precision_visual_review": "Pending Ada review",
+    "native_accuracy_qualified": false,
+    "merge_hold": true
   }
 }
