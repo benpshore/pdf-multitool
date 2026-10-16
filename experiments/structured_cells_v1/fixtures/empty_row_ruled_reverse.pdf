@@ -1,0 +1,49 @@
+%PDF-1.4
+%Synthetic deterministic fixture
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+5 0 obj
+<< /Length 544 >>
+stream
+BT /F1 10 Tf 1 0 0 1 40 750 Tm (Before the grid) Tj ET
+0.5 w
+40 710 m 40 590 l S
+300 710 m 300 590 l S
+570 710 m 570 590 l S
+40 710 m 570 710 l S
+40 680 m 570 680 l S
+40 650 m 570 650 l S
+40 620 m 570 620 l S
+40 590 m 570 590 l S
+BT /F1 10 Tf 1 0 0 1 308 604 Tm (-3.25) Tj ET
+BT /F1 10 Tf 1 0 0 1 48 604 Tm (002) Tj ET
+BT /F1 10 Tf 1 0 0 1 308 634 Tm (0.00) Tj ET
+BT /F1 10 Tf 1 0 0 1 48 634 Tm (001) Tj ET
+BT /F1 10 Tf 1 0 0 1 308 694 Tm (B) Tj ET
+BT /F1 10 Tf 1 0 0 1 48 694 Tm (A) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 550 Tm (After the grid) Tj ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000042 00000 n 
+0000000091 00000 n 
+0000000148 00000 n 
+0000000274 00000 n 
+0000000342 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+936
+%%EOF

@@ -6,6 +6,8 @@ readme = "README.md"
 authors = [{ name = "Ben Shore" }]
 requires-python = ">=3.14"
 dependencies = [
+    "pdfplumber==0.11.10",
+    "pikepdf==10.17.0",
     "pymupdf==1.26.7",
 ]
 
@@ -13,6 +15,17 @@ dependencies = [
 images = ["Pillow==12.3.0"]
 html = ["weasyprint==70.0"]
 ocr = ["docling[easyocr]==2.138.0"]
+oxide = [
+    "defusedxml==0.7.1",
+    "pdf-oxide==0.3.78",
+    "pillow==12.3.0",
+]
+oxide-ocr = [
+    "defusedxml==0.7.1",
+    "onnxruntime==1.31.0",
+    "pdf-oxide==0.3.78",
+    "pillow==12.3.0",
+]
 
 [project.scripts]
 pdf-multitool = "pdf_multitool.cli:main"
@@ -51,6 +64,8 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
+# Preserve the premeasurement generator bytes; four frozen description strings are long.
+"experiments/row_order_contract_v1/build_fixtures.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

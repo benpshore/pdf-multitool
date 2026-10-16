@@ -1,0 +1,21 @@
+{
+  "test": "test_flatten_keeps_selected_local_resources_and_visible_appearance[True]",
+  "full_forms_run": "83 passed, 1 failed in23.70s",
+  "failed_assertion": "ImageChops.difference(source, output).getbbox() is None",
+  "mupdf": {
+    "exact_pixel_parity": true,
+    "changed_pixels": 0
+  },
+  "pdfium": {
+    "exact_pixel_parity": false,
+    "changed_pixels": 3941,
+    "maximum_channel_delta": 84,
+    "changed_bounds": [
+      103,
+      477,
+      374,
+      549
+    ]
+  },
+  "disposition": "Preserved failure and original fixtures. General form visual fidelity remains unqualified; no tolerance-based parity claim."
+}

@@ -13,6 +13,7 @@ import signal
 import stat
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -33,6 +34,7 @@ class Limits:
     memory_mb: int = 2048
     docling_memory_mb: int = 6144
     max_log_bytes: int = 1024 * 1024
+    max_processes: int = 64
 
 
 DEFAULT_LIMITS = Limits()
@@ -182,15 +184,27 @@ def _binary(name: str, version_arg: str) -> dict:
         return {"available": False, "version": None, "reason": f"{name} is not installed"}
     try:
         # Version arguments cannot touch document files. Keep output and time bounded.
-        proc = subprocess.run(  # noqa: S603 -- fixed engine/CLI argv; no shell
-            [path, version_arg],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=5,
-            check=False,
-        )
-        version = proc.stdout[:2048].decode("utf-8", "replace").splitlines()[0]
-    except (OSError, subprocess.TimeoutExpired, IndexError) as exc:
+        with tempfile.TemporaryFile() as output:
+            proc = subprocess.Popen(  # noqa: S603 -- fixed version argv; no shell
+                [path, version_arg],
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
+                start_new_session=os.name == "posix",
+            )
+            started = time.monotonic()
+            try:
+                while proc.poll() is None:
+                    if time.monotonic() - started > 5 or os.fstat(output.fileno()).st_size > 32768:
+                        raise JobError("Engine version query exceeded its time/output limit")
+                    time.sleep(0.02)
+            finally:
+                _terminate(proc)
+            if proc.returncode != 0 or os.fstat(output.fileno()).st_size > 32768:
+                raise JobError("Engine version query failed or exceeded its output limit")
+            output.seek(0)
+            version = output.read(2048).decode("utf-8", "replace").splitlines()[0]
+    except (OSError, JobError, IndexError) as exc:
         return {"available": False, "version": None, "reason": str(exc)}
     return {
         "available": True,
@@ -201,6 +215,9 @@ def _binary(name: str, version_arg: str) -> dict:
 
 
 def engines() -> dict:
+    from .oxide import availability
+    from .oxide_analysis import ocr_availability
+
     docling = _package("docling")
     docling["installed"] = docling["available"]
     if docling["available"]:
@@ -228,11 +245,16 @@ def engines() -> dict:
             pillow.update(available=False, reason="Pillow codec inspection failed")
     return {
         "pymupdf": _package("PyMuPDF"),
+        "pdf_oxide": availability(),
+        "pdf_oxide_ocr": ocr_availability(),
         "pillow": pillow,
         "poppler": poppler,
         "ghostscript": _binary("gs", "--version"),
         "weasyprint": _package("weasyprint"),
         "docling": docling,
+        "pdfplumber": _package("pdfplumber"),
+        "pikepdf": _package("pikepdf"),
+        "tesseract": _binary("tesseract", "--version"),
     }
 
 
@@ -289,6 +311,7 @@ def run_worker(
         "TMP",
         "TMPDIR",
         "PDF_MULTITOOL_MODELS",
+        "PDF_MULTITOOL_OXIDE_MODELS",
     }
     env = {key: value for key, value in os.environ.items() if key in allowed_env}
     env["HOME"] = str(workdir.resolve())
@@ -325,8 +348,8 @@ def run_worker(
         started = time.monotonic()
         try:
             # Passwords and form values travel over an anonymous pipe, never argv or disk.
-            proc.stdin.write(encoded_payload)
-            proc.stdin.close()
+            os.set_blocking(proc.stdin.fileno(), False)
+            pending = memoryview(encoded_payload)
             while proc.poll() is None:
                 if cancel.wait(0.06):
                     raise Cancelled("Cancelled; completed files remain available")
@@ -337,7 +360,19 @@ def run_worker(
                 total = directory_size(workdir)
                 if total > limits.max_output_bytes:
                     raise JobError("Output exceeded the configured size limit")
+                if pending:
+                    try:
+                        written = os.write(proc.stdin.fileno(), pending[:65536])
+                        pending = pending[written:]
+                    except BlockingIOError:
+                        pass
+                    except BrokenPipeError:
+                        pending = pending[:0]
+                if not pending and not proc.stdin.closed:
+                    proc.stdin.close()
         finally:
+            if not proc.stdin.closed:
+                proc.stdin.close()
             _terminate(proc)
     if log_path.stat().st_size > limits.max_log_bytes:
         raise JobError("Engine diagnostic output exceeded its limit")
@@ -349,8 +384,10 @@ def run_worker(
             log.seek(max(0, log_path.stat().st_size - 2000))
             diagnostic = log.read(2000).decode("utf-8", "replace")
         raise JobError(f"Engine stopped without a result (exit {proc.returncode}): {diagnostic}")
-    result = json.loads(result_path.read_text(encoding="utf-8"))
-    if not result.get("ok"):
+    result = read_local_json(result_path, maximum=1024 * 1024)
+    if not isinstance(result, dict) or not isinstance(result.get("outputs", []), list):
+        raise JobError("Invalid engine result protocol")
+    if result.get("ok") is not True:
         raise JobError(result.get("error", "Engine failed"))
     return result
 
@@ -383,7 +420,14 @@ class Job:
         directory: Path,
         limits: Limits = DEFAULT_LIMITS,
     ):
-        if operation not in {
+        from .catalog import (
+            OPERATIONS,
+            READING_ORDER_OPERATIONS,
+            validate_options,
+            validate_reading_order,
+        )
+
+        if operation not in OPERATIONS and operation not in {
             "merge",
             "split",
             "rotate",
@@ -412,6 +456,21 @@ class Job:
             raise JobError("Unknown operation")
         if not isinstance(options, dict):
             raise JobError("Options must be an object")
+        if "reading_order" in options:
+            if operation not in READING_ORDER_OPERATIONS:
+                raise JobError(
+                    "reading_order is supported only for Markdown, structured text and HTML exports"
+                )
+            try:
+                validate_reading_order(options["reading_order"])
+            except ValueError as exc:
+                raise JobError(str(exc)) from exc
+        if operation in OPERATIONS:
+            options = validate_options(operation, options)
+            if (not files and OPERATIONS[operation]["inputs"]) or (
+                files and not OPERATIONS[operation]["inputs"]
+            ):
+                raise JobError("Input file count does not match this operation")
         self.id = uuid.uuid4().hex
         self.operation, self.files, self.options = operation, files, options
         self.directory, self.limits = directory / self.id, limits
@@ -424,6 +483,7 @@ class Job:
         self.results: list[dict] = []
         self.errors: list[dict] = []
         self.warnings: list[str] = []
+        self.partial = False
 
     def snapshot(self) -> dict:
         with self.lock:
@@ -445,7 +505,9 @@ class Job:
             self.state, self.message = "running", "Starting"
         groups = (
             [self.files]
-            if self.operation in {"merge", "bundle", "imagepdf"}
+            if self.operation
+            in {"merge", "bundle", "imagepdf", "create", "oxide_edit_merge", "oxide_images_pdf"}
+            or not self.files
             else [[f] for f in self.files]
         )
         try:
@@ -486,7 +548,14 @@ class Job:
                         records = []
                         warnings = []
                         for output in result["outputs"]:
-                            path = (workdir / output["file"]).resolve()
+                            raw_path = workdir / output["file"]
+                            if any(
+                                p.is_symlink()
+                                for p in (raw_path, *raw_path.parents)
+                                if p != workdir.parent
+                            ):
+                                raise JobError("Invalid engine output symlink")
+                            path = raw_path.resolve()
                             if (
                                 not path.is_relative_to(workdir.resolve())
                                 or not path.is_file()
@@ -532,6 +601,7 @@ class Job:
                         warnings.extend(result.get("warnings", []))
                         self.results.extend(records)
                         self.warnings.extend(warnings)
+                        self.partial = self.partial or result.get("partial") is True
                 except Cancelled:
                     shutil.rmtree(workdir, ignore_errors=True)
                     raise
@@ -544,13 +614,13 @@ class Job:
             with self.lock:
                 self.state = (
                     "partial"
-                    if self.errors and self.results
+                    if (self.errors and self.results) or self.partial
                     else "failed"
                     if self.errors
                     else "completed"
                 )
                 self.message = {
-                    "partial": "Finished with some errors",
+                    "partial": "Finished with incomplete results; review warnings and errors",
                     "failed": "No files completed",
                     "completed": "Finished",
                 }[self.state]
@@ -567,5 +637,5 @@ class Job:
     def clear_secrets(self) -> None:
         """Drop retained references; Python does not promise memory zeroization."""
         with self.lock:
-            for key in ("password", "new_password", "fields", "create_fields"):
+            for key in ("password", "new_password", "owner_password", "fields", "create_fields"):
                 self.options.pop(key, None)

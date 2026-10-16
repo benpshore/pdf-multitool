@@ -25,14 +25,44 @@ passing synthetic checks does not establish full product acceptance.
 - Form inspection, supported field creation/filling and flattening
 - Native text/rectangle redaction with post-save checks
 - Local multi-file browser interface, job cancellation and result downloads
+- Unicode text PDF creation, page headers/footers and exact object deduplication
+- pdfplumber text/geometry and candidate-table exports; pikepdf stream optimization
+- Embedded attachment inventory/extraction, Tesseract OCR and bounded planar deskew
+- Additional MuPDF/Ghostscript rendering and shared API/GUI option contracts
+- SVG page export with selectable glyph paths or font-dependent text
+- Whole-document gray, RGB or CMYK conversion with text/geometry verification
+
+Native HTML, Markdown and structured TXT can project supported drawn-rule grids
+into actual cells, with a JSON companion describing geometry and limitations.
+Borderless candidates remain explicitly ambiguous under `auto`. See
+[structured-grid qualification](docs/STRUCTURED_TABLE_QUALIFICATION_20261015.md).
+
+For a known row-based record layout, the `pdfhtml`, `markdown` and `textlayout`
+commands accept `--reading-order rows`; `columns` reads down separated columns.
+The GUI exposes the same choice. The default `auto` policy can still export
+borderless tables column by column. Explicit ordering applies to the whole
+document, requires unrotated horizontal left-to-right content, and does not infer
+general table cell identities or guarantee mixed-layout correctness. See
+[reading-order qualification](docs/READING_ORDER_QUALIFICATION_20261015.md).
 
 Signature-field inspection does not verify or create cryptographic signatures.
-OCR/Docling remains unavailable without a separately verified model set.
+Docling OCR remains unavailable without a separately verified model set. Tesseract
+OCR uses separately installed system language data and is available through its
+own explicitly acknowledged rasterization workflow.
 Optional WeasyPrint conversion has synthetic Linux integration coverage with
 resource loading disabled; it does not promise layout fidelity. Read the limits for
 [forms](docs/FORMS.md), [images](docs/IMAGES.md),
 [archives and exports](docs/ARCHIVES_AND_EXPORTS.md), and
 [local security](docs/SECURITY.md).
+The [toolkit feature matrix](docs/TOOLKIT_FEATURE_MATRIX.md) records implemented,
+partial, unsupported and unqualified scope. The [API reference](docs/API.md)
+describes the actual loopback routes and operation options.
+The [198-family reconciliation](docs/feature_reconciliation.json) maps the supplied
+inventory to product routes without claiming complete public-API coverage.
+The [SVG qualification](docs/SVG_QUALIFICATION_20261015.md) records its bounds,
+independent rendering checks and outstanding acceptance work.
+The [recoloring qualification](docs/RECOLOR_QUALIFICATION_20261015.md) records
+component conversion, explicit color-loss acknowledgment and remaining color-fidelity limits.
 
 ## Running locally
 
@@ -46,6 +76,8 @@ uv run --locked pdf-multitool doctor
 uv run --locked pdf-multitool gui
 uv run --locked pdf-multitool merge first.pdf second.pdf -o output
 uv run --locked pdf-multitool split document.pdf --pages '1-3;4;5-7'
+uv run --locked pdf-multitool svg document.pdf --pages '1-3' --text-mode paths --scale 1
+uv run --locked pdf-multitool recolor document.pdf --colorspace gray --allow-color-change
 ```
 
 Poppler's `pdftotext` and `pdftoppm` provide text extraction and rendering;
@@ -55,6 +87,25 @@ and repagination use `uv sync --locked --extra html` and system Pango libraries.
 CI provisions these dependencies on Ubuntu; other platforms remain unqualified.
 Installing the `ocr` extra alone does not enable model downloads or satisfy the
 Docling model verification gate.
+
+Optional PDF Oxide 0.3.78 workflows use `uv sync --locked --extra oxide` on
+nonroot Linux with libseccomp. They require the existing bounded worker and
+fail if its native guards are unavailable. The `oxide-ocr` extra additionally
+installs the pinned inference runtime; OCR remains unavailable without an
+explicitly provisioned, verified compatible local model set. No models are
+downloaded automatically. For example:
+
+```sh
+uv run --locked --extra oxide pdf-multitool oxide document.pdf --include-html
+uv run --locked --extra oxide pdf-multitool oxide_format document.pdf --format markdown
+uv run --locked --extra oxide pdf-multitool oxide_create_text --content 'Invoice 001 Total -12.50'
+```
+
+See the [PDF Oxide integration and limitations](docs/PDF_OXIDE_INTEGRATION.md)
+and [complete pinned API accounting](docs/pdf-oxide-api-coverage.json). Native
+tables, text, rendering and Office conversion are not generally qualified.
+Confirmed defective editing/creation combinations fail explicitly. Existing
+engine defaults and the PR's merge hold remain unchanged.
 
 Open the printed loopback URL on the same machine. The server is single-user;
 never expose it through a public tunnel or reverse proxy. Download temporary GUI

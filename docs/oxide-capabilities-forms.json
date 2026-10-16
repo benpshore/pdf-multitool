@@ -1,0 +1,452 @@
+{
+  "distribution": "pdf-oxide",
+  "version": "0.3.78",
+  "owner": "oxide_forms",
+  "scope": "Pinned Python bindings for existing-document forms and annotations",
+  "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs",
+  "implementation": "src/pdf_multitool/oxide_forms.py",
+  "tests": "tests/test_oxide_forms.py",
+  "qualification": {
+    "general_visual_fidelity": "unqualified; parent Ada review required",
+    "merge_hold": true,
+    "runtime": "Optional pinned wheel; disposable nonroot Linux worker with hard 2 GiB address-space/120 second ceilings and native network/process confinement",
+    "input": "Source bytes retained; input at most 50 MiB; whole-document form/edit workflows limited to 100 pages",
+    "output": "1000 fields, 2000 annotations, 2 MiB report/export, 16 MiB aggregate output; no truncated success",
+    "configuration": "32 KiB strict JSON; 100 edits; no arbitrary method dispatch or user output paths",
+    "coordinates": "Native PDF user-space coordinates; one-based source pages, zero-based annotation indices. Explicit highlight correction preserves CropBox/Rotate handling and accepts only 0/90/180/270 rotation, UserUnit 1 and rectangles wholly inside MediaBox intersection CropBox; no inferred layout or coordinate normalization.",
+    "independent_validation": "PyMuPDF structural reopen and existing field-value checks; flattening adds raw non-inheriting pikepdf preflight plus selected original content/resource preservation and actual AP invocation checks. Unsupported shapes and mismatches fail without output. Opt-in highlight correction remains a separately named pikepdf backend. These checks do not establish visible appearance parity.",
+    "graph_limits": "Annotation/resource graphs at most 100000 nodes/depth 64; cumulative decoded page-content plus resource streams at most 16 MiB per snapshot; absolute native numeric metadata tolerance 0.001. Textual numeric values and decoded stream hashes are exact. Budget or verification failure publishes no candidate.",
+    "flatten_input_limits": "Targeted selected pages require local Contents streams, non-shadowed Resources, identity AP matrices and original commands inside balanced q/Q, text, marked-content and compatibility scopes. Graphics stack <=64, source commands <=100000, decoded source content <=16 MiB. External annotation flags allow only Print/ReadOnly/Locked/LockedContents; CA must be 1, OC absent, BM absent/Normal. Missing-AP links require explicit zero-width Border/BS without conflict; popup requires a usable parent AP.",
+    "flatten_comparison_limits": "Selected original resources and AP Resources/Group/stream hashes are exact. Appearance metadata retains its absolute 0.001 tolerance, with separate exact-matrix and physical-geometry validation. Placement is checked with exact rational arithmetic over parsed PDF numbers: positive finite axis scales, no shear/reflection, exact identity AP/extra matrices, and both source/saved AP width, height and all four corners within min(0.00001 * Rect extent, 0.001 / UserUnit) per axis. No absolute coefficient tolerance. Nonpositive UserUnit or degenerate bounds fail without output. Textual numeric strings remain exact. Added invocation commands <=2000 annotations*6. Selected validation shares the 100000-node/depth64/16MiB decoded-stream budget. Existing original-annotation metadata checks retain their documented tolerance."
+  },
+  "capabilities": [
+    {
+      "id": "oxide.forms.inspect",
+      "apis": [
+        "PdfDocument.get_form_fields",
+        "PdfDocument.get_form_field_value"
+      ],
+      "route": "oxide_form_inspect",
+      "status": "implemented",
+      "details": "Exact field report and per-page widget annotations; get_form_field_value also validates pending filled values.",
+      "verification": [
+        "exact numeric strings and leading zeros",
+        "multiline values",
+        "readonly and signature classifications",
+        "source hashes",
+        "source page/widget identity"
+      ]
+    },
+    {
+      "id": "oxide.forms.field_properties",
+      "apis": [
+        "FormField.name",
+        "FormField.field_type",
+        "FormField.value",
+        "FormField.tooltip",
+        "FormField.bounds",
+        "FormField.flags",
+        "FormField.max_length",
+        "FormField.is_readonly",
+        "FormField.is_required"
+      ],
+      "route": "oxide_form_inspect",
+      "status": "implemented",
+      "details": "Properties retained in JSON; native bounds are not relabeled as normalized screen coordinates."
+    },
+    {
+      "id": "oxide.forms.fill",
+      "apis": [
+        "PdfDocument.set_form_field_value",
+        "PdfDocument.get_form_field_value",
+        "PdfDocument.to_bytes"
+      ],
+      "route": "oxide_form_fill",
+      "status": "implemented_with_explicit_restrictions",
+      "details": "Text/null, standard /Yes boolean checkboxes, single choices and multi-select arrays. Saved requested and untouched values must match exactly. Native choice validity independently checked. Readonly/signature/unknown/push-button/radio fields, duplicate names and non-/Yes checkbox states fail closed. Encrypted rewrites fail because encryption cannot be preserved by this route.",
+      "verification": [
+        "independent native and PyMuPDF saved numeric/multiline strings",
+        "Unicode native value preservation",
+        "boolean checkbox",
+        "single choice",
+        "multi-choice",
+        "readonly/maximum-length/missing-field errors",
+        "source preservation"
+      ],
+      "limitations": [
+        "Visible field appearance and Unicode glyph coverage require visual review",
+        "Radio string setter serializes PDF strings rather than name states; no supported radio repair is claimed"
+      ]
+    },
+    {
+      "id": "oxide.forms.xfa",
+      "apis": [
+        "PdfDocument.has_xfa"
+      ],
+      "route": "oxide_form_inspect",
+      "status": "implemented_detection_only",
+      "details": "XFA presence reported; XFA form mutations/export/flatten fail closed. No XFA extraction, rendering, filling or XML import method exists in the pinned Python binding.",
+      "verification": [
+        "synthetic XFA packet detected",
+        "mutation/export rejected atomically"
+      ]
+    },
+    {
+      "id": "oxide.forms.export_fdf",
+      "apis": [
+        "PdfDocument.export_form_data(format='fdf')"
+      ],
+      "route": "oxide_form_export",
+      "status": "implemented_with_explicit_restrictions",
+      "details": "App-owned generated output filename only. Exact JSON report accompanies native FDF. Only ASCII names/values and representable button export names accepted; Unicode fails closed because pinned writer uses raw UTF-8 literal PDF strings. Export operates on a freshly opened source, never unsaved editor changes.",
+      "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/fdf/fdf_writer.rs",
+      "verification": [
+        "ASCII numeric/special-character output",
+        "multi-select array delimiters",
+        "native output hash",
+        "Unicode rejection"
+      ]
+    },
+    {
+      "id": "oxide.forms.export_xfdf",
+      "apis": [
+        "PdfDocument.export_form_data(format='xfdf')"
+      ],
+      "route": "oxide_form_export",
+      "status": "implemented_with_explicit_restrictions",
+      "details": "Scalar Unicode XML export with parsed-value check against exact source fields. Reject DTD/entities, XML-invalid/control-normalized names/values, arrays and empty strings. Pinned upstream comma-joins arrays and omits empty-string value elements.",
+      "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/fdf/xfdf_writer.rs",
+      "verification": [
+        "XML escaping",
+        "Unicode strings",
+        "booleans and null values",
+        "array/empty-string rejection",
+        "native output hash"
+      ]
+    },
+    {
+      "id": "oxide.forms.import",
+      "apis": [],
+      "route": null,
+      "status": "unavailable_in_pinned_python_binding",
+      "details": "No FDF/XFDF import method is exported in Python 0.3.78. A bounded JSON fill workflow is implemented and is not presented as native FDF/XFDF import."
+    },
+    {
+      "id": "oxide.forms.flatten",
+      "apis": [
+        "PdfDocument.flatten_forms",
+        "PdfDocument.flatten_forms_on_page",
+        "PdfDocument.flatten_warnings"
+      ],
+      "route": "oxide_form_flatten",
+      "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified",
+      "details": "Explicit allow_flatten; selected widgets or entire AcroForm flattened only through the documented restricted preflight and saved-result checks. Every native flatten_warnings entry rejects the output with its bounded diagnostic. Selected widgets must be absent; selected non-widget annotations and unselected pages are retained. XFA is unsupported. Passing these checks does not establish visible appearance accuracy.",
+      "verification": [
+        "actual selected-page widget removal with other-page widgets and non-widget notes preserved",
+        "actual all-page AcroForm removal and retained source text",
+        "native blank-signature appearance warning reproduced and rejected without PDF",
+        "independent unselected-page geometry/content/resources/Group/annotation change rejection",
+        "Exact 45dc322 missing-Contents and inherited-Resources losses reproduced in both form and annotation routes, then refused by current preflight",
+        "Hidden annotation visibility loss reproduced on exact45dc322; appearance-affecting flags now rejected",
+        "Original resource-name collisions, missing/changed/reordered AP calls and unsupported placement/state are rejected",
+        "Supported synthetic positive checks retain body/image pixels outside the AP and exact numeric content; they do not establish pixel parity",
+        "Exact 31a2909 finite extreme-BBox inputs incorrectly completed with 100-point APs collapsed to zero or shrunk to 70 points, in both routes; preserved originals now reject without outputs",
+        "Adversarial saved transforms/BBoxes, small rectangles, large offsets and UserUnit-scaled errors reject; exact nonzero 0.000001 scales remain supported"
+      ],
+      "limitations": [
+        "Native missing-Contents, inherited-resource-shadowing and hidden-annotation flatten defects remain unresolved upstream. These are rejection checks, not appearance reconstruction or native fidelity qualification. Valid PDFs outside the restricted supported shape may be rejected.",
+        "A positive form case still differs in PDFium by 3941 glyph-region pixels (maximum channel difference 84); MuPDF pixels match for that case. The strict failing pixel oracle is preserved and appearance parity remains false.",
+        "Native six-decimal overlay scale serialization remains unchanged; the adapter rejects measured collapsed/shrunken appearances before publication and does not repair them."
+      ],
+      "preflight": "Raw pikepdf preflight uses inherit_page_attributes=False. A selected page with targets requires a nonempty list of local Contents streams and may not rely on inherited Resources that native output would shadow. Original commands must restore graphics/text/marked-content/compatibility state inside balanced q/Q blocks. Nonidentity AP matrices and unsupported external annotation visibility/opacity/optional-content/blend semantics are rejected; no source normalization or fallback painting occurs.",
+      "selected_page_verification": "Selected original decoded content-stream hashes must remain an exact ordered prefix. Every original resource entry and page Group is preserved exactly. Each removed usable normal Form appearance must match saved decoded content and exact resource/Group graphs, and be invoked in order with the expected finite Rect/BBox transform by parsed q/cm/Do/Q instructions; duplicates, missing calls, changed placement and extra appended commands fail. Placement is checked with exact rational arithmetic over parsed PDF numbers: positive finite axis scales, no shear/reflection, exact identity AP/extra matrices, and both source/saved AP width, height and all four corners within min(0.00001 * Rect extent, 0.001 / UserUnit) per axis. No absolute coefficient tolerance. Nonpositive UserUnit or degenerate bounds fail without output. Existing removal, selected geometry and unselected page/content/resource/annotation checks remain.",
+      "native_defect_fixed_upstream": false
+    },
+    {
+      "id": "oxide.annotations.inspect",
+      "apis": [
+        "PdfDocument.get_annotations",
+        "Page.annotations"
+      ],
+      "route": "oxide_annotation_inspect",
+      "status": "implemented",
+      "details": "Read metadata available from get_annotations including literal contents/URI, field data, author, subject, dates, opacity and rectangles. Page.annotations delegates to get_annotations in the binding; the app calls get_annotations directly.",
+      "verification": [
+        "one-based page identities",
+        "selected page order",
+        "exact native rectangles",
+        "inert URI strings"
+      ]
+    },
+    {
+      "id": "oxide.annotations.editor_wrapper",
+      "apis": [
+        "PdfPage.annotations",
+        "PdfAnnotation.subtype",
+        "PdfAnnotation.rect",
+        "PdfAnnotation.contents",
+        "PdfAnnotation.color",
+        "PdfAnnotation.is_modified",
+        "PdfAnnotation.is_new"
+      ],
+      "route": "oxide_annotation_edit",
+      "status": "partial_editor_internals",
+      "details": "PdfPage.annotations and PdfAnnotation.subtype are called for removal validation. Native rect/contents/color getters are not called directly; equivalent persistent metadata is exported via get_annotations. Transient is_modified/is_new editor flags are not exposed by the app. FormField/PdfAnnotation have no public native constructor; values are returned by native document APIs. No claim that all wrapper getters are separately implemented."
+    },
+    {
+      "id": "oxide.annotations.add",
+      "apis": [
+        "PdfDocument.page",
+        "PdfPage.add_note",
+        "PdfPage.add_link",
+        "PdfDocument.save_page",
+        "PdfDocument.to_bytes"
+      ],
+      "route": "oxide_annotation_edit",
+      "status": "implemented",
+      "details": "Strict action allowlist. Links limited to HTTP(S)/mailto without credentials; no link is fetched. Native saved counts, metadata, rectangles, contents and retained page text checked; existing annotations kept. Output is structurally reopened independently.",
+      "verification": [
+        "note contents and rectangle",
+        "link URI and rectangle",
+        "source page identity",
+        "untouched annotations/page text",
+        "unknown keys, paths and script/file URI rejection"
+      ]
+    },
+    {
+      "id": "oxide.annotations.add_highlight",
+      "apis": [
+        "PdfPage.add_highlight"
+      ],
+      "route": "oxide_annotation_edit",
+      "status": "pinned_native_visual_failure_gated",
+      "details": "Native geometry/color metadata and successful serialization do not establish a visible highlight. Native output has malformed bow-tie QuadPoints in MuPDF and no PDFium appearance. The default path rejects highlight actions before spawn. An explicit allow_highlight_repair option invokes the separately documented pikepdf correction and retains native-unverified.pdf; it does not fix or qualify the native method.",
+      "verification": [
+        "independent MuPDF malformed bow-tie appearance",
+        "independent PDFium missing color",
+        "default pre-spawn capability gate",
+        "explicit correction has separately named candidate, diagnostic and backend provenance"
+      ],
+      "recovery_evidence": "External evidence/forms-highlight-appearance-probe-2/test_added_highlight_has_visib0 preserves source, wrong output, report and PDFium render; the final review pack includes the negative case."
+    },
+    {
+      "id": "oxide.annotations.explicit_highlight_correction",
+      "apis": [
+        "PdfPage.add_highlight"
+      ],
+      "route": "oxide_annotation_edit allow_highlight_repair=true",
+      "status": "implemented_explicit_backend_correction_native_unqualified",
+      "native_status": "pinned_native_visual_failure_gated",
+      "backend": "pikepdf==10.17.0 after pdf-oxide==0.3.78 creates the new annotation",
+      "native_defect_fixed_upstream": false,
+      "details": "Only new annotations exactly matching the known native lower-left/lower-right/upper-right/upper-left QuadPoints and missing AP are corrected. The requested rectangle must be at least 0.5 PDF points per dimension and fully inside the effective visible crop; supported rotations are 0/90/180/270 and UserUnit must be 1. Unknown geometry, appearance or identity is rejected. No layout inference or generic failure bypass occurs. Correction sets upper-left/upper-right/lower-left/lower-right QuadPoints and an explicit rectangular Multiply appearance stream.",
+      "preservation": "Before and after correction, compare page geometry, decoded content, inherited Resources, page Group and original annotation graphs. Existing form-field values and metadata must remain unchanged. Absolute native numeric metadata tolerance is 0.001; textual numeric values and decoded stream hashes are exact. Native and corrected files share the existing atomic aggregate output budget.",
+      "outputs": [
+        "native-unverified.pdf: preserved defective native diagnostic",
+        "modified.pdf: separate corrected candidate",
+        "forms-annotations.json: explicit backend/version/opt-in, source/native/candidate hashes, requested/native/corrected geometry, appearance hash and preservation checks"
+      ],
+      "verification": [
+        "real PDFium and MuPDF comparisons for all supported rotations and offset crop",
+        "numeric text and black text pixels preserved",
+        "untouched page pixels identical in tested cases",
+        "existing annotation graphs and form values retained with mixed additions",
+        "unknown native shape, unsupported geometry, resource changes and output-budget overflow rejected"
+      ],
+      "limitations": [
+        "Native add_highlight remains defective and the default path remains blocked",
+        "Successful reconstruction of an explicit rectangle is not general annotation/layout/source-fidelity qualification",
+        "Parent Ada acceptance and merge hold remain in force"
+      ]
+    },
+    {
+      "id": "oxide.annotations.remove",
+      "apis": [
+        "PdfPage.remove_annotation"
+      ],
+      "route": "oxide_annotation_edit",
+      "status": "pinned_native_persistence_failure_fail_closed",
+      "details": "Method returns True and save succeeds but the reopened PDF retains removed original annotations in a real synthetic test. Runtime saved-metadata check rejects the output. Widget removal is refused; no alternate parser silently substitutes for PDF Oxide.",
+      "verification": [
+        "real original-note removal defect reproduced",
+        "no partial outputs after rejection"
+      ],
+      "recovery_evidence": "External evidence/forms-test-run-1/test_annotation_add_remove_reo0 contains the original and erroneous pre-guard native output/report; preserved for review."
+    },
+    {
+      "id": "oxide.annotations.flatten",
+      "apis": [
+        "PdfDocument.flatten_page_annotations",
+        "PdfDocument.flatten_all_annotations",
+        "PdfDocument.is_page_marked_for_flatten"
+      ],
+      "route": "oxide_annotation_flatten",
+      "status": "implemented_with_selected_page_loss_gates_fidelity_unqualified",
+      "details": "Explicit allow_flatten; existing widgets require separate form flattening. Source preflight rejects known loss shapes. After serialization, native and independent readers must find no selected annotations and the selected-content/resource/AP invocation checks must pass. Earlier link-only and no-AP-highlight persistence failures remain rejected. Native flatten marks and successful serialization are not correctness proof.",
+      "verification": [
+        "selected page annotation removal in supported cases",
+        "unselected page content/resource/annotation preservation checks",
+        "actual link-only annotation persistence rejected for selected and whole-document modes",
+        "actual no-appearance-highlight persistence rejected",
+        "widget-bearing page gate",
+        "Exact 45dc322 missing-Contents and inherited-Resources losses reproduced in both form and annotation routes, then refused by current preflight",
+        "Hidden annotation visibility loss reproduced on exact45dc322; appearance-affecting flags now rejected",
+        "Original resource-name collisions, missing/changed/reordered AP calls and unsupported placement/state are rejected",
+        "Supported synthetic positive checks retain body/image pixels outside the AP and exact numeric content; they do not establish pixel parity",
+        "Exact 31a2909 finite extreme-BBox inputs incorrectly completed with 100-point APs collapsed to zero or shrunk to 70 points, in both routes; preserved originals now reject without outputs",
+        "Adversarial saved transforms/BBoxes, small rectangles, large offsets and UserUnit-scaled errors reject; exact nonzero 0.000001 scales remain supported"
+      ],
+      "limitations": [
+        "Native missing-Contents, inherited-resource-shadowing and hidden-annotation flatten defects remain unresolved upstream. These are rejection checks, not appearance reconstruction or native fidelity qualification. Valid PDFs outside the restricted supported shape may be rejected.",
+        "A positive form case still differs in PDFium by 3941 glyph-region pixels (maximum channel difference 84); MuPDF pixels match for that case. The strict failing pixel oracle is preserved and appearance parity remains false.",
+        "Native six-decimal overlay scale serialization remains unchanged; the adapter rejects measured collapsed/shrunken appearances before publication and does not repair them."
+      ],
+      "preflight": "Raw pikepdf preflight uses inherit_page_attributes=False. A selected page with targets requires a nonempty list of local Contents streams and may not rely on inherited Resources that native output would shadow. Original commands must restore graphics/text/marked-content/compatibility state inside balanced q/Q blocks. Nonidentity AP matrices and unsupported external annotation visibility/opacity/optional-content/blend semantics are rejected; no source normalization or fallback painting occurs.",
+      "selected_page_verification": "Selected original decoded content-stream hashes must remain an exact ordered prefix. Every original resource entry and page Group is preserved exactly. Each removed usable normal Form appearance must match saved decoded content and exact resource/Group graphs, and be invoked in order with the expected finite Rect/BBox transform by parsed q/cm/Do/Q instructions; duplicates, missing calls, changed placement and extra appended commands fail. Placement is checked with exact rational arithmetic over parsed PDF numbers: positive finite axis scales, no shear/reflection, exact identity AP/extra matrices, and both source/saved AP width, height and all four corners within min(0.00001 * Rect extent, 0.001 / UserUnit) per axis. No absolute coefficient tolerance. Nonpositive UserUnit or degenerate bounds fail without output. Existing removal, selected geometry and unselected page/content/resource/annotation checks remain.",
+      "native_defect_fixed_upstream": false
+    },
+    {
+      "id": "oxide.annotations.unmark",
+      "apis": [
+        "PdfDocument.unmark_page_for_flatten"
+      ],
+      "route": "oxide_annotation_flatten",
+      "status": "internal_editor_state_not_user_workflow",
+      "details": "The app selects final flatten pages before editing, so no pending marks are exposed across requests. This state-mutator has no independent durable artifact; selected-page exclusion provides the user-visible result. No arbitrary persistent editor session is created."
+    },
+    {
+      "id": "oxide.forms.creation",
+      "apis": [
+        "FluentPageBuilder.text_field",
+        "FluentPageBuilder.checkbox",
+        "FluentPageBuilder.combo_box",
+        "FluentPageBuilder.radio_group",
+        "FluentPageBuilder.push_button",
+        "FluentPageBuilder.signature_field"
+      ],
+      "status": "owned_by_creation_module",
+      "details": "New-document field creation and builder verification are delegated to oxide_creation; this inventory makes no completion claim for those methods."
+    },
+    {
+      "id": "oxide.annotations.creation",
+      "apis": [
+        "FluentPageBuilder.highlight",
+        "FluentPageBuilder.underline",
+        "FluentPageBuilder.strikeout",
+        "FluentPageBuilder.squiggly",
+        "FluentPageBuilder.sticky_note",
+        "FluentPageBuilder.sticky_note_at",
+        "FluentPageBuilder.stamp",
+        "FluentPageBuilder.freetext"
+      ],
+      "status": "owned_by_creation_module",
+      "details": "New-document annotation builders are owned by oxide_creation. Existing-document Python annotation additions expose only note/highlight/link."
+    },
+    {
+      "id": "oxide.forms.signing_and_actions",
+      "apis": [],
+      "status": "separate_explicit_gate",
+      "details": "No private keys, certificates, signing or form JavaScript is loaded/executed. Signature inspection/security belongs to oxide_security. Existing signature fields are not filled by this module; rewriting signed documents records invalidation."
+    },
+    {
+      "id": "oxide.flatten.native_selected_page_loss",
+      "apis": [
+        "PdfDocument.flatten_forms",
+        "PdfDocument.flatten_forms_on_page",
+        "PdfDocument.flatten_page_annotations",
+        "PdfDocument.flatten_all_annotations"
+      ],
+      "route": "oxide_form_flatten / oxide_annotation_flatten",
+      "status": "upstream_content_loss_failure_blocked",
+      "native_defect_fixed_upstream": false,
+      "source_checkpoint": "45dc3224054ad30f08b4dce2385a4d4eaba02dc0",
+      "failure_contexts": [
+        "Selected page lacks local Contents: both native flatten routes remove the annotation/widget and orphan its appearance, changing 76800 nonwhite pixels to zero in both renderers",
+        "Selected page inherits Resources: both routes install a local XObject-only dictionary that shadows original fonts/images; invoice text can remain extractable while the image disappears",
+        "Hidden annotation /F=2: exact45dc322 annotation flatten completes but turns the hidden appearance visible in both MuPDF and PDFium",
+        "Exact 31a2909: finite BBox 1e9 square to Rect 100 points square serializes scale 1e-7 as zero; BBox 7e7 square serializes about 1.428571e-6 as 1e-6, shrinking to 70 points. Both annotation/form Jobs completed incorrectly; MuPDF and PDFium confirm the visible defects."
+      ],
+      "evidence": [
+        "evidence/forms-selected-loss-45dc322-v2/reproduction.json",
+        "evidence/forms-flatten-hidden-baseline-45dc322-v1/reproduction.json",
+        "evidence/forms-flatten-precision-31a2909-v1/baseline-runs/reproduction.json"
+      ],
+      "response": "Fail-closed preflight and selected-page preservation/invocation checks. No wrapper repair, renderer substitution or qualification of the broken native methods.",
+      "qualification": "Parent Ada found the selected-page blockers; negative reproductions do not grant positive appearance acceptance.",
+      "precision_source_checkpoint": "31a2909316286c9ca9f9b2bf80f3f1c3624fd79e"
+    }
+  ],
+  "correction_pass_20261016": {
+    "status": "owner source/tests frozen; report updated after exact owner reconciliation",
+    "tests": "57 tests passed in 16.94 seconds; Ruff clean",
+    "test_evidence": "evidence/forms-followup-final-tests-2 (isolated cloud workspace)",
+    "review_evidence": "evidence/forms-correction-review-v2/index.html (immutable isolated cloud package; 11 cases, 210 files excluding manifest)",
+    "preserved_failures": [
+      "Original malformed/missing native highlight appearances",
+      "Link-only and no-AP-highlight flatten persistence",
+      "Blank signature appearance loss warning"
+    ],
+    "source_and_prior_evidence_preserved": true,
+    "native_accuracy_qualified": false,
+    "merge_hold": true,
+    "review_manifest_sha256": "bdcee0a01faf32c141ec7491df639f1a62ba498ad56dad05274f1e739941627e",
+    "review_zip_bytes": 1352832
+  },
+  "selected_page_followup_20261016": {
+    "source_checkpoint": "45dc3224054ad30f08b4dce2385a4d4eaba02dc0",
+    "source_frozen": true,
+    "module_sha256": "7feb4f390e2fae088bda4f123d4452e1702733453a97227d6c2ed4d3f037e253",
+    "tests_sha256": "79d2b37edac8d6b65b569e402555eca8bd62ddc57751132349dbd440f5a95b98",
+    "tests": "84 tests passed in 24.83 seconds; Ruff and diff checks clean (owner freeze)",
+    "negative_baseline_evidence": [
+      "evidence/forms-selected-loss-45dc322-v2",
+      "evidence/forms-flatten-hidden-baseline-45dc322-v1"
+    ],
+    "independent_working_tree_probes": [
+      "evidence/forms-flatten-graphics-state-audit-20261016-v1",
+      "evidence/forms-flatten-annotation-semantics-audit-20261016-v1"
+    ],
+    "probe_provenance": "Initial live-working-tree probes did not capture adapter bytes before invocation and are not attributed retrospectively to a commit. The hidden case was separately rerun using identical input bytes and isolated git archive of 45dc322 source, module SHA c51342bab1a13d352550324d1684684b625ef376c40589e57dcbd2709e7a41a9.",
+    "opacity_probe": "CA=0.25 did not reproduce an appearance difference in the tested MuPDF case; opacity refusal is a conservative unsupported-shape restriction, not a claimed reproduced opacity defect.",
+    "remaining_pixel_oracle": {
+      "renderer": "PDFium",
+      "different_pixels": 3941,
+      "changed_box": [
+        103,
+        477,
+        374,
+        549
+      ],
+      "maximum_channel_difference": 84,
+      "mupdf_pixels_identical_for_sample": true,
+      "pixel_parity": false,
+      "strict_failed_oracle_preserved": true
+    },
+    "review_document": "docs/PDF_OXIDE_CORRECTION_REVIEW_20261016.md",
+    "native_accuracy_qualified": false,
+    "merge_hold": true,
+    "acceptance_ledger_promotion": false,
+    "other_holds": "Native redaction stays blocked after confirmed recoverable ActualText. Image completeness and creation/render parity remain unaccepted.",
+    "final_review_package": {
+      "index": "evidence/forms-selected-loss-review-v3/index.html",
+      "files_excluding_manifest": 133,
+      "bytes_excluding_manifest": 1463468,
+      "zip_bytes": 893616,
+      "manifest_sha256": "9dc004fe734f380384ed9d2436d577e4ade444ae4c4b3910c6f170e0af3d5cd7",
+      "contents": "Exact four original negative retries and durable hidden case retry reject without output and retain source hashes; final restricted positive annotation/form cases and the separate strict failed form pixel oracle are preserved.",
+      "acceptance": "No appearance-parity acceptance or ledger promotion."
+    }
+  },
+  "precision_followup_20261016": {
+    "source_checkpoint": "31a2909316286c9ca9f9b2bf80f3f1c3624fd79e",
+    "module_sha256": "0932bee5117a0b50abc097fc6c67ca7ed3843032413787a6a77c9b3a00a065df",
+    "tests_sha256": "d55d6e77f77e154e12cceea63289ae0745fde90f0b38be9a79cab68574435d19",
+    "tests": "104 passed in 29.32 seconds; prior constructor-precision test failure retained",
+    "evidence": "evidence/forms-flatten-precision-31a2909-v1",
+    "four_preserved_failing_originals": "Now reject with no results or output PDFs; source hashes unchanged",
+    "prior_review": "Ada viewed all 13 selected-page review pages at31a2909, confirmed blank/lost-image/hidden-annotation failures, and retained the 3941-pixel PDFium mismatch as unaccepted. Parent retains her review record.",
+    "new_precision_visual_review": "Pending Ada review",
+    "native_accuracy_qualified": false,
+    "merge_hold": true
+  }
+}

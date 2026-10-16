@@ -1,0 +1,148 @@
+"""Additional operation contracts over real loopback HTTP, including recovery."""
+
+import json
+import time
+import unittest
+
+from scripts.generate_openapi import build
+from tests import test_server
+
+
+class AdditionalHTTPTests(unittest.TestCase):
+    setUp = test_server.RealHTTPTests.setUp
+    tearDown = test_server.RealHTTPTests.tearDown
+    request = test_server.RealHTTPTests.request
+    upload = test_server.RealHTTPTests.upload
+
+    def wait_job(self, job_id):
+        deadline = time.monotonic() + 12
+        while time.monotonic() < deadline:
+            status, _, payload = self.request("GET", f"/api/jobs/{job_id}")
+            self.assertEqual(status, 200)
+            snapshot = json.loads(payload)
+            if snapshot["state"] not in {"running", "queued"}:
+                return snapshot
+            time.sleep(0.03)
+        self.fail("Job did not terminate")
+
+    def test_create_without_upload_and_download_original_independently(self):
+        source = self.upload()
+        status, _, body = self.request(
+            "POST",
+            "/api/jobs",
+            {
+                "operation": "create",
+                "files": [],
+                "options": {"content": "Created through HTTP"},
+            },
+        )
+        self.assertEqual(status, 202, body)
+        job = self.wait_job(json.loads(body)["id"])
+        self.assertEqual(job["state"], "completed", job)
+        status, headers, content = self.request("GET", job["results"][0]["url"])
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "application/pdf")
+        self.assertTrue(content.startswith(b"%PDF"))
+        self.assertEqual(self.request("GET", f"/api/files/{source['id']}/original")[2], self.pdf)
+        self.assertNotIn("path", job["results"][0])
+
+    def test_schema_errors_and_backend_failure_allow_recovery(self):
+        source = self.upload()
+        request = {
+            "operation": "optimize",
+            "files": [source["id"]],
+            "options": {"compression_level": 50},
+        }
+        status, _, payload = self.request("POST", "/api/jobs", request)
+        self.assertEqual(status, 400)
+        self.assertIn("compression_level", json.loads(payload)["error"])
+        self.assertEqual(len(self.app.jobs), 0)
+        request.update(operation="ocr_tesseract", options={})
+        status, _, payload = self.request("POST", "/api/jobs", request)
+        self.assertEqual(status, 202)
+        failed = self.wait_job(json.loads(payload)["id"])
+        self.assertEqual(failed["state"], "failed")
+        self.assertEqual(failed["results"], [])
+        request.update(operation="geometry", options={})
+        status, _, payload = self.request("POST", "/api/jobs", request)
+        self.assertEqual(status, 202)
+        good = self.wait_job(json.loads(payload)["id"])
+        self.assertEqual(good["state"], "completed", good)
+
+    def test_backpressure_while_an_engine_owns_the_gate(self):
+        source = self.upload()
+        self.app.engine_lock.acquire()
+        try:
+            request = {"operation": "optimize", "files": [source["id"]], "options": {}}
+            first, _, body = self.request("POST", "/api/jobs", request)
+            self.assertEqual(first, 202)
+            job_id = json.loads(body)["id"]
+            second, _, payload = self.request("POST", "/api/jobs", request)
+            self.assertEqual(second, 400)
+            self.assertIn("active job", json.loads(payload)["error"])
+            self.assertEqual(len(self.app.jobs), 1)
+            self.request("POST", f"/api/jobs/{job_id}/cancel", {})
+        finally:
+            self.app.engine_lock.release()
+        self.assertEqual(self.wait_job(job_id)["state"], "cancelled")
+
+    def test_capabilities_and_generated_openapi_describe_real_routes(self):
+        from pathlib import Path
+
+        self.assertEqual(json.loads(Path("openapi.yaml").read_text()), build())
+        status, _, payload = self.request("GET", "/api/status")
+        self.assertEqual(status, 200)
+        capabilities = json.loads(payload)["capabilities"]
+        self.assertIn("tables", capabilities["operations"])
+        self.assertEqual(capabilities["operations"]["create"]["inputs"], 0)
+        self.assertTrue(any(g["feature"] == "Curved-page dewarping" for g in capabilities["gaps"]))
+        self.assertIn("/api/jobs/{job_id}/cancel", build()["paths"])
+        self.assertNotIn("/health", build()["paths"])
+
+    def test_svg_contract_download_headers_and_source_preservation(self):
+        source = self.upload()
+        request = {"operation": "svg", "files": [source["id"]], "options": {"scale": True}}
+        self.assertEqual(self.request("POST", "/api/jobs", request)[0], 400)
+        self.assertFalse(self.app.jobs)
+        request["options"] = {"scale": 2, "text_mode": "paths"}
+        status, _, body = self.request("POST", "/api/jobs", request)
+        self.assertEqual(status, 202)
+        snapshot = self.wait_job(json.loads(body)["id"])
+        self.assertEqual(snapshot["state"], "completed", snapshot)
+        svg = next(r for r in snapshot["results"] if r["name"].endswith(".svg"))
+        status, headers, body = self.request("GET", svg["url"])
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/svg+xml")
+        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+        self.assertTrue(headers["Content-Disposition"].startswith("attachment;"))
+        self.assertIn("default-src 'none'", headers["Content-Security-Policy"])
+        self.assertIn(b"<svg", body)
+        self.assertEqual(self.request("GET", svg["url"], auth=False)[0], 401)
+        self.assertEqual(self.request("GET", f"/api/files/{source['id']}/original")[2], self.pdf)
+
+    def test_recolor_acknowledgment_failure_and_actual_pdf_download(self):
+        source = self.upload()
+        request = {
+            "operation": "recolor",
+            "files": [source["id"]],
+            "options": {"colorspace": "lab"},
+        }
+        self.assertEqual(self.request("POST", "/api/jobs", request)[0], 400)
+        self.assertFalse(self.app.jobs)
+        request["options"] = {}
+        status, _, body = self.request("POST", "/api/jobs", request)
+        self.assertEqual(status, 202)
+        failed = self.wait_job(json.loads(body)["id"])
+        self.assertEqual(failed["state"], "failed")
+        self.assertEqual(failed["results"], [])
+        request["options"] = {"colorspace": "rgb", "allow_color_change": True}
+        status, _, body = self.request("POST", "/api/jobs", request)
+        self.assertEqual(status, 202)
+        finished = self.wait_job(json.loads(body)["id"])
+        self.assertEqual(finished["state"], "completed", finished)
+        output = next(r for r in finished["results"] if r["name"].endswith(".pdf"))
+        status, headers, body = self.request("GET", output["url"])
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "application/pdf")
+        self.assertTrue(body.startswith(b"%PDF-"))
+        self.assertEqual(self.request("GET", f"/api/files/{source['id']}/original")[2], self.pdf)

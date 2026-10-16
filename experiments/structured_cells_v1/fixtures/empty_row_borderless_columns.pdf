@@ -1,0 +1,38 @@
+%PDF-1.4
+%Synthetic deterministic fixture
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+5 0 obj
+<< /Length 260 >>
+stream
+BT /F1 10 Tf 1 0 0 1 48 694 Tm (A) Tj ET
+BT /F1 10 Tf 1 0 0 1 48 634 Tm (001) Tj ET
+BT /F1 10 Tf 1 0 0 1 48 604 Tm (002) Tj ET
+BT /F1 10 Tf 1 0 0 1 308 694 Tm (B) Tj ET
+BT /F1 10 Tf 1 0 0 1 308 634 Tm (0.00) Tj ET
+BT /F1 10 Tf 1 0 0 1 308 604 Tm (-3.25) Tj ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000042 00000 n 
+0000000091 00000 n 
+0000000148 00000 n 
+0000000274 00000 n 
+0000000342 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+652
+%%EOF

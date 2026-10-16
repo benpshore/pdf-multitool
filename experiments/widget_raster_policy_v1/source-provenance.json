@@ -1,0 +1,12 @@
+{
+  "installed_binary_source_revision": "unknown; version metadata hash is null",
+  "downloaded_github_mirror_revision": "a84323421e94f484faca52dd9d027934eba42ab8 (archived 2023 mirror)",
+  "official_current_web_source_blobs": {
+    "fpdfsdk/fpdf_formfill.cpp": "6fc2aac8b2c539b9d31fd2a42dba8045556f7724",
+    "core/fpdfdoc/cpdf_annot.cpp": "4600893617af4ee08b8476ad677c3cadf1626066",
+    "core/fpdfapi/render/cpdf_renderoptions.cpp": "176b298e1a182ddaabc3723c8a057d5894be13ec",
+    "fpdfsdk/cpdfsdk_pageview.cpp": "445811d299f2b01a9d3b4c843099bab98838e0d5",
+    "core/fpdfapi/render/cpdf_rendercontext.cpp": "ead08a491c94f37309b3f3b7f232584a8a415e17"
+  },
+  "source_inference": "Current official source corroborates observed widget/page raster option difference; not asserted to be exact source of installed binary."
+}

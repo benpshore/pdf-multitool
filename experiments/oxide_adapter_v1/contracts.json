@@ -1,0 +1,44 @@
+{
+  "cleanup_repeated": {
+    "pages": 2,
+    "heading_occurrences_per_page": 2,
+    "citation_occurrences_per_page": 1,
+    "meaningful_text_must_survive_in_original_copy": true,
+    "cleanup_may_remove_meaningful_content": true,
+    "tagged_header_pages": []
+  },
+  "cleanup_mixed_tagged": {
+    "pages": 2,
+    "heading_occurrences_per_page": 2,
+    "citation_occurrences_per_page": 1,
+    "meaningful_text_must_survive_in_original_copy": true,
+    "cleanup_may_remove_meaningful_content": true,
+    "tagged_header_pages": [
+      1
+    ]
+  },
+  "images_rgba_repeated": {
+    "authored_placements": 2,
+    "malformed": false,
+    "expect_complete_visible_image_recovery": true,
+    "pixel_color_alpha_fidelity": "requires source/output visual review"
+  },
+  "images_cmyk": {
+    "authored_placements": 1,
+    "malformed": false,
+    "expect_complete_visible_image_recovery": true,
+    "pixel_color_alpha_fidelity": "requires source/output visual review"
+  },
+  "images_inline": {
+    "authored_placements": 1,
+    "malformed": false,
+    "expect_complete_visible_image_recovery": true,
+    "pixel_color_alpha_fidelity": "requires source/output visual review"
+  },
+  "images_malformed": {
+    "authored_placements": 1,
+    "malformed": true,
+    "expect_complete_visible_image_recovery": false,
+    "pixel_color_alpha_fidelity": "requires source/output visual review"
+  }
+}

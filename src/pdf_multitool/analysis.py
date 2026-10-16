@@ -7,7 +7,9 @@ The caller owns document authentication, process isolation and resource limits.
 from __future__ import annotations
 
 import base64
+import csv
 import itertools
+import json
 import math
 import re
 import tempfile
@@ -19,6 +21,8 @@ from statistics import median
 from string import punctuation
 
 import pymupdf
+
+from .catalog import validate_reading_order
 
 _ANALYSIS_WARNINGS = [
     (
@@ -537,7 +541,123 @@ def _order_baseline_pair(block):
         return block
 
 
-def _ordered_blocks(page, include_images=True):
+def _explicit_line_blocks(blocks, rotation):
+    """Keep every occurrence, splitting only into existing parser lines.
+
+    Explicit spatial policies are bounded to unrotated horizontal LTR content.
+    Unsupported direction or malformed geometry must fail, not silently become
+    a different policy. Overlapping objects retain their parser-relative order
+    where no non-crossing whitespace cut exists.
+    """
+    if rotation:
+        raise ValueError("Explicit reading_order requires unrotated pages")
+    result = []
+    for block in blocks:
+        lines = block.get("lines", []) if block.get("type") == 0 else []
+        for item in [block, *lines, *(s for line in lines for s in line.get("spans", []))]:
+            box = item.get("bbox", ())
+            if len(box) != 4 or not all(
+                isinstance(v, (int, float)) and math.isfinite(v) for v in box
+            ):
+                raise ValueError("Explicit reading_order requires finite bounding boxes")
+            if box[2] < box[0] or box[3] < box[1]:
+                raise ValueError("Explicit reading_order requires valid bounding boxes")
+        for line in lines:
+            if tuple(line.get("dir", ())) != (1, 0) or line.get("wmode") != 0:
+                raise ValueError("Explicit reading_order requires horizontal LTR lines")
+            if any(unicodedata.bidirectional(c) in {"R", "AL", "AN"} for c in _line_text(line)):
+                raise ValueError("Explicit reading_order does not support bidirectional text")
+            result.append({**block, "bbox": line["bbox"], "lines": [line]})
+        if not lines:
+            result.append(block)
+    return result
+
+
+def _order_warning(mode):
+    if mode == "auto":
+        return []
+    return [
+        f"Reading order was explicitly selected as {mode}. This applies a geometric "
+        "policy to the whole document, not verified table or prose semantics. "
+        "Mixed layouts, wrapped cells, empty cells and overlapping objects require review."
+    ]
+
+
+def _explicit_reading_order(items, mode):
+    """Partition existing line boxes by the selected axis priority, without recursion.
+
+    Every cut is non-crossing. Choose a balanced legal cut so equal-spaced rows
+    do not hit the legacy inferred-order depth limit. No fixture names, token
+    shapes, numeric content or alleged table classification participate.
+    """
+    pending, result = [items], []
+    axes = (1, 0) if mode == "rows" else (0, 1)
+    while pending:
+        group = pending.pop()
+        if len(group) < 2:
+            result.extend(group)
+            continue
+        for axis in axes:
+            intervals = sorted((b["bbox"][axis], b["bbox"][axis + 2]) for b in group)
+            end, candidates = intervals[0][1], []
+            for index, (start, stop) in enumerate(intervals[1:], 1):
+                if start > end:
+                    candidates.append((abs(index - len(group) / 2), (start + end) / 2))
+                end = max(end, stop)
+            if not candidates:
+                continue
+            cut = min(candidates)[1]
+            before = [b for b in group if b["bbox"][axis + 2] <= cut]
+            after = [b for b in group if b["bbox"][axis] >= cut]
+            if before and after and len(before) + len(after) == len(group):
+                pending.extend([after, before])
+                break
+        else:
+            # No legal geometric distinction: retain all occurrences and their
+            # relative parser order. The explicit-policy warning covers overlaps.
+            result.extend(group)
+    return result
+
+
+def _order_ltr_stack(block):
+    """Order a single separated LTR stack; never choose between rows and columns."""
+    lines = block.get("lines", [])
+    if block.get("type") != 0 or len(lines) < 2:
+        return block
+    try:
+        styles = set()
+        for line in lines:
+            if tuple(line["dir"]) != (1, 0) or line["wmode"] != 0:
+                return block
+            if any(unicodedata.bidirectional(c) in {"R", "AL", "AN"} for c in _line_text(line)):
+                return block
+            if len(line["bbox"]) != 4 or not all(math.isfinite(v) for v in line["bbox"]):
+                return block
+            for span in line["spans"]:
+                if span["flags"] & 1:
+                    return block
+                styles.add((span["font"], span["size"], span["flags"], span["color"]))
+        if len(styles) != 1:
+            return block
+        if max(line["bbox"][0] for line in lines) >= min(line["bbox"][2] for line in lines):
+            return block
+        ordered = sorted(lines, key=lambda line: line["bbox"][1])
+        if any(a["bbox"][3] >= b["bbox"][1] for a, b in itertools.pairwise(ordered)):
+            return block
+        return {**block, "lines": ordered}
+    except KeyError, TypeError, ValueError:
+        return block
+
+
+def _ordered_blocks(
+    page,
+    include_images=True,
+    reading_order="auto",
+    table_reports=None,
+    table_grid_allowed=True,
+    table_budget=None,
+):
+    reading_order = validate_reading_order(reading_order)
     flags = pymupdf.TEXTFLAGS_DICT
     if not include_images:
         flags &= ~pymupdf.TEXT_PRESERVE_IMAGES
@@ -546,7 +666,121 @@ def _ordered_blocks(page, include_images=True):
     if page.rotation == 0:
         blocks = [_order_baseline_pair(block) for block in blocks]
     width = _number(data.get("width"), page.rect.width)
-    return _reading_order(_split_column_blocks(blocks, width), width)
+    if reading_order != "auto":
+        blocks = _explicit_line_blocks(blocks, page.rotation)
+    if table_reports is not None:
+        from .table_structure import project_tables
+
+        blocks, report = project_tables(
+            page,
+            blocks,
+            reading_order,
+            _line_text,
+            allow_projection=table_grid_allowed,
+            budget=table_budget,
+        )
+        if report["tables"] or report["rejected"] or report.get("skipped"):
+            table_reports.append(report)
+    if reading_order != "auto":
+        return _explicit_reading_order(blocks, reading_order)
+    blocks = _split_column_blocks(blocks, width)
+    if page.rotation == 0:
+        blocks = [_order_ltr_stack(block) for block in blocks]
+    return _reading_order(blocks, width)
+
+
+def _table_warnings(reports):
+    warnings = []
+    for report in reports:
+        page = report["page"]
+        if any(t["disposition"] == "text_path_for_margin_filter" for t in report["tables"]):
+            warnings.append(
+                f"Page {page}: table projection was disabled to honour requested repeated-margin "
+                "filtering on the original text path. Candidate grids remain in the tables JSON."
+            )
+        if any(t["disposition"] == "ambiguous_borderless" for t in report["tables"]):
+            warnings.append(
+                f"Page {page}: borderless table/prose or wrapped-cell interpretation is ambiguous. "
+                "Original reading order was retained; candidate cells are in the tables JSON. "
+                "These candidates are not qualified tables."
+            )
+        if any(t["emitted_as_table"] for t in report["tables"]):
+            warnings.append(
+                f"Page {page}: cell geometry was rendered as a grid. Header and table semantics "
+                "are unverified. Drawn rules preserve empty rows and wrapped cells; "
+                "user-selected borderless bands cannot establish missing logical rows."
+            )
+        if report["rejected"] or report.get("skipped"):
+            warnings.append(
+                f"Page {page}: unsupported table geometry or a detection limit left source text "
+                "on its original export path. See the tables JSON for the recorded decision."
+            )
+    return warnings
+
+
+def _table_sidecar(output, reports):
+    if not reports:
+        return []
+    for index in range(100):
+        suffix = "" if index == 0 else f"-{index + 1}"
+        path = output.with_name(output.name + f".tables{suffix}.json")
+        try:
+            stream = path.open("x", encoding="utf-8")
+            break
+        except FileExistsError:
+            continue
+    else:
+        raise FileExistsError("Table report output names are exhausted")
+    with stream:
+        json.dump(
+            {
+                "schema_version": 1,
+                "coordinates": "PDF points, origin at top-left",
+                "semantics_verified": False,
+                "pages": reports,
+            },
+            stream,
+            ensure_ascii=False,
+            indent=2,
+        )
+        stream.write("\n")
+    return [{"path": str(path), "name": path.name, "kind": "table_structure"}]
+
+
+def _write_table(stream, block, stats, body_size=None, markdown=False, plain=False):
+    table = block["table"]
+    if plain:
+        csv.writer(stream, delimiter="\t", lineterminator="\n").writerows(table["rows"])
+        stream.write("\n")
+    else:
+        stream.write(
+            f'<table class="source-grid" data-disposition="{table["disposition"]}" '
+            f'aria-label="Extracted grid; table semantics unverified" id="{table["id"]}">\n'
+        )
+        if not markdown:
+            stream.write("<caption>Extracted grid · table semantics unverified</caption>\n")
+        stream.write("<tbody>\n")
+        for row in block["cell_lines"]:
+            stream.write("<tr>")
+            for lines in row:
+                stream.write("<td>")
+                for index, line in enumerate(lines):
+                    if markdown:
+                        if index:
+                            stream.write("<br/>")
+                        stream.write("<code>" + escape(_line_text(line)) + "</code>")
+                    else:
+                        stream.write('<span class="text-line">')
+                        stream.write(_render_line(line, body_size, stats))
+                        stream.write("</span>")
+                stream.write("</td>")
+            stream.write("</tr>\n")
+        stream.write("</tbody></table>\n\n")
+    stats["tables_exported"] += 1
+    stats["table_cells_exported"] += sum(len(row) for row in table["rows"])
+    for line in block["lines"]:
+        stats["text_lines_exported"] += 1
+        stats["text_characters_exported"] += len(_line_text(line))
 
 
 def _render_line(line, body_size, script_counts):
@@ -646,6 +880,9 @@ line-height:1.5}
 .text-line{display:block;
 white-space:pre-wrap;
 overflow-wrap:anywhere}
+.source-grid{border-collapse:collapse;width:100%;margin:1rem 0;table-layout:fixed}
+.source-grid td{border:1px solid #b8c4d2;padding:.6rem;vertical-align:top;white-space:pre-wrap}
+.source-grid caption{font-size:.8rem;color:#536273;text-align:left;margin-bottom:.4rem}
 
 .text-line[role=heading]{margin:.65rem 0 .4rem;
 line-height:1.25}
@@ -693,15 +930,19 @@ break-after:page}
 
 
 def export_html(doc, out_path, original_name, options=None) -> dict:
-    """Write one inert HTML file with inline CSS and base64 raster images.
+    """Write inert self-contained HTML and a table-decision JSON companion when needed.
 
-    Supported option: ``include_images`` (bool, default True). No OCR, scripts,
-    network access, XML parsing, document edits or additional files are involved.
+    Options: ``include_images`` (bool, default True), ``reading_order``
+    (auto, rows or columns; default auto). No OCR, scripts,
+    network access, XML parsing or document edits are involved.
     """
     options = options or {}
-    if not isinstance(options, dict) or not isinstance(options.get("include_images", True), bool):
+    if not isinstance(options, dict) or set(options) - {"include_images", "reading_order"}:
+        raise ValueError("Unsupported HTML export options")
+    if not isinstance(options.get("include_images", True), bool):
         raise ValueError("HTML options must be an object with boolean include_images")
     include_images = options.get("include_images", True)
+    reading_order = validate_reading_order(options.get("reading_order", "auto"))
     analysis = analyze_document(doc, original_name)
     title = analysis["document_title"] or analysis["original_filename"]
     headings = analysis["heading_candidates"]
@@ -711,7 +952,12 @@ def export_html(doc, out_path, original_name, options=None) -> dict:
         for occurrence in candidate["occurrences"]:
             margin_keys.add((occurrence["page"], tuple(occurrence["bbox"])))
     warnings = list(dict.fromkeys(analysis["warnings"] + _HTML_WARNINGS))
+    warnings.extend(_order_warning(reading_order))
     stats = Counter()
+    table_reports = []
+    from .table_structure import new_budget
+
+    table_budget = new_budget()
     emitted_anchors = set()
     output = Path(out_path)
     with output.open("w", encoding="utf-8", newline="\n") as stream:
@@ -749,7 +995,12 @@ def export_html(doc, out_path, original_name, options=None) -> dict:
                 if heading["page"] == page_num and heading["bbox"] is None:
                     stream.write(f'<span class="anchor" id="{heading["anchor"]}"></span>')
                     emitted_anchors.add(heading["anchor"])
-            for block in _ordered_blocks(page, include_images):
+            for block in _ordered_blocks(
+                page, include_images, reading_order, table_reports, table_budget=table_budget
+            ):
+                if block.get("type") == "table":
+                    _write_table(stream, block, stats, analysis["body_font_size_points"])
+                    continue
                 if block.get("type") == 1:
                     stats["image_occurrences_seen"] += 1
                     try:
@@ -830,6 +1081,7 @@ def export_html(doc, out_path, original_name, options=None) -> dict:
                 "Very light source text colors were darkened for readability on "
                 "the HTML's white background."
             )
+        warnings.extend(_table_warnings(table_reports))
         stream.write(
             '<details class="export-note"><summary>Export observations and '
             "limitations</summary><ul>"
@@ -839,9 +1091,17 @@ def export_html(doc, out_path, original_name, options=None) -> dict:
         stream.write("</ul></details></main></body></html>\n")
     return {
         "format": "html",
+        "reading_order": reading_order,
+        "semantics_verified": False,
         "output_path": str(output),
         "self_contained": True,
-        "outputs": [{"path": str(output), "name": output.name, "kind": "html"}],
+        "outputs": [
+            {"path": str(output), "name": output.name, "kind": "html"},
+            *_table_sidecar(output, table_reports),
+        ],
+        "table_structure": table_reports,
+        "tables_exported": stats["tables_exported"],
+        "table_cells_exported": stats["table_cells_exported"],
         "pages_exported": len(analysis["pages"]),
         "text_characters_exported": stats["text_characters_exported"],
         "text_lines_exported": stats["text_lines_exported"],
@@ -893,10 +1153,13 @@ _STRUCTURED_WARNINGS = [
 def _structured_options(options, markdown):
     if options is None:
         options = {}
-    allowed = {"include_images", "skip_repeated_margins"} if markdown else {"skip_repeated_margins"}
+    allowed = {"skip_repeated_margins", "reading_order"}
+    if markdown:
+        allowed.add("include_images")
     if not isinstance(options, dict) or set(options) - allowed:
         raise ValueError("Unsupported structured export options")
-    if any(not isinstance(v, bool) for v in options.values()):
+    validate_reading_order(options.get("reading_order", "auto"))
+    if any(not isinstance(v, bool) for k, v in options.items() if k != "reading_order"):
         raise ValueError("Structured export options must be boolean")
     return options
 
@@ -1051,6 +1314,11 @@ def _page_label(info):
 
 def _structured_export(doc, out_path, original_name, options, markdown):
     options = _structured_options(options, markdown)
+    reading_order = options.get("reading_order", "auto")
+    table_reports = []
+    from .table_structure import new_budget
+
+    table_budget = new_budget()
     include_images = options.get("include_images", True) if markdown else False
     skip_margins = options.get("skip_repeated_margins", False)
     analysis = analyze_document(doc, original_name)
@@ -1062,6 +1330,7 @@ def _structured_export(doc, out_path, original_name, options, markdown):
         for o in candidate["occurrences"]
     }
     warnings = list(dict.fromkeys(analysis["warnings"] + _STRUCTURED_WARNINGS))
+    warnings.extend(_order_warning(reading_order))
     if markdown:
         warnings.extend(
             [
@@ -1130,7 +1399,17 @@ def _structured_export(doc, out_path, original_name, options, markdown):
                         emitted_anchors.add(h["anchor"])
             else:
                 stream.write("[" + label + "]\n\n")
-            for block in _ordered_blocks(page, include_images):
+            for block in _ordered_blocks(
+                page,
+                include_images,
+                reading_order,
+                table_reports,
+                table_grid_allowed=not skip_margins,
+                table_budget=table_budget,
+            ):
+                if block.get("type") == "table":
+                    _write_table(stream, block, stats, markdown=markdown, plain=not markdown)
+                    continue
                 if block.get("type") == 1:
                     if not include_images:
                         continue
@@ -1239,14 +1518,26 @@ def _structured_export(doc, out_path, original_name, options, markdown):
                 f" occurrences; dictionary extraction exposed {stats['image_occurrences_seen']}"
                 f". These observations do not establish visual completeness."
             )
+        warnings.extend(_table_warnings(table_reports))
         if markdown:
+            if stats["tables_exported"]:
+                warnings.append(
+                    "Markdown grids use raw HTML with literal cell content. A renderer that "
+                    "supports raw HTML tables is required to display the grid."
+                )
             stream.write("## Export observations and limitations\n\n")
             for warning in dict.fromkeys(warnings):
                 stream.write("- " + _markdown_escape(warning) + "\n")
+    outputs.extend(_table_sidecar(output, table_reports))
     return {
         "format": kind,
+        "reading_order": reading_order,
+        "semantics_verified": False,
         "output_path": str(output),
         "outputs": outputs,
+        "table_structure": table_reports,
+        "tables_exported": stats["tables_exported"],
+        "table_cells_exported": stats["table_cells_exported"],
         "self_contained": not bool(stats["images_exported"]),
         "pages_exported": len(analysis["pages"]),
         "source_page_links": len(analysis["pages"]) if markdown else 0,
@@ -1272,7 +1563,8 @@ def _structured_export(doc, out_path, original_name, options, markdown):
 def export_markdown(doc, out_path, original_name, options=None) -> dict:
     """Write structured UTF-8 Markdown with safe sibling PNG/JPEG assets.
 
-    Options: include_images (default True), skip_repeated_margins (default False).
+    Options: include_images (default True), skip_repeated_margins (default False),
+    reading_order (auto, rows or columns; default auto).
     The outputs list includes the Markdown file and every linked image. Preserve
     their relative paths when copying or archiving. No OCR or network is used.
     """
@@ -1282,7 +1574,8 @@ def export_markdown(doc, out_path, original_name, options=None) -> dict:
 def export_text(doc, out_path, original_name, options=None) -> dict:
     """Write cleaned UTF-8 text with source page labels and cautious paragraphs.
 
-    Only skip_repeated_margins (default False) is supported. Images and font style
+    Options: skip_repeated_margins (default False), reading_order (auto, rows or
+    columns; default auto). Images and font style
     cannot be represented. Characters, including hyphens, are not reconstructed.
     """
     return _structured_export(doc, out_path, original_name, options, markdown=False)

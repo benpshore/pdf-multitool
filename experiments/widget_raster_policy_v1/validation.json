@@ -1,0 +1,35 @@
+{
+  "source_checkpoint": "5644fcaf9014928a817dfc0cd470991329e141ec",
+  "scope": "Evidence-only checkpoint; production code, tests, renderer defaults and feature qualification unchanged",
+  "fresh_reproduction": {
+    "supervised_native_jobs_completed": 2,
+    "pdfium_comparisons_reproduced": 90,
+    "mupdf_exact_comparisons": 12,
+    "complete_appearance_graphs_verified": 10,
+    "normalization": "Optional FormType=1 default only; raw dictionaries retained",
+    "original_content_prefixes_resources_page_geometry_and_numbers_verified": true,
+    "untouched_page_verified_in_both_renderers": true,
+    "diagnosis_exit_code": 0,
+    "strict_oracle_exit_code": 1,
+    "strict_default_pdfium_changed_pixels": [3941, 1238],
+    "strict_pixel_parity": false
+  },
+  "required_local_checks": {
+    "ruff_format": "179 files formatted; no changes required after final formatting",
+    "ruff_check": "passed",
+    "pytest": {
+      "passed": 1140,
+      "skipped": 10,
+      "seconds": 237.67,
+      "skip_reason": "Browser tests require Chromium; no new browser pass claimed"
+    },
+    "locked_audit": "157 packages; no known vulnerabilities or adverse project statuses",
+    "spectral": "No results at warning severity or above",
+    "shellcheck": "All tracked shell scripts passed",
+    "typescript_typecheck": "passed",
+    "typescript_tests": "1 passed"
+  },
+  "preserved_prior_tracked_experiment_files": 439,
+  "private_documents_credentials_raw_environment_metadata_included": false,
+  "hosted_checks": "Reported against the resulting commit after push; not inferred from prior CI"
+}

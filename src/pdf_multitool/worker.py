@@ -12,6 +12,34 @@ from pathlib import Path
 from .core import JobError, parse_pages, safe_name
 
 
+def _uid_task_count() -> int:
+    """RLIMIT_NPROC counts all threads of a UID, including the user's browser.
+
+    Reserve a finite amount of additional headroom from this snapshot. Other
+    same-UID programs can consume it; exhausted capacity still fails closed.
+    This is a per-UID ceiling in a worker, not a per-job cgroup claim.
+    """
+    if sys.platform != "linux":
+        return 0
+    total = 0
+    for directory in Path("/proc").iterdir():
+        if not directory.name.isdigit():
+            continue
+        try:
+            if directory.stat().st_uid != os.getuid():
+                continue
+            with (directory / "status").open() as file:
+                status = file.read(8192)
+            for line in status.splitlines():
+                if line.startswith("Threads:"):
+                    total += int(line.split()[1])
+        except FileNotFoundError, ProcessLookupError:
+            continue
+        if total > 4096:
+            raise JobError("Too many existing user tasks to reserve worker process capacity")
+    return total
+
+
 def _limits(config: dict, operation: str) -> None:
     if os.name != "posix":
         return  # Parent still provides time/output/cancellation bounds.
@@ -27,6 +55,7 @@ def _limits(config: dict, operation: str) -> None:
         (resource.RLIMIT_FSIZE, config["max_output_bytes"]),
         (resource.RLIMIT_NOFILE, 512),
         (resource.RLIMIT_CORE, 0),
+        (resource.RLIMIT_NPROC, _uid_task_count() + config["max_processes"]),
     ]:
         _, hard = resource.getrlimit(kind)
         cap = value if hard == resource.RLIM_INFINITY else min(value, hard)
@@ -272,6 +301,12 @@ def _insert_selected_pdf(destination, source, selected: list[int]) -> list[str]:
 
 
 def process(request: dict) -> dict:
+    from .catalog import OPERATIONS
+
+    if request["operation"] in OPERATIONS:
+        from .extended import process as process_extended
+
+        return process_extended(request)
     operation, options = request["operation"], request["options"]
     paths = [Path(p).resolve(strict=True) for p in request["inputs"]]
     names = request["names"]
@@ -514,6 +549,7 @@ def process(request: dict) -> dict:
 
             out = workdir / ("document.md" if operation == "markdown" else "document.txt")
             export_options = {"skip_repeated_margins": options.get("skip_repeated_margins", False)}
+            export_options["reading_order"] = options.get("reading_order", "auto")
             if operation == "markdown":
                 export_options["include_images"] = options.get("include_images", True)
             report = (export_markdown if operation == "markdown" else export_text)(
@@ -525,7 +561,7 @@ def process(request: dict) -> dict:
                     f"{stem}{out.suffix}" if Path(item["path"]) == out else item["name"],
                 )
             warnings.extend(report.get("warnings", []))
-            if len(report["outputs"]) > 1:
+            if any(item["kind"] == "image" for item in report["outputs"]):
                 warnings.append(
                     "Markdown images are companion files. Package these results as ZIP"
                     " or TAR.GZ to preserve their relative links."
@@ -549,10 +585,14 @@ def process(request: dict) -> dict:
                 add(report, f"{suggested_stem}-analysis.json")
             else:
                 out = workdir / "document.html"
-                export_report = export_html(doc, out, names[0])
+                export_options = {"reading_order": options.get("reading_order", "auto")}
+                export_report = export_html(doc, out, names[0], export_options)
                 warnings.extend(export_report.get("warnings", []))
                 if operation == "pdfhtml":
                     add(out, f"{suggested_stem}.html")
+                    for item in export_report["outputs"]:
+                        if Path(item["path"]) != out:
+                            add(Path(item["path"]), item["name"])
                     add(report, f"{suggested_stem}-analysis.json")
                 else:
                     from weasyprint import HTML
@@ -566,6 +606,9 @@ def process(request: dict) -> dict:
                     _validate_pdf(pdf_out)
                     add(pdf_out, f"{suggested_stem}-repaginated.pdf")
                     add(out, f"{suggested_stem}-reflow.html")
+                    for item in export_report["outputs"]:
+                        if Path(item["path"]) != out:
+                            add(Path(item["path"]), item["name"])
                     warnings.append(
                         "Repagination is reconstructed from extracted content. Original "
                         "layout, formulas and complex tables may differ."
@@ -758,6 +801,9 @@ def process(request: dict) -> dict:
                 max_num_pages=max_pages,
                 max_file_size=request["limits"]["max_file_bytes"],
             )
+            status = str(getattr(result.status, "value", result.status)).lower()
+            if status != "success":
+                raise JobError(f"Docling conversion did not complete: {status}")
             out = workdir / "document.json"
             out.write_text(
                 json.dumps(result.document.export_to_dict(), ensure_ascii=False, indent=2),
@@ -785,8 +831,17 @@ def main() -> None:
     workdir = Path(request["workdir"])
     try:
         _limits(request["limits"], request["operation"])
+        from .isolation import install
+
+        isolation = install()
         sys.addaudithook(_deny_network)
+        if request["operation"] == "oxide" or request["operation"].startswith("oxide_"):
+            from .oxide import initialize_guard
+
+            initialize_guard(isolation, request["limits"])
+            request["_oxide_output_budget"] = {"bytes": 0, "files": 0}
         result = process(request)
+        result["isolation"] = isolation
     except Exception as exc:
         result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:2000]}
     (workdir / "result.json").write_text(json.dumps(result), encoding="utf-8")

@@ -1,0 +1,24 @@
+{
+  "base": "fb06ef3cd390dc32ae9d219ee8fb1df4d374f3f7",
+  "utc": "2026-10-15T19:43:20.182268+00:00",
+  "new_fixture_files_sha256": {
+    "experiments/row_order_contract_v1/FROZEN.json": "1bfcd8a9b8d6b7980d25031d385b9b850e6562971829a690a4449b816611d113",
+    "experiments/row_order_contract_v1/contracts.json": "39edb7fe918b697c063a9e9b52db965a70eb4fa041800895f66db952cbc2591f",
+    "experiments/row_order_contract_v1/build_fixtures.py": "e0171e80ddd5ceb1f0a2f2dfae77fa120f0f3d99136b501b842c50482499c8cb",
+    "experiments/row_order_contract_v1/fixtures/missing_cells_rows.pdf": "d98908189e21b42651b3a240ec770b61b258474663e27dd0491ffd994a4aaa08",
+    "experiments/row_order_contract_v1/fixtures/numeric_cells_columns.pdf": "3d060315ecd9ef53345638e099c7e4cdba332e166a153f13702374e941aff43f",
+    "experiments/row_order_contract_v1/fixtures/long_records_reverse.pdf": "b0bc40d35b43d9ca59a15ca5601602bd38abe2d26e61bdbd1357b4c756c0e9c6",
+    "experiments/row_order_contract_v1/fixtures/numeric_cells_reverse.pdf": "c6fe39df2d2f3d5da07237a36e950cb605e0863d25911e1e06f7f1fdc1c03970",
+    "experiments/row_order_contract_v1/fixtures/ambiguous_grid_columns.pdf": "4d8da4d4a2917299ed155c403aee242d125906a905a0f40ecd3398504bed5518",
+    "experiments/row_order_contract_v1/fixtures/long_records_columns.pdf": "5f5785f1857b85e0f1bbb3702af83c4c6cb9415e3a50cd5c6e6e0576ab5a9290",
+    "experiments/row_order_contract_v1/fixtures/ambiguous_grid_reverse.pdf": "5680aef1a37a25f3ccee493debe1cf7524a9338718e868c5905ebd2ce1f37296",
+    "experiments/row_order_contract_v1/fixtures/short_column_prose_reverse.pdf": "b8182597399d433f450f16d83f010a61f3a4561b320112c2d3dcb91a07e6c676",
+    "experiments/row_order_contract_v1/fixtures/long_records_rows.pdf": "54c17778ff1f54f8a00eca5838c766b9b412e83f9416189a60650a2fe70992da",
+    "experiments/row_order_contract_v1/fixtures/ambiguous_grid_rows.pdf": "3ce1276e1822969dc1027d71cc4184677463d6ad70aedd29c40dd81b879da138",
+    "experiments/row_order_contract_v1/fixtures/numeric_cells_rows.pdf": "76ae2290c393ff845c027aa136b53fe23223b4cc16c8feb3ecfe1d40724a2ee7",
+    "experiments/row_order_contract_v1/fixtures/missing_cells_reverse.pdf": "4b0ef7d1e8e2b09393ded8e22dfa315029beff7a5084eae41cd75558fffe3e50",
+    "experiments/row_order_contract_v1/fixtures/short_column_prose_rows.pdf": "40547c268d373456a67e5155382a52d66724bd53f597fa3a83c59daf5103d187",
+    "experiments/row_order_contract_v1/fixtures/short_column_prose_columns.pdf": "2a7fa82747d51fb8262af31aafe322941444589f5c463261e0f4b5f7405e9905",
+    "experiments/row_order_contract_v1/fixtures/missing_cells_columns.pdf": "72f8843adf94f16cfdc71b0fa37bdd90e5647dfa6ffa0b556f6475cb999c8ea0"
+  }
+}

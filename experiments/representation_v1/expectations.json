@@ -1,0 +1,25 @@
+{
+  "protocol": "Freeze before inspecting any extraction or application result. Failed expectations are observations, not permission to change the oracle or tune production code.",
+  "render_comparisons": {
+    "spacing_and_fragmentation": ["space_explicit", "space_tj", "operator_chunks", "objects_forward", "objects_reverse"],
+    "form_placements": ["form_repeated", "form_expanded"],
+    "two_column_prose": ["prose_row_operators", "prose_column_operators"],
+    "borderless_table": ["table_row_operators", "table_column_operators"]
+  },
+  "render_expectation": "Within each group, exact RGB sample hashes should match at 72 and 144 DPI with alpha disabled and annotations disabled. If not, the group is not evidence of visual-equivalence invariance.",
+  "text_comparison": "Compare whitespace-normalized ordered block text and structured text body after removing only the exact source/page preamble. Do not discard, deduplicate or reorder words.",
+  "semantics": "Prose is authored as left-column-first reading. The borderless table is authored as three paired records, hence row-first reading. These are external fixture-author intentions, not labels supplied to the application; a failure alone cannot prove intent is uniquely inferable from PDF geometry.",
+  "fixtures": {
+    "space_explicit": "ALPHA BETA",
+    "space_tj": "ALPHA BETA",
+    "operator_chunks": "ALPHA BETA",
+    "objects_forward": "ALPHA BETA",
+    "objects_reverse": "ALPHA BETA",
+    "form_repeated": "STAMP STAMP",
+    "form_expanded": "STAMP STAMP",
+    "prose_row_operators": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+    "prose_column_operators": "L1 Left column sentence 1. L2 Left column sentence 2. L3 Left column sentence 3. R1 Right column sentence 1. R2 Right column sentence 2. R3 Right column sentence 3.",
+    "table_row_operators": "A1 B1 A2 B2 A3 B3",
+    "table_column_operators": "A1 B1 A2 B2 A3 B3"
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "package": "pdf-oxide==0.3.78",
+  "scope": "Advanced extraction, geometry, search, page classification and offline OCR",
+  "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs",
+  "qualification": "Native analysis/search workers exercised on synthetic and frozen fixtures. OCR inference remains unqualified: no independently verified compatible local model set is provisioned. Parent Ada's own visual review remains pending.",
+  "capabilities": [
+    {
+      "api": ["PdfDocument.extract_text", "PdfDocument.extract_tables", "PdfDocument.extract_images"],
+      "operation": "oxide_analyze",
+      "options": ["mode=text|tables|images", "filters_json.region for direct table or image-metadata analysis"],
+      "status": "implemented_and_exercised_with_filter_restrictions",
+      "adapter": "Native page text and direct table/image metadata are bounded JSON values. Regional direct tables and image metadata use native intersection filters; no image bytes are embedded in the metadata output. Whole-page text supports explicit artifact inclusion.",
+      "limitation": "Filtered text extraction is blocked after native region assembly reinserted full-page table content outside the requested region. Table/image candidate correctness still requires source review."
+    },
+    {
+      "api": ["PdfPageRegion.extract_text", "PdfDocument.extract_text(region=...)", "PdfDocument.extract_text(exclude_layers=...)", "PdfDocument.extract_text(exclude_inks=...)"],
+      "operation": null,
+      "status": "upstream_scoped_output_failure_blocked",
+      "evidence": "An actual bounded native call for region [0,320,400,80] returned the intended top title plus Item Amount / Alpha 10 / Beta 20 from a full-page table outside the region. Original and erroneous native JSON/manifest preserved in evidence/analysis-region-text-defect. Regional spans correctly return the title alone.",
+      "source": "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs#L229-L281",
+      "reason": "Filtered branches ignore extract_tables/include_artifacts options and re-enter native full-page table assembly. Layer/ink filtered text also uses that assembly path and remains unqualified; direct character filters and region spans/words remain available."
+    },
+    {
+      "api": ["PdfDocument.erase_region", "PdfDocument.erase_regions", "PdfDocument.erase_header", "PdfDocument.erase_footer", "PdfDocument.erase_artifacts", "PdfDocument.clear_erase_regions"],
+      "operation": "oxide_extract_mask",
+      "options": ["actions_json: region|regions|header|footer|artifacts|clear; explicit one-based page and finite rectangles"],
+      "status": "implemented_and_exercised_extraction_only",
+      "limits": "100 actions, 100 rectangles and 100 selected pages. Rectangle coordinates are native [llx,lly,urx,ury]. Native page-area masks use top/bottom 15 percent and can remove meaningful citations/footnotes.",
+      "adapter": "Separate native document instance; original and masked text/spans exported side by side. No PDF is serialized or rewritten. This is extraction filtering, never secure redaction.",
+      "evidence": "Actual region and multi-region removal retain unrelated numeric values; clear restores identical text/spans; header/footer/artifact false-positive fixtures retain meaningful removed content in baseline; unselected second page remains identical."
+    },
+    {
+      "api": ["PdfDocument.edit_header", "PdfDocument.edit_footer", "PdfDocument.sync_editor_erasures"],
+      "operation": "oxide_extract_mask and oxide cleanup",
+      "status": "deprecated_alias_or_internal_bridge",
+      "adapter": "edit_header/footer delegate directly to erase_header/footer in pinned source. sync_editor_erasures is called internally by native mask methods and has no independent durable result. App exposes canonical masks without an editor persistence session."
+    },
+    {
+      "api": ["PdfDocument.extract_chars", "TextChar"],
+      "operation": "oxide_analyze",
+      "options": ["mode=chars", "filters_json.region", "filters_json.exclude_layers", "filters_json.exclude_inks"],
+      "status": "implemented_and_exercised",
+      "output": "Native character, bbox, font, weight, style, color, rotation, origin, advance and MCID properties; original source/page provenance. Native coordinates are not relabeled as top-left coordinates."
+    },
+    {
+      "api": ["PdfDocument.extract_spans", "TextSpan", "PdfDocument.extract_page_text"],
+      "operation": "oxide_analyze",
+      "options": ["mode=spans|page_text", "span_order=top_to_bottom|column_aware|structure", "filters_json.region (spans only)"],
+      "status": "implemented_and_exercised",
+      "output": "Native text, bbox/page_bbox, font/style/color, per-character widths, content sequence and provenance; complete page_text spans/chars and dimensions.",
+      "limitation": "Pinned region-filtered extract_spans ignores reading_order; the adapter rejects region plus non-default span order. Frozen A1/B1 content retention tested for all three order modes, but no universal reading-order correctness claim."
+    },
+    {
+      "api": ["PdfDocument.extract_words", "PdfDocument.extract_text_lines", "TextWord", "TextLine"],
+      "operation": "oxide_analyze",
+      "options": ["mode=words|text_lines", "include_artifacts", "profile", "filters_json.region", "filters_json.word_gap_threshold", "filters_json.line_gap_threshold (text_lines only)"],
+      "status": "implemented_and_exercised",
+      "limitation": "Advanced region/threshold/profile keyword arguments are supported but deprecated in 0.3.78. Optional artifact exclusion can remove real content tagged as artifacts; the source stays unchanged."
+    },
+    {
+      "api": ["ExtractionProfile.available", "ExtractionProfile.conservative", "ExtractionProfile.aggressive", "ExtractionProfile.balanced", "ExtractionProfile.academic", "ExtractionProfile.policy", "ExtractionProfile.form", "ExtractionProfile.government", "ExtractionProfile.scanned_ocr", "ExtractionProfile.adaptive", "LayoutParams", "PdfDocument.page_layout_params"],
+      "operation": "oxide_analyze",
+      "status": "implemented_and_exercised",
+      "output": "All nine profiles and their actual numeric properties; native adaptive page layout parameters. Every preset reaches real word extraction tests.",
+      "limitation": "A scanned_ocr profile is only an extraction profile and does not perform OCR. Native layout analysis can fail on empty pages and may use fallback page dimensions; failures remain explicit per-analysis errors."
+    },
+    {
+      "api": ["PdfDocument.extract_paths", "PdfDocument.extract_rects", "PdfDocument.extract_lines"],
+      "operation": "oxide_analyze",
+      "options": ["mode=paths|rects|lines", "filters_json.region"],
+      "status": "implemented_and_exercised",
+      "output": "Native geometry and stroke-inflated rendered bboxes, colors, widths, layer names and complete bounded vector operations. No geometry reconstruction or inferred table substitution."
+    },
+    {
+      "api": ["PdfDocument.get_layers", "PdfDocument.get_page_inks", "PdfDocument.get_page_inks_deep"],
+      "operation": "oxide_analyze",
+      "options": ["mode=layers_inks"],
+      "status": "implemented_and_exercised",
+      "evidence": "Actual optional-content text exclusion and nested Form XObject spot-ink discovery tests."
+    },
+    {
+      "api": ["PdfDocument.classify_page", "PdfDocument.classify_document", "PdfDocument.has_text_layer", "PdfDocument.has_structure_tree"],
+      "operation": "oxide_analyze",
+      "options": ["mode=classification", "document_classification"],
+      "status": "implemented_and_exercised",
+      "limits": "At most 100 selected pages; whole-document classification requires total page count <=100 even if selection is smaller.",
+      "limitation": "Classification is heuristic and recorded verbatim with signals/reasons. Empty text alone does not imply OCR requirement. has_structure_tree may swallow upstream parse errors and return false."
+    },
+    {
+      "api": ["PdfDocument.extract_structured", "PdfDocument.extract_page_auto"],
+      "operation": "oxide_analyze",
+      "options": ["mode=structured|rich_text"],
+      "status": "implemented_and_exercised_text_only",
+      "adapter": "Strictly parse bounded native JSON; rich extraction fixes mode=text_only, reconstruct_image_tables=false, force_ocr_pages=[], ocr_languages=[] and preserves typed native reasons/provenance.",
+      "limitation": "Structured regions are not direct table cells; full auto/forced OCR routes are gated pending verified model provisioning and inference evidence."
+    },
+    {
+      "api": ["PdfDocument.structured_warnings"],
+      "operation": "oxide_analyze|oxide_search|oxide_ocr",
+      "status": "implemented_and_exercised",
+      "output": "Original category/page/message/spec section plus source SHA-256 and one-based page. Region is explicitly null because this binding supplies none. Operator-cap diagnostics mark truncation rather than successful completeness."
+    },
+    {
+      "api": ["PdfDocument.search", "PdfDocument.search_page", "PdfDocument.prepare_search", "PdfDocument.clear_search_index"],
+      "operation": "oxide_search",
+      "options": ["pattern", "literal", "case_insensitive", "whole_word", "scope=selected_pages|document", "prepare_index", "max_results"],
+      "status": "implemented_and_exercised",
+      "limits": "Pattern <=512 characters, total matches <=1000, selected/document/index pages <=100. Requests one extra match to detect overflow and rejects rather than silently truncating. Cached index cleared in finally.",
+      "evidence": "Real literal/case/word/regex searches, page coordinates, invalid regex, match overflow and source byte preservation."
+    },
+    {
+      "api": ["PdfDocument.within", "PdfPageRegion.extract_words", "PdfPageRegion.extract_text_lines", "PdfPageRegion.extract_tables", "PdfPageRegion.extract_images", "PdfPageRegion.extract_paths", "Page.chars", "Page.words", "Page.lines", "Page.spans", "Page.paths", "Page.search", "Page.region"],
+      "operation": "oxide_analyze and other bounded extraction routes",
+      "status": "convenience_aliases_use_bounded_document_methods",
+      "adapter": "App never exposes live document/region objects. Explicit document page-index and region APIs supply equivalent bounded analysis operations; table/image routes retain their own contracts and do not imply all alias-specific controls are exposed."
+    },
+    {
+      "api": ["OcrConfig", "OcrEngine", "PdfDocument.extract_text_ocr"],
+      "operation": "oxide_ocr",
+      "status": "implemented_offline_gate_inference_unqualified",
+      "options": ["det_threshold=0.01..1", "rec_threshold=0.01..1", "num_threads=1..2"],
+      "limits": "At most 20 selected pages, hard 2GiB address-space/120-second worker bounds. Model directory comes only from trusted supervisor configuration PDF_MULTITOOL_OXIDE_MODELS, never a document/request path. Strict manifest pins pdf-oxide0.3.78, onnxruntime1.31.0 and detector/recognizer/dictionary SHA-256/size/license/source. Each file verified and privately snapshotted before native loading; no source-to-model attestation claim.",
+      "limitation": "The released Python extract_text_ocr binding enables native fallback and does not return actual OCR provenance. Nonempty result is labeled native_or_ocr_returned and inference_verified=false; baseline stays separate. Verified inference with compatible models is still required. Hash integrity tests use explicitly synthetic non-model bytes and do not claim OCR success."
+    },
+    {
+      "api": ["pdf_oxide.pdf_oxide.model_manifest", "pdf_oxide.pdf_oxide.prefetch_available", "get_log_level"],
+      "operation": "oxide_analyze",
+      "status": "implemented_read_only_inspection",
+      "output": "Compiled OCR feature indicator, native profile names, native model registry and log-level metadata. The extension functions are public in the binary but absent from package __all__.",
+      "limitation": "The upstream model registry uses mutable resolve/main URLs without hashes. It is informational only; no automatic download or model-authenticity claim."
+    },
+    {
+      "api": ["PdfDocument.extract_text_auto", "pdf_oxide.pdf_oxide.prefetch_models"],
+      "operation": null,
+      "status": "gated_model_provisioning_and_accuracy",
+      "reason": "Automatic OCR fallback lacks the direct text method's provenance and model prefetch writes/downloads mutable upstream files. No implicit downloads or fallback model discovery are allowed. Explicit configured offline OCR and text-only rich extraction provide honest alternatives."
+    },
+    {
+      "api": ["setup_logging", "set_log_level", "disable_logging", "pdf_oxide.pdf_oxide.set_max_ops_per_stream", "pdf_oxide.pdf_oxide.set_preserve_unmapped_glyphs"],
+      "operation": null,
+      "status": "worker_runtime_controls_not_document_operations",
+      "reason": "No arbitrary log suppression or global parser-cap relaxation is exposed to document requests. Native operator cap remains at its upstream default. Unmapped-glyph preservation defaults remain documented rather than silently changing every extraction."
+    },
+    {
+      "api": ["AsyncPdfDocument extraction/search/classification aliases"],
+      "operation": "Existing bounded application queue",
+      "status": "synchronous_native_calls_in_supervised_workers",
+      "reason": "Existing process supervisor owns concurrency, backpressure, cancellation and per-file failures; no unbounded upstream async task fan-out or persistent service is added."
+    }
+  ],
+  "tests": ["tests/test_oxide_analysis.py"],
+  "source_links": [
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs#L738-L965",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs#L1792-L1869",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/python.rs#L1968-L2346",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/extractors/auto.rs",
+    "https://github.com/yfedoseev/pdf_oxide/blob/v0.3.78/src/ocr/mod.rs#L371-L430",
+    "https://pypi.org/project/onnxruntime/1.31.0/"
+  ]
+}

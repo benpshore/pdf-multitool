@@ -10,6 +10,7 @@ import threading
 from dataclasses import asdict
 from pathlib import Path
 
+from .catalog import READING_ORDER_OPERATIONS, READING_ORDERS
 from .core import Job, JobError, Limits, engines, read_local_json, run_worker, validate_inputs
 
 
@@ -68,6 +69,16 @@ def parser() -> argparse.ArgumentParser:
             )
         if operation == "bundle":
             cmd.add_argument("--format", choices=("zip", "tar.gz"), default="zip")
+        if operation in READING_ORDER_OPERATIONS:
+            cmd.add_argument(
+                "--reading-order",
+                choices=READING_ORDERS,
+                default="auto",
+                help=(
+                    "Whole-document geometric order; explicit rows/columns require "
+                    "unrotated horizontal LTR text and do not verify table semantics"
+                ),
+            )
         if operation in {"markdown", "textlayout"}:
             cmd.add_argument(
                 "--skip-repeated-margins",
@@ -129,6 +140,28 @@ def parser() -> argparse.ArgumentParser:
             )
         if operation == "docling":
             cmd.add_argument("--no-ocr", dest="ocr", action="store_false")
+    from .catalog import OPERATIONS
+
+    for operation, contract in OPERATIONS.items():
+        cmd = commands.add_parser(operation, help=contract["label"])
+        cmd.add_argument("inputs", nargs="+" if contract["inputs"] else "*", type=Path)
+        cmd.add_argument("-o", "--output", type=Path, default=Path("output"))
+        if contract["inputs"]:
+            cmd.add_argument("--ask-password", action="store_true")
+        if contract["pages"]:
+            cmd.add_argument("--pages", default="")
+        for key, spec in contract["options"].items():
+            if spec.get("secret"):
+                cmd.add_argument("--ask-" + key.replace("_", "-"), action="store_true")
+                continue
+            kwargs = {"default": spec["default"], "help": spec["label"]}
+            if spec["type"] == "boolean":
+                kwargs["action"] = argparse.BooleanOptionalAction
+            else:
+                kwargs["type"] = {"number": float, "integer": int}.get(spec["type"], str)
+                if "enum" in spec:
+                    kwargs["choices"] = spec["enum"]
+            cmd.add_argument("--" + key.replace("_", "-"), **kwargs)
     return root
 
 
@@ -181,13 +214,19 @@ def main(argv: list[str] | None = None) -> int:
                             ".jp2",
                             ".jpx",
                             ".j2k",
+                            ".docx",
+                            ".xlsx",
+                            ".pptx",
                         }:
                             candidates.append(path)
                             if len(candidates) > Limits().max_files:
                                 raise JobError("Folder intake exceeds the file-count limit")
             else:
                 candidates.append(candidate)
-        paths = validate_inputs(candidates)
+        from .catalog import OPERATIONS
+
+        creates = args.command in OPERATIONS and OPERATIONS[args.command]["inputs"] == 0
+        paths = [] if creates and not candidates else validate_inputs(candidates)
         args.output.mkdir(parents=True, exist_ok=True)
         files = [
             {"id": str(i), "name": path.name, "path": str(path)} for i, path in enumerate(paths)
@@ -244,6 +283,9 @@ def main(argv: list[str] | None = None) -> int:
 
         if options.pop("ask_password", False):
             options["password"] = getpass.getpass("Document password: ")
+        for key, spec in OPERATIONS.get(args.command, {}).get("options", {}).items():
+            if spec.get("secret") and options.pop("ask_" + key, False):
+                options[key] = getpass.getpass(spec["label"] + ": ")
         if args.command == "protect":
             options["new_password"] = getpass.getpass("New PDF password (8-127 UTF-8 bytes): ")
             if options["new_password"] != getpass.getpass("Confirm new PDF password: "):
