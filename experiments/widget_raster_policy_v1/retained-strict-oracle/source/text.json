@@ -1,0 +1,10 @@
+[
+  {
+    "mupdf": "Invoice 000123.40; total 20.15\nAmount 000123.40\nTotal 20.15\n",
+    "pdfium": "Invoice 000123.40; total 20.15"
+  },
+  {
+    "mupdf": "Untouched page 002; balance 001.20\n",
+    "pdfium": "Untouched page 002; balance 001.20"
+  }
+]

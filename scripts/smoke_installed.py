@@ -38,7 +38,7 @@ def cli(executable, root, *arguments):
     return json.loads(result.stdout)
 
 
-def smoke(html=False):
+def smoke(html=False, oxide=False):
     installed = Path(pdf_multitool.__file__).resolve()
     require("site-packages" in installed.parts, "Smoke must import the installed wheel")
     executable = Path(sys.executable).parent / "pdf-multitool"
@@ -53,6 +53,40 @@ def smoke(html=False):
         original = source.read_bytes()
         digest = hashlib.sha256(original).hexdigest()
         require(cli(executable, root, "doctor")["engines"]["pymupdf"]["available"], "No PDF engine")
+        if oxide:
+            report = cli(executable, root, "oxide", source, "--include-html", "-o", root / "oxide")
+            require(report["state"] == "completed", "Installed PDF Oxide extraction failed")
+            pages = [item for item in report["results"] if item["path"].endswith("page-0002.json")]
+            require(len(pages) == 1, "Installed PDF Oxide page identity missing")
+            page = json.loads(Path(pages[0]["path"]).read_text())
+            require("Installed smoke page 2" in page["text"], "Installed PDF Oxide text lost")
+            require("Installed smoke page 2" in page["html"]["native"], "Native HTML text lost")
+            require(page["source_sha256"] == digest, "Installed PDF Oxide source hash mismatch")
+            created = cli(
+                executable,
+                root,
+                "oxide_create_text",
+                "--content",
+                "Installed invoice 001 Total -12.50 Balance 0.00",
+                "-o",
+                root / "oxide-created",
+            )
+            require(created["state"] == "completed", "Installed zero-input creation failed")
+            pdf = next(item for item in created["results"] if item["path"].endswith(".pdf"))
+            with pymupdf.open(pdf["path"]) as document:
+                text = " ".join(page.get_text() for page in document)
+                require(
+                    all(value in text for value in ("001", "-12.50", "0.00")),
+                    "Installed zero-input creation changed numeric content",
+                )
+            notices = installed.parent / "notices/pdf_oxide"
+            require(
+                all(
+                    (notices / name).is_file()
+                    for name in ("NOTICE", "LICENSE-MIT", "LICENSE-APACHE")
+                ),
+                "Dependency notices missing from wheel",
+            )
         report = cli(executable, root, "merge", source, source, "-o", root / "merged")
         require(report["state"] == "completed", "Installed merge failed")
         with pymupdf.open(report["results"][0]["path"]) as document:
@@ -150,10 +184,12 @@ def smoke(html=False):
             process.stderr.close()
         require(process.returncode == 0, "Server did not shut down cleanly")
         require(hashlib.sha256(source.read_bytes()).hexdigest() == digest, "CLI original changed")
-    print(json.dumps({"installed_cli_http_smoke": "passed", "html": html}))
+    print(json.dumps({"installed_cli_http_smoke": "passed", "html": html, "oxide": oxide}))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--html", action="store_true", help="Also exercise installed WeasyPrint")
-    smoke(parser.parse_args().html)
+    parser.add_argument("--oxide", action="store_true", help="Also exercise bounded PDF Oxide")
+    arguments = parser.parse_args()
+    smoke(arguments.html, arguments.oxide)

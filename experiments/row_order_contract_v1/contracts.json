@@ -1,0 +1,327 @@
+{
+  "numeric_cells_rows": {
+    "grid": [
+      [
+        "0007",
+        "1,234.50",
+        "12.5%"
+      ],
+      [
+        "0042",
+        "-90.00",
+        "0.0%"
+      ],
+      [
+        "0100",
+        "0.00",
+        "100%"
+      ]
+    ],
+    "row_text": "0007 1,234.50 12.5% 0042 -90.00 0.0% 0100 0.00 100%",
+    "column_text": "0007 0042 0100 1,234.50 -90.00 0.00 12.5% 0.0% 100%",
+    "intent": "rows",
+    "emission": "rows"
+  },
+  "numeric_cells_columns": {
+    "grid": [
+      [
+        "0007",
+        "1,234.50",
+        "12.5%"
+      ],
+      [
+        "0042",
+        "-90.00",
+        "0.0%"
+      ],
+      [
+        "0100",
+        "0.00",
+        "100%"
+      ]
+    ],
+    "row_text": "0007 1,234.50 12.5% 0042 -90.00 0.0% 0100 0.00 100%",
+    "column_text": "0007 0042 0100 1,234.50 -90.00 0.00 12.5% 0.0% 100%",
+    "intent": "rows",
+    "emission": "columns"
+  },
+  "numeric_cells_reverse": {
+    "grid": [
+      [
+        "0007",
+        "1,234.50",
+        "12.5%"
+      ],
+      [
+        "0042",
+        "-90.00",
+        "0.0%"
+      ],
+      [
+        "0100",
+        "0.00",
+        "100%"
+      ]
+    ],
+    "row_text": "0007 1,234.50 12.5% 0042 -90.00 0.0% 0100 0.00 100%",
+    "column_text": "0007 0042 0100 1,234.50 -90.00 0.00 12.5% 0.0% 100%",
+    "intent": "rows",
+    "emission": "reverse"
+  },
+  "long_records_rows": {
+    "grid": [
+      [
+        "Invoice number 104 completed",
+        "Payment amount USD 120.50"
+      ],
+      [
+        "Invoice number 205 pending",
+        "Payment amount USD 0.00"
+      ],
+      [
+        "Invoice number 306 disputed",
+        "Payment amount USD -75.25"
+      ]
+    ],
+    "row_text": "Invoice number 104 completed Payment amount USD 120.50 Invoice number 205 pending Payment amount USD 0.00 Invoice number 306 disputed Payment amount USD -75.25",
+    "column_text": "Invoice number 104 completed Invoice number 205 pending Invoice number 306 disputed Payment amount USD 120.50 Payment amount USD 0.00 Payment amount USD -75.25",
+    "intent": "rows",
+    "emission": "rows"
+  },
+  "long_records_columns": {
+    "grid": [
+      [
+        "Invoice number 104 completed",
+        "Payment amount USD 120.50"
+      ],
+      [
+        "Invoice number 205 pending",
+        "Payment amount USD 0.00"
+      ],
+      [
+        "Invoice number 306 disputed",
+        "Payment amount USD -75.25"
+      ]
+    ],
+    "row_text": "Invoice number 104 completed Payment amount USD 120.50 Invoice number 205 pending Payment amount USD 0.00 Invoice number 306 disputed Payment amount USD -75.25",
+    "column_text": "Invoice number 104 completed Invoice number 205 pending Invoice number 306 disputed Payment amount USD 120.50 Payment amount USD 0.00 Payment amount USD -75.25",
+    "intent": "rows",
+    "emission": "columns"
+  },
+  "long_records_reverse": {
+    "grid": [
+      [
+        "Invoice number 104 completed",
+        "Payment amount USD 120.50"
+      ],
+      [
+        "Invoice number 205 pending",
+        "Payment amount USD 0.00"
+      ],
+      [
+        "Invoice number 306 disputed",
+        "Payment amount USD -75.25"
+      ]
+    ],
+    "row_text": "Invoice number 104 completed Payment amount USD 120.50 Invoice number 205 pending Payment amount USD 0.00 Invoice number 306 disputed Payment amount USD -75.25",
+    "column_text": "Invoice number 104 completed Invoice number 205 pending Invoice number 306 disputed Payment amount USD 120.50 Payment amount USD 0.00 Payment amount USD -75.25",
+    "intent": "rows",
+    "emission": "reverse"
+  },
+  "short_column_prose_rows": {
+    "grid": [
+      [
+        "First",
+        "Once"
+      ],
+      [
+        "Next",
+        "Then"
+      ],
+      [
+        "Last",
+        "Finally"
+      ]
+    ],
+    "row_text": "First Once Next Then Last Finally",
+    "column_text": "First Next Last Once Then Finally",
+    "intent": "columns",
+    "emission": "rows"
+  },
+  "short_column_prose_columns": {
+    "grid": [
+      [
+        "First",
+        "Once"
+      ],
+      [
+        "Next",
+        "Then"
+      ],
+      [
+        "Last",
+        "Finally"
+      ]
+    ],
+    "row_text": "First Once Next Then Last Finally",
+    "column_text": "First Next Last Once Then Finally",
+    "intent": "columns",
+    "emission": "columns"
+  },
+  "short_column_prose_reverse": {
+    "grid": [
+      [
+        "First",
+        "Once"
+      ],
+      [
+        "Next",
+        "Then"
+      ],
+      [
+        "Last",
+        "Finally"
+      ]
+    ],
+    "row_text": "First Once Next Then Last Finally",
+    "column_text": "First Next Last Once Then Finally",
+    "intent": "columns",
+    "emission": "reverse"
+  },
+  "missing_cells_rows": {
+    "grid": [
+      [
+        "ID",
+        "Amount",
+        "Tax"
+      ],
+      [
+        "012",
+        "",
+        "0.15"
+      ],
+      [
+        "036",
+        "2.00",
+        ""
+      ]
+    ],
+    "row_text": "ID Amount Tax 012 0.15 036 2.00",
+    "column_text": "ID 012 036 Amount 2.00 Tax 0.15",
+    "intent": "rows",
+    "emission": "rows"
+  },
+  "missing_cells_columns": {
+    "grid": [
+      [
+        "ID",
+        "Amount",
+        "Tax"
+      ],
+      [
+        "012",
+        "",
+        "0.15"
+      ],
+      [
+        "036",
+        "2.00",
+        ""
+      ]
+    ],
+    "row_text": "ID Amount Tax 012 0.15 036 2.00",
+    "column_text": "ID 012 036 Amount 2.00 Tax 0.15",
+    "intent": "rows",
+    "emission": "columns"
+  },
+  "missing_cells_reverse": {
+    "grid": [
+      [
+        "ID",
+        "Amount",
+        "Tax"
+      ],
+      [
+        "012",
+        "",
+        "0.15"
+      ],
+      [
+        "036",
+        "2.00",
+        ""
+      ]
+    ],
+    "row_text": "ID Amount Tax 012 0.15 036 2.00",
+    "column_text": "ID 012 036 Amount 2.00 Tax 0.15",
+    "intent": "rows",
+    "emission": "reverse"
+  },
+  "ambiguous_grid_rows": {
+    "grid": [
+      [
+        "North",
+        "East"
+      ],
+      [
+        "South",
+        "West"
+      ],
+      [
+        "Upper",
+        "Lower"
+      ]
+    ],
+    "row_text": "North East South West Upper Lower",
+    "column_text": "North South Upper East West Lower",
+    "intent": "both_possible",
+    "emission": "rows"
+  },
+  "ambiguous_grid_columns": {
+    "grid": [
+      [
+        "North",
+        "East"
+      ],
+      [
+        "South",
+        "West"
+      ],
+      [
+        "Upper",
+        "Lower"
+      ]
+    ],
+    "row_text": "North East South West Upper Lower",
+    "column_text": "North South Upper East West Lower",
+    "intent": "both_possible",
+    "emission": "columns"
+  },
+  "ambiguous_grid_reverse": {
+    "grid": [
+      [
+        "North",
+        "East"
+      ],
+      [
+        "South",
+        "West"
+      ],
+      [
+        "Upper",
+        "Lower"
+      ]
+    ],
+    "row_text": "North East South West Upper Lower",
+    "column_text": "North South Upper East West Lower",
+    "intent": "both_possible",
+    "emission": "reverse"
+  },
+  "protocol": {
+    "frozen_before_product_measurement": true,
+    "identical_input_ambiguity": "Each ambiguous_grid PDF admits both author intents. No automatic function of its bytes can satisfy both different ordered-text oracles.",
+    "missing_cells": "Order of populated cells is checked; a flat text sequence does not encode empty-cell identity or validate table semantics.",
+    "source_expectations_unchanged": "The existing eleven representation expectations and thirteen boundary contracts remain immutable.",
+    "scope": "Horizontal unrotated synthetic text, explicit reading policy; not a universal table/prose classifier."
+  }
+}

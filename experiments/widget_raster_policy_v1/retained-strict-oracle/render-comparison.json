@@ -1,0 +1,47 @@
+[
+  {
+    "page": 1,
+    "engine": "mupdf",
+    "exact_pixel_parity": true,
+    "changed_pixels": 0,
+    "maximum_channel_delta": 0,
+    "changed_bounds": null,
+    "source_text": "Invoice 000123.40; total 20.15\nAmount 000123.40\nTotal 20.15\n",
+    "saved_text": "Invoice 000123.40; total 20.15\nAmount 000123.40\nTotal 20.15\n"
+  },
+  {
+    "page": 1,
+    "engine": "pdfium",
+    "exact_pixel_parity": false,
+    "changed_pixels": 3941,
+    "maximum_channel_delta": 84,
+    "changed_bounds": [
+      103,
+      477,
+      374,
+      549
+    ],
+    "source_text": "Invoice 000123.40; total 20.15",
+    "saved_text": "Invoice 000123.40; total 20.15\r\nAmount 000123.40\r\nTotal 20.15"
+  },
+  {
+    "page": 2,
+    "engine": "mupdf",
+    "exact_pixel_parity": true,
+    "changed_pixels": 0,
+    "maximum_channel_delta": 0,
+    "changed_bounds": null,
+    "source_text": "Untouched page 002; balance 001.20\n",
+    "saved_text": "Untouched page 002; balance 001.20\n"
+  },
+  {
+    "page": 2,
+    "engine": "pdfium",
+    "exact_pixel_parity": true,
+    "changed_pixels": 0,
+    "maximum_channel_delta": 0,
+    "changed_bounds": null,
+    "source_text": "Untouched page 002; balance 001.20",
+    "saved_text": "Untouched page 002; balance 001.20"
+  }
+]

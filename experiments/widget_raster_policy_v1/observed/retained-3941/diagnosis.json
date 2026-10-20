@@ -1,0 +1,915 @@
+{
+  "case": "retained-3941",
+  "source_sha256": "f395f3d6aae9a48ccebb8b25f5f2e896b75aa59c71d88f350dc942a494f2af37",
+  "output_sha256": "5538941ed91a3e6038ca9f20310b50a0ee9e40da8973740a9c9ad01d9b9a978c",
+  "appearance_graphs": {
+    "source": {
+      "appearance_sha256": "8ec9bbf29f1aca4e72e08195bae89df8a9b8a52dcc26fd7216d3fb78dc978edf",
+      "decoded_appearance": "q 1 0.85 0.1 rg 0 0 240 80 re f Q\nBT /Label 16 Tf 0 g 12 50 Td (Amount 000123.40) Tj 0 -24 Td (Total 20.15) Tj ET\n",
+      "fingerprint": {
+        "metadata": {
+          "object": null,
+          "content": {
+            "/BBox": {
+              "object": null,
+              "content": [
+                0,
+                0,
+                240,
+                80
+              ]
+            },
+            "/DecodedContentSHA256": {
+              "string_bytes": "38656339626266323966316163613465373265303831393562616538396466386139623861353264636332366664373231366433666237386463393738656466"
+            },
+            "/Matrix": {
+              "object": null,
+              "content": [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ]
+            },
+            "/Subtype": {
+              "name": "/Form"
+            }
+          }
+        },
+        "resources_and_group": [
+          {
+            "object": null,
+            "content": {
+              "/Font": {
+                "object": null,
+                "content": {
+                  "/Label": {
+                    "object": 0,
+                    "content": {
+                      "/BaseFont": {
+                        "name": "/Helvetica"
+                      },
+                      "/Subtype": {
+                        "name": "/Type1"
+                      },
+                      "/Type": {
+                        "name": "/Font"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          null
+        ]
+      },
+      "bbox": [
+        0.0,
+        0.0,
+        240.0,
+        80.0
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "fonts": {
+        "/Label": "7 0 R"
+      }
+    },
+    "native": {
+      "appearance_sha256": "8ec9bbf29f1aca4e72e08195bae89df8a9b8a52dcc26fd7216d3fb78dc978edf",
+      "decoded_appearance": "q 1 0.85 0.1 rg 0 0 240 80 re f Q\nBT /Label 16 Tf 0 g 12 50 Td (Amount 000123.40) Tj 0 -24 Td (Total 20.15) Tj ET\n",
+      "fingerprint": {
+        "metadata": {
+          "object": null,
+          "content": {
+            "/BBox": {
+              "object": null,
+              "content": [
+                0,
+                0,
+                240,
+                80
+              ]
+            },
+            "/DecodedContentSHA256": {
+              "string_bytes": "38656339626266323966316163613465373265303831393562616538396466386139623861353264636332366664373231366433666237386463393738656466"
+            },
+            "/Matrix": {
+              "object": null,
+              "content": [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ]
+            },
+            "/Subtype": {
+              "name": "/Form"
+            }
+          }
+        },
+        "resources_and_group": [
+          {
+            "object": null,
+            "content": {
+              "/Font": {
+                "object": null,
+                "content": {
+                  "/Label": {
+                    "object": 0,
+                    "content": {
+                      "/BaseFont": {
+                        "name": "/Helvetica"
+                      },
+                      "/Subtype": {
+                        "name": "/Type1"
+                      },
+                      "/Type": {
+                        "name": "/Font"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          null
+        ]
+      },
+      "bbox": [
+        0.0,
+        0.0,
+        240.0,
+        80.0
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "fonts": {
+        "/Label": "7 0 R"
+      }
+    },
+    "manual": {
+      "appearance_sha256": "8ec9bbf29f1aca4e72e08195bae89df8a9b8a52dcc26fd7216d3fb78dc978edf",
+      "decoded_appearance": "q 1 0.85 0.1 rg 0 0 240 80 re f Q\nBT /Label 16 Tf 0 g 12 50 Td (Amount 000123.40) Tj 0 -24 Td (Total 20.15) Tj ET\n",
+      "fingerprint": {
+        "metadata": {
+          "object": null,
+          "content": {
+            "/BBox": {
+              "object": null,
+              "content": [
+                0,
+                0,
+                240,
+                80
+              ]
+            },
+            "/DecodedContentSHA256": {
+              "string_bytes": "38656339626266323966316163613465373265303831393562616538396466386139623861353264636332366664373231366433666237386463393738656466"
+            },
+            "/Matrix": {
+              "object": null,
+              "content": [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ]
+            },
+            "/Subtype": {
+              "name": "/Form"
+            }
+          }
+        },
+        "resources_and_group": [
+          {
+            "object": null,
+            "content": {
+              "/Font": {
+                "object": null,
+                "content": {
+                  "/Label": {
+                    "object": 0,
+                    "content": {
+                      "/BaseFont": {
+                        "name": "/Helvetica"
+                      },
+                      "/Subtype": {
+                        "name": "/Type1"
+                      },
+                      "/Type": {
+                        "name": "/Font"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          null
+        ]
+      },
+      "bbox": [
+        0.0,
+        0.0,
+        240.0,
+        80.0
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "fonts": {
+        "/Label": "9 0 R"
+      }
+    },
+    "freetext": {
+      "appearance_sha256": "8ec9bbf29f1aca4e72e08195bae89df8a9b8a52dcc26fd7216d3fb78dc978edf",
+      "decoded_appearance": "q 1 0.85 0.1 rg 0 0 240 80 re f Q\nBT /Label 16 Tf 0 g 12 50 Td (Amount 000123.40) Tj 0 -24 Td (Total 20.15) Tj ET\n",
+      "fingerprint": {
+        "metadata": {
+          "object": null,
+          "content": {
+            "/BBox": {
+              "object": null,
+              "content": [
+                0,
+                0,
+                240,
+                80
+              ]
+            },
+            "/DecodedContentSHA256": {
+              "string_bytes": "38656339626266323966316163613465373265303831393562616538396466386139623861353264636332366664373231366433666237386463393738656466"
+            },
+            "/Matrix": {
+              "object": null,
+              "content": [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ]
+            },
+            "/Subtype": {
+              "name": "/Form"
+            }
+          }
+        },
+        "resources_and_group": [
+          {
+            "object": null,
+            "content": {
+              "/Font": {
+                "object": null,
+                "content": {
+                  "/Label": {
+                    "object": 0,
+                    "content": {
+                      "/BaseFont": {
+                        "name": "/Helvetica"
+                      },
+                      "/Subtype": {
+                        "name": "/Type1"
+                      },
+                      "/Type": {
+                        "name": "/Font"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          null
+        ]
+      },
+      "bbox": [
+        0.0,
+        0.0,
+        240.0,
+        80.0
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "fonts": {
+        "/Label": "9 0 R"
+      }
+    },
+    "source-after-render": {
+      "appearance_sha256": "8ec9bbf29f1aca4e72e08195bae89df8a9b8a52dcc26fd7216d3fb78dc978edf",
+      "decoded_appearance": "q 1 0.85 0.1 rg 0 0 240 80 re f Q\nBT /Label 16 Tf 0 g 12 50 Td (Amount 000123.40) Tj 0 -24 Td (Total 20.15) Tj ET\n",
+      "fingerprint": {
+        "metadata": {
+          "object": null,
+          "content": {
+            "/BBox": {
+              "object": null,
+              "content": [
+                0,
+                0,
+                240,
+                80
+              ]
+            },
+            "/DecodedContentSHA256": {
+              "string_bytes": "38656339626266323966316163613465373265303831393562616538396466386139623861353264636332366664373231366433666237386463393738656466"
+            },
+            "/Matrix": {
+              "object": null,
+              "content": [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ]
+            },
+            "/Subtype": {
+              "name": "/Form"
+            }
+          }
+        },
+        "resources_and_group": [
+          {
+            "object": null,
+            "content": {
+              "/Font": {
+                "object": null,
+                "content": {
+                  "/Label": {
+                    "object": 0,
+                    "content": {
+                      "/BaseFont": {
+                        "name": "/Helvetica"
+                      },
+                      "/Subtype": {
+                        "name": "/Type1"
+                      },
+                      "/Type": {
+                        "name": "/Font"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          null
+        ]
+      },
+      "bbox": [
+        0.0,
+        0.0,
+        240.0,
+        80.0
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "fonts": {
+        "/Label": "7 0 R"
+      }
+    }
+  },
+  "comparisons": [
+    {
+      "mode": "default",
+      "scale": 1,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 1636,
+      "bounds": [
+        51,
+        238,
+        187,
+        275
+      ],
+      "max_channel_delta": 85,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "default",
+      "scale": 1,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "default",
+      "scale": 1,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "lcd",
+      "scale": 1,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "lcd",
+      "scale": 1,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "lcd",
+      "scale": 1,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "print",
+      "scale": 1,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 1636,
+      "bounds": [
+        51,
+        238,
+        187,
+        275
+      ],
+      "max_channel_delta": 85,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "print",
+      "scale": 1,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "print",
+      "scale": 1,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-smooth",
+      "scale": 1,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 1671,
+      "bounds": [
+        51,
+        238,
+        187,
+        275
+      ],
+      "max_channel_delta": 251,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "no-smooth",
+      "scale": 1,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-smooth",
+      "scale": 1,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-form-draw",
+      "scale": 1,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 19200,
+      "bounds": [
+        40,
+        220,
+        280,
+        300
+      ],
+      "max_channel_delta": 255,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "no-form-draw",
+      "scale": 1,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-form-draw",
+      "scale": 1,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "default",
+      "scale": 2,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 3941,
+      "bounds": [
+        103,
+        477,
+        374,
+        549
+      ],
+      "max_channel_delta": 84,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "default",
+      "scale": 2,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "default",
+      "scale": 2,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "lcd",
+      "scale": 2,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "lcd",
+      "scale": 2,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "lcd",
+      "scale": 2,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "print",
+      "scale": 2,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 3941,
+      "bounds": [
+        103,
+        477,
+        374,
+        549
+      ],
+      "max_channel_delta": 84,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "print",
+      "scale": 2,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "print",
+      "scale": 2,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-smooth",
+      "scale": 2,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 3935,
+      "bounds": [
+        103,
+        477,
+        374,
+        549
+      ],
+      "max_channel_delta": 255,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "no-smooth",
+      "scale": 2,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-smooth",
+      "scale": 2,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-form-draw",
+      "scale": 2,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 76800,
+      "bounds": [
+        80,
+        440,
+        560,
+        600
+      ],
+      "max_channel_delta": 255,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "no-form-draw",
+      "scale": 2,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-form-draw",
+      "scale": 2,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "default",
+      "scale": 4,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "default",
+      "scale": 4,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "default",
+      "scale": 4,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "lcd",
+      "scale": 4,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "lcd",
+      "scale": 4,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "lcd",
+      "scale": 4,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "print",
+      "scale": 4,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "print",
+      "scale": 4,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "print",
+      "scale": 4,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-smooth",
+      "scale": 4,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 4567,
+      "bounds": [
+        208,
+        954,
+        747,
+        1098
+      ],
+      "max_channel_delta": 127,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "no-smooth",
+      "scale": 4,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-smooth",
+      "scale": 4,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-form-draw",
+      "scale": 4,
+      "a": "source",
+      "b": "native",
+      "changed_pixels": 307200,
+      "bounds": [
+        160,
+        880,
+        1120,
+        1200
+      ],
+      "max_channel_delta": 255,
+      "exact_pixel_parity": false
+    },
+    {
+      "mode": "no-form-draw",
+      "scale": 4,
+      "a": "native",
+      "b": "manual",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    },
+    {
+      "mode": "no-form-draw",
+      "scale": 4,
+      "a": "native",
+      "b": "freetext",
+      "changed_pixels": 0,
+      "bounds": null,
+      "max_channel_delta": 0,
+      "exact_pixel_parity": true
+    }
+  ],
+  "acceptance": "Unchanged. Diagnostics only; parent review required."
+}

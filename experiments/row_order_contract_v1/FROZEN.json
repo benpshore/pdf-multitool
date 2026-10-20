@@ -1,0 +1,21 @@
+{
+  "generator_sha256": "e0171e80ddd5ceb1f0a2f2dfae77fa120f0f3d99136b501b842c50482499c8cb",
+  "contracts_sha256": "39edb7fe918b697c063a9e9b52db965a70eb4fa041800895f66db952cbc2591f",
+  "pdf_sha256": {
+    "numeric_cells_rows": "76ae2290c393ff845c027aa136b53fe23223b4cc16c8feb3ecfe1d40724a2ee7",
+    "numeric_cells_columns": "3d060315ecd9ef53345638e099c7e4cdba332e166a153f13702374e941aff43f",
+    "numeric_cells_reverse": "c6fe39df2d2f3d5da07237a36e950cb605e0863d25911e1e06f7f1fdc1c03970",
+    "long_records_rows": "54c17778ff1f54f8a00eca5838c766b9b412e83f9416189a60650a2fe70992da",
+    "long_records_columns": "5f5785f1857b85e0f1bbb3702af83c4c6cb9415e3a50cd5c6e6e0576ab5a9290",
+    "long_records_reverse": "b0bc40d35b43d9ca59a15ca5601602bd38abe2d26e61bdbd1357b4c756c0e9c6",
+    "short_column_prose_rows": "40547c268d373456a67e5155382a52d66724bd53f597fa3a83c59daf5103d187",
+    "short_column_prose_columns": "2a7fa82747d51fb8262af31aafe322941444589f5c463261e0f4b5f7405e9905",
+    "short_column_prose_reverse": "b8182597399d433f450f16d83f010a61f3a4561b320112c2d3dcb91a07e6c676",
+    "missing_cells_rows": "d98908189e21b42651b3a240ec770b61b258474663e27dd0491ffd994a4aaa08",
+    "missing_cells_columns": "72f8843adf94f16cfdc71b0fa37bdd90e5647dfa6ffa0b556f6475cb999c8ea0",
+    "missing_cells_reverse": "4b0ef7d1e8e2b09393ded8e22dfa315029beff7a5084eae41cd75558fffe3e50",
+    "ambiguous_grid_rows": "3ce1276e1822969dc1027d71cc4184677463d6ad70aedd29c40dd81b879da138",
+    "ambiguous_grid_columns": "4d8da4d4a2917299ed155c403aee242d125906a905a0f40ecd3398504bed5518",
+    "ambiguous_grid_reverse": "5680aef1a37a25f3ccee493debe1cf7524a9338718e868c5905ebd2ce1f37296"
+  }
+}

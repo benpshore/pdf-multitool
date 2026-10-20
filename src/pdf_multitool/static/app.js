@@ -5,7 +5,7 @@
   const state = { files: [], selected: new Set(), engines: {}, ready: false, uploading: false, busy: false, deleting: false, job: null, jobOperation: null, textMode: 'clipboard', previews: new Map(), maxFiles: 200, maxBytes: 50 * 1024 * 1024, pollTimer: null };
   const operations = {
     merge: { label: 'Merge PDFs & images', description: 'Combine selected PDFs and supported images in the order shown. Images become pages without OCR.', engine: 'pymupdf', pages: false },
-    imagepdf: { label: 'Images → PDF', description: 'Make one PDF from selected JPEG, PNG or JPEG2000 images. EXIF orientation is applied; no OCR is performed. Animated images are rejected.', engine: 'pillow', pages: false },
+    imagepdf: { label: 'Images to PDF', description: 'Make one PDF from selected JPEG, PNG or JPEG2000 images. EXIF orientation is applied; no OCR is performed. Animated images are rejected.', engine: 'pillow', pages: false },
     split: { label: 'Split PDFs', description: 'Split every page into a PDF, or extract the page groups you choose.', engine: 'pymupdf', pages: true },
     rotate: { label: 'Rotate pages', description: 'Turn the chosen pages clockwise. A new PDF is made for each file.', engine: 'pymupdf', pages: true },
     render: { label: 'Render images', description: 'Turn PDF pages into crisp images with the local Poppler engine.', engine: 'poppler', pages: true },
@@ -16,7 +16,7 @@
     identify: { label: 'Analyze documents', description: 'Identify text layers, scan candidates, headings, fonts, forms and signature fields. Counts describe observed content, not completeness.', engine: 'pymupdf', pages: false },
     pdfhtml: { label: 'Build HTML reader', description: 'Extract text and raster images into a self-contained HTML reader with linked heading navigation and page boundaries.', engine: 'pymupdf', pages: false },
     rename: { label: 'Name document copies', description: 'Use a strongly supported document title as the filename. Keep the original filename when the evidence is uncertain.', engine: 'pymupdf', pages: false },
-    clean: { label: 'Clean PDF structure', description: 'Rebuild content streams, remove unreachable objects and compress streams. Deskew and dewarping are not available yet.', engine: 'pymupdf', pages: false },
+    clean: { label: 'Clean PDF structure', description: 'Rebuild content streams, remove unreachable objects and compress streams. To straighten scanned pages, choose Deskew scanned pages. Curved-page dewarping is not available.', engine: 'pymupdf', pages: false },
     repaginate: { label: 'Reflow & repaginate', description: 'Reconstruct flowing content through HTML and WeasyPrint. Complex scientific layout may differ.', engine: 'weasyprint', pages: false },
     forms: { label: 'Inspect / fill / create forms', description: 'Inspect fields, fill explicit values (radio buttons use export values), or create bounded fields from local JSON. Nothing is inferred or signed.', engine: 'pymupdf', pages: false },
     signatures: { label: 'Inspect signatures', description: 'Report signature fields and whether values are present. Cryptographic validation and digital signing are not implemented.', engine: 'pymupdf', pages: false },
@@ -27,6 +27,64 @@
     textlayout: { label: 'Export structured text', description: 'Extract text in conservative geometric reading order, with source page boundaries and paragraph joins. No missing symbols are invented.', engine: 'pymupdf', pages: false },
     bundle: { label: 'Package results', description: 'Package completed result files, preserving companion-image paths.', engine: 'pymupdf', pages: false }
   };
+  const additional = {};
+  const advancedControls = new Map();
+
+  function installCapabilities(catalog) {
+    for (const [name, spec] of Object.entries(catalog?.operations || {})) {
+      additional[name] = spec;
+      operations[name] = spec;
+      const option = node('option', '', spec.label);
+      option.value = name;
+      $('operation').append(option);
+    }
+    $('capability-gaps').replaceChildren();
+    for (const gap of catalog?.gaps || []) {
+      $('capability-gaps').append(node('li', '', `${gap.feature}: ${gap.status}. ${gap.reason}`));
+    }
+  }
+
+  function renderAdvancedOptions(op) {
+    const container = $('advanced-options');
+    container.replaceChildren();
+    advancedControls.clear();
+    for (const [name, spec] of Object.entries(additional[op]?.options || {})) {
+      const field = node('div', 'field');
+      const label = node('label', spec.type === 'boolean' ? 'check-label' : 'field-label', spec.label);
+      const input = node(spec.enum ? 'select' : spec.multiline ? 'textarea' : 'input');
+      input.id = `option-${name}`;
+      label.setAttribute('for', input.id);
+      if (spec.enum) {
+        for (const value of spec.enum) {
+          const option = node('option', '', value);
+          option.value = value;
+          input.append(option);
+        }
+      } else if (spec.type === 'boolean') {
+        input.type = 'checkbox';
+        input.checked = spec.default;
+      } else if (spec.type === 'number' || spec.type === 'integer') {
+        input.type = 'number';
+        input.min = spec.minimum ?? '';
+        input.max = spec.maximum ?? '';
+        input.step = spec.type === 'integer' ? '1' : 'any';
+      } else {
+        if (!spec.multiline) input.type = spec.secret ? 'password' : 'text';
+        if (spec.secret) input.autocomplete = 'new-password';
+        if (spec.maxLength) input.maxLength = spec.maxLength;
+        if (spec.multiline) input.rows = 8;
+      }
+      input.value = String(spec.default);
+      input.addEventListener('change', refreshControls);
+      if (spec.type === 'boolean') {
+        label.textContent = '';
+        label.append(input, node('span', '', spec.label));
+        field.append(label);
+      } else field.append(label, input);
+      container.append(field);
+      advancedControls.set(name, { input, spec });
+    }
+  }
   let token = '';
   try {
     const fragmentToken = new URLSearchParams(window.location.hash.slice(1)).get('token');
@@ -102,6 +160,8 @@
     return Boolean(value && (value.available === true || value.enabled === true));
   }
   function operationAvailable(op) {
+    if (additional[op]?.available === false || operations[op]?.blocked_reason) return false;
+    if (op === 'render_native' && advancedControls.has('renderer')) return engineAvailable(advancedControls.get('renderer').input.value);
     if (op === 'imagepdf') return engineAvailable('pymupdf') && engineAvailable('pillow');
     if (Object.prototype.hasOwnProperty.call(state.engines, op)) return engineAvailable(op);
     return engineAvailable(operations[op].engine);
@@ -109,6 +169,21 @@
   function effectiveOperation() {
     const op = $('operation').value;
     return op === 'text' && ['markdown', 'textlayout', 'pdfhtml'].includes($('text-export').value) ? $('text-export').value : op;
+  }
+  function refreshOutputContext() {
+    const operation = state.job?.operation || state.jobOperation;
+    if (!operation) {
+      $('output-heading').textContent = 'Your results';
+      $('output-context').textContent = '';
+      return;
+    }
+    const sourceOperation = operation === 'bundle' ? state.bundleSource?.operation : operation;
+    const label = operations[sourceOperation]?.label || operations[operation]?.label || operation;
+    $('output-heading').textContent = `${label} results${operation === 'bundle' ? ' and package' : ''}`;
+    const selected = effectiveOperation();
+    $('output-context').textContent = selected !== sourceOperation
+      ? `These results are from ${label}. Selected tool: ${operations[selected].label}. Run it to create new results.`
+      : `Results from ${label}. Changing options does not change these files; run the tool again to create new results.`;
   }
   function refreshControls() {
     const count = state.selected.size;
@@ -126,20 +201,27 @@
     $('drop-zone').setAttribute('aria-disabled', String($('choose-files').disabled));
     $('operation').disabled = blocked();
     for (const input of $('operation-options').querySelectorAll('input,select,textarea')) input.disabled = blocked();
-    $('run-button').disabled = !state.ready || blocked() || !count || unavailable || (op === 'merge' && count < 2) || (op === 'compress' && !$('allow-lossy').checked);
+    const requiresFiles = additional[op]?.inputs !== 0;
+    const minimumFiles = additional[op]?.inputs ?? (op === 'merge' ? 2 : 1);
+    const rasterAccepted = !advancedControls.has('allow_rasterize') || advancedControls.get('allow_rasterize').input.checked;
+    $('run-button').disabled = !state.ready || blocked() || count < minimumFiles || unavailable || !rasterAccepted || (op === 'compress' && !$('allow-lossy').checked);
     let hint = `${count} selected file${count === 1 ? '' : 's'} · New files only`;
     if (!state.ready) hint = 'Connecting to the local workspace…';
     else if (state.uploading) hint = 'Adding files to the workspace…';
     else if (state.busy) hint = 'Working locally. You can cancel below.';
-    else if (unavailable) hint = 'This engine is unavailable. See About & engines below.';
+    else if (unavailable) hint = operations[effectiveOperation()]?.blocked_reason || 'This engine is unavailable. See About & engines below.';
+    else if (!rasterAccepted) hint = 'Confirm rasterization and possible content loss to continue.';
+    else if (!requiresFiles) hint = 'Create a new file from the options above.';
     else if (!count) hint = 'Add and select files to begin.';
-    else if (op === 'merge' && count < 2) hint = 'Select at least two PDFs or images to merge.';
+    else if (count < minimumFiles) hint = `Select at least ${minimumFiles} files to continue.`;
     else if (op === 'compress' && !$('allow-lossy').checked) hint = 'Confirm PDF rewriting and possible quality loss to continue.';
     $('run-hint').textContent = hint;
+    refreshOutputContext();
   }
   function refreshOperation() {
     const op = $('operation').value;
     const effective = effectiveOperation();
+    renderAdvancedOptions(op);
     $('operation-description').textContent = operations[effective].description + (effective !== op ? ' Exports the whole document.' : '');
     $('run-label').textContent = effective === 'text' && $('text-export').value !== 'clipboard' ? 'Extract text' : operations[effective].label;
     $('pages-field').hidden = !operations[effective].pages;
@@ -148,7 +230,8 @@
     $('compression-field').hidden = op !== 'compress';
     $('ocr-field').hidden = op !== 'docling';
     $('text-export-field').hidden = op !== 'text';
-    $('password-field').hidden = ['html', 'imagepdf'].includes(op);
+    $('reading-order-field').hidden = !['markdown', 'textlayout', 'pdfhtml'].includes(effective);
+    $('password-field').hidden = ['html', 'imagepdf', 'create'].includes(op) || additional[op]?.inputs === 0;
     $('new-password-field').hidden = op !== 'protect';
     $('forms-field').hidden = op !== 'forms';
     $('redaction-field').hidden = op !== 'redact';
@@ -186,7 +269,7 @@
     for (const option of $('operation').options) {
       const ok = operationAvailable(option.value);
       option.disabled = !ok;
-      const names = { merge: 'Merge PDFs & images', split: 'Split / extract pages', rotate: 'Rotate pages', render: 'Render to images', text: 'Extract text', html: 'HTML → PDF', compress: 'Compress PDF', docling: 'Convert with Docling' };
+      const names = { merge: 'Merge PDFs & images', split: 'Split / extract pages', rotate: 'Rotate pages', render: 'Render to images', text: 'Extract text', html: 'HTML to PDF', compress: 'Compress PDF', docling: 'Convert with Docling' };
       option.textContent = (names[option.value] || operations[option.value].label) + (ok ? '' : ' · unavailable');
     }
     if ($('operation').selectedOptions[0]?.disabled) {
@@ -205,7 +288,7 @@
     list.replaceChildren();
     if (!state.files.length) {
       const empty = node('div', 'empty-files');
-      const glyph = node('span', 'empty-glyph', '▤'); glyph.setAttribute('aria-hidden', 'true');
+      const glyph = node('span', 'empty-glyph', ''); glyph.setAttribute('aria-hidden', 'true');
       empty.append(glyph, node('p', '', 'A little less paperwork.'), node('span', '', 'Add a document or a whole stack to get started.'));
       list.append(empty);
     }
@@ -222,18 +305,18 @@
       meta.append(node('span', '', size(file.size)));
       const previewButton = button(state.previews.has(file.id) ? 'Hide preview' : 'Preview', 'text-button', `Toggle preview of ${file.name}`, () => togglePreview(file.id));
       previewButton.setAttribute('aria-expanded', String(state.previews.has(file.id)));
-      meta.append(previewButton, button('Original ↗', 'text-button', `Open original ${file.name} in a new tab`, () => openOriginal(file)));
+      meta.append(previewButton, button('Original', 'text-button', `Open original ${file.name} in a new tab`, () => openOriginal(file)));
       if (file.member_path) meta.append(node('span', '', file.member_path));
-      if (file.source_archive?.url) meta.append(button('Source archive ↓', 'text-button', 'Download the original source archive', () => downloadResult({url: file.source_archive.url, name: file.source_archive.name})));
+      if (file.source_archive?.url) meta.append(button('Source archive', 'text-button', 'Download the original source archive', () => downloadResult({url: file.source_archive.url, name: file.source_archive.name})));
       info.append(name, meta);
       const move = node('div', 'file-order');
-      const up = button('↑', 'order-button', `Move ${file.name} up`, () => moveFile(file.id, -1)); up.disabled = blocked() || index === 0;
-      const down = button('↓', 'order-button', `Move ${file.name} down`, () => moveFile(file.id, 1)); down.disabled = blocked() || index === state.files.length - 1;
+      const up = button('Up', 'order-button', `Move ${file.name} up`, () => moveFile(file.id, -1)); up.disabled = blocked() || index === 0;
+      const down = button('Down', 'order-button', `Move ${file.name} down`, () => moveFile(file.id, 1)); down.disabled = blocked() || index === state.files.length - 1;
       move.append(up, down);
-      const remove = button('×', 'file-remove', `Remove ${file.name} from workspace`, () => removeFiles([file.id])); remove.disabled = blocked();
+      const remove = button('Remove', 'file-remove', `Remove ${file.name} from workspace`, () => removeFiles([file.id])); remove.disabled = blocked();
       const selectArea = node('label', 'file-select'); selectArea.append(check);
       const actions = node('div', 'file-actions'); actions.append(move, remove);
-      main.append(selectArea, node('span', 'file-badge', /\.html?$/i.test(file.name) ? 'HTML' : /\.(jpe?g|png|jp2|jpx|j2k)$/i.test(file.name) ? 'IMG' : 'PDF'), info, actions);
+      main.append(selectArea, node('span', 'file-badge', /\.(docx|xlsx|pptx)$/i.test(file.name) ? 'OFFICE' : /\.html?$/i.test(file.name) ? 'HTML' : /\.(jpe?g|png|jp2|jpx|j2k)$/i.test(file.name) ? 'IMG' : 'PDF'), info, actions);
       row.append(main);
       const preview = state.previews.get(file.id);
       if (preview) {
@@ -305,9 +388,9 @@
   async function addFiles(files) {
     if (blocked() || !state.ready) return;
     const source = Array.from(files);
-    const pdfs = source.filter(file => /\.(pdf|html?|zip|tar|gz|tgz|jpe?g|png|jp2|jpx|j2k)$/i.test(file.name));
+    const pdfs = source.filter(file => /\.(pdf|html?|docx|xlsx|pptx|zip|tar|gz|tgz|jpe?g|png|jp2|jpx|j2k)$/i.test(file.name));
     const ignored = source.length - pdfs.length;
-    if (!pdfs.length) { notice('Choose PDF, HTML, JPEG, PNG, JPEG2000 or supported archives.', 'error'); return; }
+    if (!pdfs.length) { notice('Choose PDF, HTML, DOCX, XLSX, PPTX, JPEG, PNG, JPEG2000 or supported archives.', 'error'); return; }
     const remaining = Math.max(0, state.maxFiles - state.files.length);
     const oversize = pdfs.filter(file => file.size > state.maxBytes);
     const eligible = pdfs.filter(file => file.size <= state.maxBytes && file.size > 0);
@@ -350,7 +433,7 @@
       if (result.length >= state.maxFiles + 1) return;
       if (entry.isFile) {
         const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
-        if (/\.(pdf|html?|zip|tar|gz|tgz|jpe?g|png|jp2|jpx|j2k)$/i.test(file.name)) result.push(file);
+        if (/\.(pdf|html?|docx|xlsx|pptx|zip|tar|gz|tgz|jpe?g|png|jp2|jpx|j2k)$/i.test(file.name)) result.push(file);
       } else if (entry.isDirectory) {
         const reader = entry.createReader();
         let batch;
@@ -382,11 +465,15 @@
     notice(''); renderFiles();
     $('output-panel').hidden = false; $('results').replaceChildren(); $('job-warnings').replaceChildren(); $('job-errors').replaceChildren(); $('job-warnings').hidden = true; $('job-errors').hidden = true; $('text-result').hidden = true; $('extracted-text').value = '';
     $('job-status').classList.remove('is-error'); $('job-message').textContent = 'Starting…'; $('job-percent').textContent = ''; $('job-progress').value = 0; $('cancel-job').hidden = true;
-    const options = { pages, rotation: Number($('rotation').value), dpi: Number($('dpi').value), compress_profile: $('compress-profile').value, allow_lossy: $('allow-lossy').checked, ocr: $('ocr').checked };
+    const options = additional[operation] ? (operations[operation].pages ? { pages } : {}) : { pages, rotation: Number($('rotation').value), dpi: Number($('dpi').value), compress_profile: $('compress-profile').value, allow_lossy: $('allow-lossy').checked, ocr: $('ocr').checked };
+    for (const [name, { input, spec }] of advancedControls) {
+      options[name] = spec.type === 'boolean' ? input.checked : ['integer', 'number'].includes(spec.type) ? Number(input.value) : input.value;
+    }
     if (['markdown', 'textlayout'].includes(operation)) options.skip_repeated_margins = $('skip-margins').checked;
+    if (['markdown', 'textlayout', 'pdfhtml'].includes(operation)) options.reading_order = $('reading-order').value;
     let rawForm = null;
     try {
-      if ($('document-password').value) options.password = $('document-password').value;
+      if (additional[operation]?.inputs !== 0 && $('document-password').value) options.password = $('document-password').value;
       if (operation === 'protect') {
         options.new_password = $('new-password').value;
         if (new TextEncoder().encode(options.new_password).length < 8) throw new Error('Use a new password of at least 8 UTF-8 bytes.');
@@ -405,9 +492,10 @@
       // rather than silently collapsing them in the browser first.
       const encodedOptions = JSON.stringify(options);
       const optionsBody = rawForm ? encodedOptions.slice(0, -1) + ',' + JSON.stringify(rawForm.key) + ':' + rawForm.source + '}' : encodedOptions;
-      const body = '{"operation":' + JSON.stringify(operation) + ',"files":' + JSON.stringify(selectedFiles().map(file => file.id)) + ',"options":' + optionsBody + '}';
-      state.job = await json('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      const body = '{"operation":' + JSON.stringify(operation) + ',"files":' + JSON.stringify(additional[operation]?.inputs === 0 ? [] : selectedFiles().map(file => file.id)) + ',"options":' + optionsBody + '}';
       $('document-password').value = ''; $('new-password').value = '';
+      for (const { input, spec } of advancedControls.values()) if (spec.secret) input.value = '';
+      state.job = await json('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
       if (operation === 'forms') $('form-values').value = '';
       if (!state.job.id) throw new Error('The server did not return a job ID.');
       rememberJob();
@@ -428,6 +516,7 @@
     try {
       const job = await json(`/api/jobs/${encodeURIComponent(state.job.id)}`);
       state.job = job;
+      refreshOutputContext();
       let progress = Number(job.progress) * 100;
       if (!Number.isFinite(progress)) progress = 0;
       progress = Math.max(0, Math.min(100, progress));
@@ -481,7 +570,7 @@
       const info = node('div', 'result-info');
       const name = node('span', 'result-name', result.name || 'Result'); name.title = result.name || 'Result';
       info.append(name, node('span', 'result-size', size(result.size)));
-      const download = button('Download ↓', 'button small', `Download ${result.name || 'result'}`, () => downloadResult(result, download));
+      const download = button('Download', 'button small', `Download ${result.name || 'result'}`, () => downloadResult(result, download));
       card.append(info, download); $('results').append(card);
     }
     $('bundle-controls').hidden = !results.length || (state.jobOperation === 'bundle' && !state.bundleSource);
@@ -494,7 +583,7 @@
         pieces.push(textResults.length > 1 ? `=== ${result.name || 'Document'} ===\n\n${text}` : text);
       }
       $('extracted-text').value = pieces.join('\n\n'); $('text-result').hidden = false;
-      if (!pieces.join('').trim()) { notice('No selectable text was found. Scanned PDFs may need the Docling OCR tool.'); return; }
+      if (!pieces.join('').trim()) { notice('No selectable text was found. For scanned PDFs, choose OCR with Tesseract or a configured Docling model.'); return; }
       if (state.textMode === 'clipboard') await copyText(false);
       else if (state.textMode === 'view') $('text-result').open = true;
       else if (state.textMode === 'download') {
@@ -523,7 +612,7 @@
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(textarea.value);
       notice('Text copied to your clipboard.', 'success');
-      $('copy-text').textContent = 'Copied ✓'; setTimeout(() => { $('copy-text').textContent = 'Copy text'; }, 1800);
+      $('copy-text').textContent = 'Copied'; setTimeout(() => { $('copy-text').textContent = 'Copy text'; }, 1800);
     } catch (_) {
       if (userGesture) {
         textarea.focus(); textarea.select(); textarea.setSelectionRange(0, textarea.value.length);
@@ -581,6 +670,7 @@
     try {
       const [status, files] = await Promise.all([json('/api/status'), json('/api/files')]);
       state.engines = status.engines || {};
+      installCapabilities(status.capabilities);
       const limits = status.limits || {};
       const fileLimit = Number(limits.max_files || limits.files || 200);
       state.maxFiles = Number.isFinite(fileLimit) && fileLimit > 0 ? Math.min(200, Math.floor(fileLimit)) : 200;

@@ -1,0 +1,977 @@
+{
+  "numeric_ruled_rows": {
+    "authored_cells": [
+      [
+        "Code",
+        "Value",
+        "Rate"
+      ],
+      [
+        "0007",
+        "1,234.50",
+        "12.5%"
+      ],
+      [
+        "0042",
+        "-90.00",
+        "0.0%"
+      ],
+      [
+        "0100",
+        "0.00",
+        "100%"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": true,
+    "emission": "rows",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "numeric_ruled_columns": {
+    "authored_cells": [
+      [
+        "Code",
+        "Value",
+        "Rate"
+      ],
+      [
+        "0007",
+        "1,234.50",
+        "12.5%"
+      ],
+      [
+        "0042",
+        "-90.00",
+        "0.0%"
+      ],
+      [
+        "0100",
+        "0.00",
+        "100%"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": true,
+    "emission": "columns",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "numeric_ruled_reverse": {
+    "authored_cells": [
+      [
+        "Code",
+        "Value",
+        "Rate"
+      ],
+      [
+        "0007",
+        "1,234.50",
+        "12.5%"
+      ],
+      [
+        "0042",
+        "-90.00",
+        "0.0%"
+      ],
+      [
+        "0100",
+        "0.00",
+        "100%"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": true,
+    "emission": "reverse",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "numeric_borderless_rows": {
+    "authored_cells": [
+      [
+        "Code",
+        "Value",
+        "Rate"
+      ],
+      [
+        "0007",
+        "1,234.50",
+        "12.5%"
+      ],
+      [
+        "0042",
+        "-90.00",
+        "0.0%"
+      ],
+      [
+        "0100",
+        "0.00",
+        "100%"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": false,
+    "emission": "rows",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "numeric_borderless_columns": {
+    "authored_cells": [
+      [
+        "Code",
+        "Value",
+        "Rate"
+      ],
+      [
+        "0007",
+        "1,234.50",
+        "12.5%"
+      ],
+      [
+        "0042",
+        "-90.00",
+        "0.0%"
+      ],
+      [
+        "0100",
+        "0.00",
+        "100%"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": false,
+    "emission": "columns",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "numeric_borderless_reverse": {
+    "authored_cells": [
+      [
+        "Code",
+        "Value",
+        "Rate"
+      ],
+      [
+        "0007",
+        "1,234.50",
+        "12.5%"
+      ],
+      [
+        "0042",
+        "-90.00",
+        "0.0%"
+      ],
+      [
+        "0100",
+        "0.00",
+        "100%"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": false,
+    "emission": "reverse",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "missing_ruled_rows": {
+    "authored_cells": [
+      [
+        "Key",
+        "Amount",
+        "Tax"
+      ],
+      [
+        "012",
+        "",
+        "0.15"
+      ],
+      [
+        "036",
+        "2.00",
+        ""
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": true,
+    "emission": "rows",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "missing_ruled_columns": {
+    "authored_cells": [
+      [
+        "Key",
+        "Amount",
+        "Tax"
+      ],
+      [
+        "012",
+        "",
+        "0.15"
+      ],
+      [
+        "036",
+        "2.00",
+        ""
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": true,
+    "emission": "columns",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "missing_ruled_reverse": {
+    "authored_cells": [
+      [
+        "Key",
+        "Amount",
+        "Tax"
+      ],
+      [
+        "012",
+        "",
+        "0.15"
+      ],
+      [
+        "036",
+        "2.00",
+        ""
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": true,
+    "emission": "reverse",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "missing_borderless_rows": {
+    "authored_cells": [
+      [
+        "Key",
+        "Amount",
+        "Tax"
+      ],
+      [
+        "012",
+        "",
+        "0.15"
+      ],
+      [
+        "036",
+        "2.00",
+        ""
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": false,
+    "emission": "rows",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "missing_borderless_columns": {
+    "authored_cells": [
+      [
+        "Key",
+        "Amount",
+        "Tax"
+      ],
+      [
+        "012",
+        "",
+        "0.15"
+      ],
+      [
+        "036",
+        "2.00",
+        ""
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": false,
+    "emission": "columns",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "missing_borderless_reverse": {
+    "authored_cells": [
+      [
+        "Key",
+        "Amount",
+        "Tax"
+      ],
+      [
+        "012",
+        "",
+        "0.15"
+      ],
+      [
+        "036",
+        "2.00",
+        ""
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": false,
+    "emission": "reverse",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "wrapped_ruled_rows": {
+    "authored_cells": [
+      [
+        "ID",
+        "Description",
+        "Amount"
+      ],
+      [
+        "001",
+        "First line\ncontinued description",
+        "10.25"
+      ],
+      [
+        "002",
+        "Short",
+        "-2.00"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      165,
+      195
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": true,
+    "emission": "rows",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "wrapped_ruled_columns": {
+    "authored_cells": [
+      [
+        "ID",
+        "Description",
+        "Amount"
+      ],
+      [
+        "001",
+        "First line\ncontinued description",
+        "10.25"
+      ],
+      [
+        "002",
+        "Short",
+        "-2.00"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      165,
+      195
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": true,
+    "emission": "columns",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "wrapped_ruled_reverse": {
+    "authored_cells": [
+      [
+        "ID",
+        "Description",
+        "Amount"
+      ],
+      [
+        "001",
+        "First line\ncontinued description",
+        "10.25"
+      ],
+      [
+        "002",
+        "Short",
+        "-2.00"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      165,
+      195
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": true,
+    "emission": "reverse",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "wrapped_borderless_rows": {
+    "authored_cells": [
+      [
+        "ID",
+        "Description",
+        "Amount"
+      ],
+      [
+        "001",
+        "First line\ncontinued description",
+        "10.25"
+      ],
+      [
+        "002",
+        "Short",
+        "-2.00"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      165,
+      195
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": false,
+    "emission": "rows",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "wrapped_borderless_columns": {
+    "authored_cells": [
+      [
+        "ID",
+        "Description",
+        "Amount"
+      ],
+      [
+        "001",
+        "First line\ncontinued description",
+        "10.25"
+      ],
+      [
+        "002",
+        "Short",
+        "-2.00"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      165,
+      195
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": false,
+    "emission": "columns",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "wrapped_borderless_reverse": {
+    "authored_cells": [
+      [
+        "ID",
+        "Description",
+        "Amount"
+      ],
+      [
+        "001",
+        "First line\ncontinued description",
+        "10.25"
+      ],
+      [
+        "002",
+        "Short",
+        "-2.00"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      165,
+      195
+    ],
+    "authored_column_bounds": [
+      40,
+      180,
+      430,
+      570
+    ],
+    "ruled": false,
+    "emission": "reverse",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "empty_row_ruled_rows": {
+    "authored_cells": [
+      [
+        "A",
+        "B"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "001",
+        "0.00"
+      ],
+      [
+        "002",
+        "-3.25"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      300,
+      570
+    ],
+    "ruled": true,
+    "emission": "rows",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "empty_row_ruled_columns": {
+    "authored_cells": [
+      [
+        "A",
+        "B"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "001",
+        "0.00"
+      ],
+      [
+        "002",
+        "-3.25"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      300,
+      570
+    ],
+    "ruled": true,
+    "emission": "columns",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "empty_row_ruled_reverse": {
+    "authored_cells": [
+      [
+        "A",
+        "B"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "001",
+        "0.00"
+      ],
+      [
+        "002",
+        "-3.25"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      300,
+      570
+    ],
+    "ruled": true,
+    "emission": "reverse",
+    "expected_auto_disposition": "structured_grid",
+    "author_intent": "table_rows",
+    "surrounding_text": [
+      "Before the grid",
+      "After the grid"
+    ]
+  },
+  "empty_row_borderless_rows": {
+    "authored_cells": [
+      [
+        "A",
+        "B"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "001",
+        "0.00"
+      ],
+      [
+        "002",
+        "-3.25"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      300,
+      570
+    ],
+    "ruled": false,
+    "emission": "rows",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "empty_row_borderless_columns": {
+    "authored_cells": [
+      [
+        "A",
+        "B"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "001",
+        "0.00"
+      ],
+      [
+        "002",
+        "-3.25"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      300,
+      570
+    ],
+    "ruled": false,
+    "emission": "columns",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "empty_row_borderless_reverse": {
+    "authored_cells": [
+      [
+        "A",
+        "B"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "001",
+        "0.00"
+      ],
+      [
+        "002",
+        "-3.25"
+      ]
+    ],
+    "authored_row_bounds": [
+      90,
+      120,
+      150,
+      180,
+      210
+    ],
+    "authored_column_bounds": [
+      40,
+      300,
+      570
+    ],
+    "ruled": false,
+    "emission": "reverse",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "table_rows",
+    "surrounding_text": []
+  },
+  "wrapped_numeric_prose_rows": {
+    "authored_cells": null,
+    "authored_column_text": [
+      "North 10\nthen south 30\nUpper 50\nthen lower 60\nFirst 90\nthen last 100",
+      "East 20\nthen west 40\nEarlier 70\nthen later 80\nNext 110\nthen final 120"
+    ],
+    "ruled": false,
+    "emission": "rows",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "prose_columns"
+  },
+  "wrapped_numeric_prose_columns": {
+    "authored_cells": null,
+    "authored_column_text": [
+      "North 10\nthen south 30\nUpper 50\nthen lower 60\nFirst 90\nthen last 100",
+      "East 20\nthen west 40\nEarlier 70\nthen later 80\nNext 110\nthen final 120"
+    ],
+    "ruled": false,
+    "emission": "columns",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "prose_columns"
+  },
+  "wrapped_numeric_prose_reverse": {
+    "authored_cells": null,
+    "authored_column_text": [
+      "North 10\nthen south 30\nUpper 50\nthen lower 60\nFirst 90\nthen last 100",
+      "East 20\nthen west 40\nEarlier 70\nthen later 80\nNext 110\nthen final 120"
+    ],
+    "ruled": false,
+    "emission": "reverse",
+    "expected_auto_disposition": "ambiguous",
+    "author_intent": "prose_columns"
+  }
+}

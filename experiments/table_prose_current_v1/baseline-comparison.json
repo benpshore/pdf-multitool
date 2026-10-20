@@ -1,0 +1,80 @@
+{
+  "pymupdf.json": {
+    "space_explicit": true,
+    "space_tj": true,
+    "operator_chunks": true,
+    "objects_forward": true,
+    "objects_reverse": true,
+    "form_repeated": true,
+    "form_expanded": true,
+    "prose_row_operators": true,
+    "prose_column_operators": true,
+    "table_row_operators": true,
+    "table_column_operators": true
+  },
+  "render-72.png": {
+    "space_explicit": true,
+    "space_tj": true,
+    "operator_chunks": true,
+    "objects_forward": true,
+    "objects_reverse": true,
+    "form_repeated": true,
+    "form_expanded": true,
+    "prose_row_operators": true,
+    "prose_column_operators": true,
+    "table_row_operators": true,
+    "table_column_operators": true
+  },
+  "render-144.png": {
+    "space_explicit": true,
+    "space_tj": true,
+    "operator_chunks": true,
+    "objects_forward": true,
+    "objects_reverse": true,
+    "form_repeated": true,
+    "form_expanded": true,
+    "prose_row_operators": true,
+    "prose_column_operators": true,
+    "table_row_operators": true,
+    "table_column_operators": true
+  },
+  "export.txt": {
+    "space_explicit": true,
+    "space_tj": true,
+    "operator_chunks": true,
+    "objects_forward": true,
+    "objects_reverse": false,
+    "form_repeated": true,
+    "form_expanded": true,
+    "prose_row_operators": true,
+    "prose_column_operators": true,
+    "table_row_operators": true,
+    "table_column_operators": true
+  },
+  "export.md": {
+    "space_explicit": true,
+    "space_tj": true,
+    "operator_chunks": true,
+    "objects_forward": true,
+    "objects_reverse": false,
+    "form_repeated": true,
+    "form_expanded": true,
+    "prose_row_operators": true,
+    "prose_column_operators": true,
+    "table_row_operators": true,
+    "table_column_operators": true
+  },
+  "export.html": {
+    "space_explicit": true,
+    "space_tj": true,
+    "operator_chunks": true,
+    "objects_forward": true,
+    "objects_reverse": false,
+    "form_repeated": true,
+    "form_expanded": true,
+    "prose_row_operators": true,
+    "prose_column_operators": true,
+    "table_row_operators": true,
+    "table_column_operators": true
+  }
+}
