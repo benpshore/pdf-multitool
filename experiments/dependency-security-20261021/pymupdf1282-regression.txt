@@ -1,0 +1,75 @@
+Installed 6 packages in 7ms
+============================= test session starts ==============================
+platform linux -- Python 3.14.8, pytest-9.1.1, pluggy-1.7.0
+rootdir: /workspace/scratch/7908414db4ac/pdf-multitool
+configfile: pyproject.toml
+collected 30 items / 29 deselected / 1 selected
+
+tests/test_document_ops.py .                                           [100%]
+
+=================================== FAILURES ===================================
+_ DocumentOperationTests.test_quote_operator_redaction_removes_target_text (options={'redact_text': 'PRIVATE_5152'}) _
+
+self = <tests.test_document_ops.DocumentOperationTests testMethod=test_quote_operator_redaction_removes_target_text>
+
+    def test_quote_operator_redaction_removes_target_text(self):
+        # Upstream #5152: TL + Td + quote was rewritten incorrectly in 1.28.2.
+        # Rectangle-only redaction has no caller-supplied string to verify.
+        path = self.root / "quote-operator.pdf"
+        target_text = "PRIVATE_5152"
+        with pymupdf.open() as doc:
+            page = doc.new_page(width=320, height=240)
+            page.insert_text((20, 30), "font resource", fontname="helv")
+            font = page.get_fonts()[0][4]
+            stream = f"BT /{font} 12 Tf 25 190 Td 18 TL (KEEP) Tj 0 -35 Td ({target_text}) ' ET"
+            doc.update_stream(page.get_contents()[0], stream.encode())
+            rect = list(page.search_for(target_text)[0])
+            doc.save(path)
+        for options in (
+            {"redact_text": target_text},
+            {"redact_boxes": [{"page": 1, "rect": rect}]},
+        ):
+            with self.subTest(options=options):
+>               output = self.output(self.job("redact", path, options))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_document_ops.py:177: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_document_ops.py:47: in output
+    self.assertEqual(job.state, "completed", job.errors)
+E   AssertionError: 'failed' != 'completed'
+E   - failed
+E   + completed
+E    : [{'name': 'quote-operator.pdf', 'error': 'JobError: Verification found the targeted text in the output; output discarded'}]
+_ DocumentOperationTests.test_quote_operator_redaction_removes_target_text (options={'redact_boxes': [{'page': 1, 'rect': [25.0, 90.0999984741211, 109.70799255371094, 106.58799743652344]}]}) _
+
+self = <tests.test_document_ops.DocumentOperationTests testMethod=test_quote_operator_redaction_removes_target_text>
+
+    def test_quote_operator_redaction_removes_target_text(self):
+        # Upstream #5152: TL + Td + quote was rewritten incorrectly in 1.28.2.
+        # Rectangle-only redaction has no caller-supplied string to verify.
+        path = self.root / "quote-operator.pdf"
+        target_text = "PRIVATE_5152"
+        with pymupdf.open() as doc:
+            page = doc.new_page(width=320, height=240)
+            page.insert_text((20, 30), "font resource", fontname="helv")
+            font = page.get_fonts()[0][4]
+            stream = f"BT /{font} 12 Tf 25 190 Td 18 TL (KEEP) Tj 0 -35 Td ({target_text}) ' ET"
+            doc.update_stream(page.get_contents()[0], stream.encode())
+            rect = list(page.search_for(target_text)[0])
+            doc.save(path)
+        for options in (
+            {"redact_text": target_text},
+            {"redact_boxes": [{"page": 1, "rect": rect}]},
+        ):
+            with self.subTest(options=options):
+                output = self.output(self.job("redact", path, options))
+                with pymupdf.open(output) as doc:
+>                   self.assertNotIn(target_text, doc[0].get_text())
+E                   AssertionError: 'PRIVATE_5152' unexpectedly found in 'KEEP\nPRIVATE_5152\n'
+
+tests/test_document_ops.py:179: AssertionError
+=========================== short test summary info ============================
+SUBFAILED(options={'redact_text': 'PRIVATE_5152'}) tests/test_document_ops.py::DocumentOperationTests::test_quote_operator_redaction_removes_target_text
+SUBFAILED(options={'redact_boxes': [{'page': 1, 'rect': [25.0, 90.0999984741211, 109.70799255371094, 106.58799743652344]}]}) tests/test_document_ops.py::DocumentOperationTests::test_quote_operator_redaction_removes_target_text
+================== 2 failed, 1 passed, 29 deselected in 1.52s ==================

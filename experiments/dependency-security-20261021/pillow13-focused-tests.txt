@@ -1,0 +1,17 @@
+Downloading pillow (6.8MiB)
+ Downloaded pillow
+Installed 9 packages in 17ms
+============================= test session starts ==============================
+platform linux -- Python 3.14.8, pytest-9.1.1, pluggy-1.7.0
+rootdir: /workspace/scratch/7908414db4ac/pdf-multitool
+configfile: pyproject.toml
+collected 124 items
+
+tests/test_images.py ..............................................      [ 37%]
+tests/test_image_workflows.py ...........                                [ 45%]
+tests/test_forms.py .........................                            [ 66%]
+tests/test_form_workflows.py .........                                   [ 73%]
+tests/test_cross_page_forms.py ....                                      [ 76%]
+tests/test_document_ops.py .............................                 [100%]
+
+============================= 124 passed in 40.46s =============================

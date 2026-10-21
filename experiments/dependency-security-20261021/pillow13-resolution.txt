@@ -1,0 +1,17 @@
+exit=1
+Using CPython 3.14.8
+error: No solution found when resolving dependencies for split (markers: python_full_version >= '3.14' and sys_platform == 'win32')
+  cause: Because docling-slim[standard]>=2.138.0 depends on pillow>=10.0.0,<13.0.0 and docling==2.138.0 depends on docling-slim[standard]==2.138.0, we can conclude that docling==2.138.0 depends on pillow>=10.0.0,<13.0.0. (1)
+
+         Because docling-slim[standard]>=2.139.0 depends on pillow>=10.0.0,<13.0.0 and docling==2.139.0 depends on docling-slim[standard]==2.139.0, we can conclude that docling==2.139.0 depends on pillow>=10.0.0,<13.0.0.
+         And because we know from (1) that docling==2.138.0 depends on pillow>=10.0.0,<13.0.0, we can conclude that docling>=2.138.0,<=2.139.0 depends on pillow>=10.0.0,<13.0.0. (2)
+
+         Because docling-slim[standard]>=2.140.0 depends on pillow>=10.0.0,<13.0.0 and docling==2.140.0 depends on docling-slim[standard]==2.140.0, we can conclude that docling==2.140.0 depends on pillow>=10.0.0,<13.0.0.
+         And because we know from (2) that docling>=2.138.0,<=2.139.0 depends on pillow>=10.0.0,<13.0.0, we can conclude that docling>=2.138.0,<=2.140.0 depends on pillow>=10.0.0,<13.0.0. (3)
+
+         Because docling-slim[standard]>=2.141.0 depends on pillow>=10.0.0,<13.0.0 and docling>=2.141.0 depends on docling-slim[standard]==2.141.0, we can conclude that docling>=2.141.0 depends on pillow>=10.0.0,<13.0.0.
+         And because we know from (3) that docling>=2.138.0,<=2.140.0 depends on pillow>=10.0.0,<13.0.0, we can conclude that docling>=2.138.0 depends on pillow>=10.0.0,<13.0.0.
+         And because pdf-multitool[ocr] depends on docling[easyocr]>=2.138.0 and pdf-multitool[images] depends on pillow==13.0.0, we can conclude that pdf-multitool[images] and pdf-multitool[ocr] are incompatible.
+         And because your project requires pdf-multitool[images] and pdf-multitool[ocr], we can conclude that your project's requirements are unsatisfiable.
+
+hint: The resolution failed for an environment that is not the current one, consider limiting the environments with `tool.uv.environments`.
