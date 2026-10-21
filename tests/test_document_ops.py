@@ -156,6 +156,29 @@ class DocumentOperationTests(unittest.TestCase):
         self.assertTrue(report["input_protected"])
         self.assertEqual(report["authentication"], "password_required")
 
+    def test_quote_operator_redaction_removes_target_text(self):
+        # Upstream #5152: TL + Td + quote was rewritten incorrectly in 1.28.2.
+        # Rectangle-only redaction has no caller-supplied string to verify.
+        path = self.root / "quote-operator.pdf"
+        target_text = "PRIVATE_5152"
+        with pymupdf.open() as doc:
+            page = doc.new_page(width=320, height=240)
+            page.insert_text((20, 30), "font resource", fontname="helv")
+            font = page.get_fonts()[0][4]
+            stream = f"BT /{font} 12 Tf 25 190 Td 18 TL (KEEP) Tj 0 -35 Td ({target_text}) ' ET"
+            doc.update_stream(page.get_contents()[0], stream.encode())
+            rect = list(page.search_for(target_text)[0])
+            doc.save(path)
+        for options in (
+            {"redact_text": target_text},
+            {"redact_boxes": [{"page": 1, "rect": rect}]},
+        ):
+            with self.subTest(options=options):
+                output = self.output(self.job("redact", path, options))
+                with pymupdf.open(output) as doc:
+                    self.assertNotIn(target_text, doc[0].get_text())
+                    self.assertIn("KEEP", doc[0].get_text())
+
     def test_rotated_redaction_uses_unrotated_coordinates(self):
         path = self.root / "rotated.pdf"
         with pymupdf.open() as doc:

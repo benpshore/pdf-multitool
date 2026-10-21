@@ -1,0 +1,40 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.8, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/7908414db4ac/pdf-multitool
+configfile: pyproject.toml
+testpaths: tests
+plugins: Faker-40.43.0, anyio-4.15.1
+collected 394 items
+
+tests/test_analysis.py ...............................                   [  7%]
+tests/test_archive_workflows.py .......                                  [  9%]
+tests/test_archives.py ........................................          [ 19%]
+tests/test_baseline_ltr.py ...........................................   [ 30%]
+tests/test_browser.py s                                                  [ 30%]
+tests/test_core.py ...................                                   [ 35%]
+tests/test_cross_page_forms.py ....                                      [ 36%]
+tests/test_document_ops.py ..............................                [ 44%]
+tests/test_engine_security.py ..                                         [ 44%]
+tests/test_form_workflows.py .........                                   [ 47%]
+tests/test_forms.py .........................                            [ 53%]
+tests/test_html.py .....                                                 [ 54%]
+tests/test_image_workflows.py ...........                                [ 57%]
+tests/test_images.py ..............................................      [ 69%]
+tests/test_input_bounds.py ........                                      [ 71%]
+tests/test_link_actions.py ......                                        [ 72%]
+tests/test_ltr_pdf_boundaries.py ....................................... [ 82%]
+..............................................                           [ 94%]
+tests/test_models.py ........                                            [ 96%]
+tests/test_page_links.py ......                                          [ 97%]
+tests/test_server.py .......                                             [ 99%]
+tests/test_smoke.py .                                                    [100%]
+
+=============================== warnings summary ===============================
+tests/test_html.py::HTMLIntegrationTests::test_denial_never_reaches_default_transport
+  /workspace/scratch/7908414db4ac/pdf-multitool/.venv-qualified/lib/python3.14/site-packages/weasyprint/text/ffi.py:528: DeprecationWarning: HarfBuzz-Subset will be required by future versions of WeasyPrint. Please install this library with your package manager.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_browser.py:25: Requires playwright and system chromium
+============= 393 passed, 1 skipped, 1 warning in 63.94s (0:01:03) =============
