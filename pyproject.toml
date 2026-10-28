@@ -6,13 +6,13 @@ readme = "README.md"
 authors = [{ name = "Ben Shore" }]
 requires-python = ">=3.14"
 dependencies = [
-    "pymupdf==1.26.7",
+    "pymupdf==2.0",
 ]
 
 [project.optional-dependencies]
 images = ["Pillow==12.3.0"]
 html = ["weasyprint==70.0"]
-ocr = ["docling[easyocr]==2.138.0"]
+ocr = ["docling[easyocr]==2.141.0"]
 
 [project.scripts]
 pdf-multitool = "pdf_multitool.cli:main"
@@ -39,7 +39,7 @@ fallback-version = "0.0.0"
 dev = [
     "pillow==12.3.0",
     "pytest>=8",
-    "reportlab>=4.4,<5",
+    "reportlab>=4.4,<6",
     "ruff>=0.14",
 ]
 
